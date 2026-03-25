@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.betalent.dev</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/zsh</string>
+        <string>-l</string>
+        <string>-c</string>
+        <string>cd /Applications/MAMP/htdocs/betalent &amp;&amp; npm run dev:auto</string>
+    </array>
+    <key>WorkingDirectory</key>
+    <string>/Applications/MAMP/htdocs/betalent</string>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>StandardOutPath</key>
+    <string>/tmp/betalent-dev.log</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/betalent-dev.err</string>
+</dict>
+</plist>

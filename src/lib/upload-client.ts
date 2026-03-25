@@ -1,0 +1,181 @@
+/**
+ * Client-side direct video upload: init → PUT to presigned URL → complete.
+ *
+ * Phase 1: File from device storage (Photos, Files, folder) — current.
+ * Phase 2: Same pipeline for File from camera capture or MediaRecorder (camera+mic).
+ * Do not change this pipeline for Phase 2; only pass a File from the new source.
+ */
+
+import { getMimeTypeForUpload } from '@/constants/upload';
+import type { AllowedVideoMimeType } from '@/constants/upload';
+import { interpretApiResponse } from '@/lib/api-json-client';
+
+export type ContentTypeUpload = 'ORIGINAL' | 'COVER' | 'REMIX';
+export type CommentPermissionUpload = 'EVERYONE' | 'FOLLOWERS' | 'FOLLOWING' | 'OFF';
+
+export type DirectUploadMetadata = {
+  title: string;
+  description?: string;
+  categorySlug: string;
+  durationSec: number;
+  contentType?: ContentTypeUpload;
+  commentPermission?: CommentPermissionUpload;
+  /** When set, server may allow up to live-challenge duration if the challenge is open. */
+  challengeSlug?: string;
+};
+
+/** Chain: Upload → Save → Process → Thumbnail → READY → Feed → Open Performance. */
+export type DirectUploadResult =
+  | { ok: true; videoId: string; ready: boolean }
+  | { ok: false; message: string; step?: string };
+
+export type UploadProgressStep = 'preparing' | 'uploading' | 'processing';
+
+export type DirectUploadOptions = {
+  onProgress?: (percent: number) => void;
+  onStatus?: (step: UploadProgressStep) => void;
+};
+
+function normalizeUploadMessage(message: string | undefined, step?: string): string {
+  const raw = (message ?? '').toLowerCase();
+  if (step === 'storage' || raw.includes('storage') || raw.includes('direct upload is not configured')) {
+    return 'Upload service is temporarily unavailable. Please try again.';
+  }
+  if (raw.includes('invalid file type')) {
+    return 'Unsupported file type. Use MP4, MOV, M4V, WebM, or a supported audio file.';
+  }
+  if (raw.includes('file too large')) {
+    return 'This file is too large for upload. Please choose a smaller file.';
+  }
+  if (raw.includes('max duration')) {
+    return 'This take is too long for the current upload limit.';
+  }
+  if (raw.includes('network')) {
+    return 'Network issue while uploading. Check your connection and try again.';
+  }
+  return message?.trim() || 'Upload failed. Please try again.';
+}
+
+/**
+ * Run the full direct upload: POST /api/upload/init, PUT file to presigned URL, POST complete.
+ * Accepts File from device upload or createFileForUpload(blob, filename, mimeType) after Recording Studio.
+ */
+export async function performDirectUpload(
+  file: File,
+  metadata: DirectUploadMetadata,
+  options?: DirectUploadOptions
+): Promise<DirectUploadResult> {
+  const mimeType = getMimeTypeForUpload(file);
+  if (!mimeType) {
+    return { ok: false, message: 'Unsupported file type. Use MP4, MOV, M4V, WebM, or a supported audio file.' };
+  }
+
+  options?.onStatus?.('preparing');
+  const initRes = await fetch('/api/upload/init', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      title: metadata.title.trim(),
+      description: metadata.description?.trim() || undefined,
+      categorySlug: metadata.categorySlug,
+      contentType: metadata.contentType ?? 'ORIGINAL',
+      commentPermission: metadata.commentPermission ?? 'EVERYONE',
+      filename: file.name,
+      fileSize: file.size,
+      mimeType: mimeType as AllowedVideoMimeType,
+      durationSec: metadata.durationSec >= 1 ? metadata.durationSec : 1,
+      ...(metadata.challengeSlug?.trim()
+        ? { challengeSlug: metadata.challengeSlug.trim() }
+        : {}),
+    }),
+  });
+  const initParsed = await interpretApiResponse<{
+    uploadUrl?: string;
+    videoId?: string;
+    contentType?: string;
+  }>(initRes);
+
+  if (!initParsed.ok) {
+    if (initParsed.status === 401) {
+      return { ok: false, message: 'Login required', step: 'upload' };
+    }
+    if (initParsed.status === 403) {
+      return {
+        ok: false,
+        message: initParsed.message || 'Verify your email before uploading performances.',
+        step: 'upload',
+      };
+    }
+    if (initParsed.status === 503) {
+      return {
+        ok: false,
+        message: 'Upload service is temporarily unavailable. Please try again.',
+        step: 'storage',
+      };
+    }
+    return {
+      ok: false,
+      message: normalizeUploadMessage(initParsed.message, 'save'),
+      step: 'save',
+    };
+  }
+
+  const initData = initParsed.data;
+  const { uploadUrl, videoId, contentType } = initData;
+  if (!uploadUrl || !videoId) {
+    return { ok: false, message: 'Upload could not start. Please try again.' };
+  }
+
+  options?.onStatus?.('uploading');
+  try {
+    await new Promise<void>((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('PUT', uploadUrl);
+      xhr.setRequestHeader('Content-Type', contentType || mimeType);
+      xhr.upload.onprogress = (ev) => {
+        if (ev.lengthComputable && options?.onProgress) {
+          options.onProgress(Math.round((ev.loaded / ev.total) * 100));
+        }
+      };
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) resolve();
+        else reject(new Error('Upload failed'));
+      };
+      xhr.onerror = () => reject(new Error('Network error'));
+      xhr.send(file);
+    });
+  } catch {
+    return { ok: false, message: 'Network issue while uploading. Check your connection and try again.', step: 'upload' };
+  }
+
+  options?.onStatus?.('processing');
+  const completeRes = await fetch('/api/videos/upload/complete', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ videoId }),
+  });
+  const completeParsed = await interpretApiResponse<{ ready?: boolean; step?: string }>(completeRes);
+
+  if (!completeParsed.ok) {
+    return {
+      ok: false,
+      message: normalizeUploadMessage(completeParsed.message, completeParsed.step),
+      step: completeParsed.step,
+    };
+  }
+
+  const completeData = completeParsed.data;
+  return { ok: true, videoId, ready: completeData.ready === true };
+}
+
+/**
+ * Phase 2 helper: build a File from a Blob (e.g. MediaRecorder output) for performDirectUpload.
+ * Use an allowed MIME type (video/mp4, video/quicktime, video/x-m4v) so the server accepts it.
+ */
+export function createFileForUpload(
+  blob: Blob,
+  filename: string,
+  mimeType: AllowedVideoMimeType
+): File {
+  return new File([blob], filename, { type: mimeType });
+}

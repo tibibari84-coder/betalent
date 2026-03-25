@@ -1,0 +1,11 @@
+-- Weekly Global Live Challenge System — part 1 of 2
+-- Enum values must commit before use (PG); data migration in 20260401000001.
+
+ALTER TYPE "ChallengeStatus" ADD VALUE IF NOT EXISTS 'SCHEDULED';
+ALTER TYPE "ChallengeStatus" ADD VALUE IF NOT EXISTS 'ENTRY_OPEN';
+ALTER TYPE "ChallengeStatus" ADD VALUE IF NOT EXISTS 'ENTRY_CLOSED';
+ALTER TYPE "ChallengeStatus" ADD VALUE IF NOT EXISTS 'LIVE_UPCOMING';
+ALTER TYPE "ChallengeStatus" ADD VALUE IF NOT EXISTS 'LIVE_ACTIVE';
+ALTER TYPE "ChallengeStatus" ADD VALUE IF NOT EXISTS 'VOTING_CLOSED';
+ALTER TYPE "ChallengeStatus" ADD VALUE IF NOT EXISTS 'WINNERS_LOCKED';
+ALTER TYPE "ChallengeStatus" ADD VALUE IF NOT EXISTS 'ARCHIVED';

@@ -1,0 +1,1988 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// Talent rank determined by algorithmic performance (see services/talent-ranking.service.ts).
+enum CreatorTier {
+  STARTER // 1. Default for new creators
+  RISING // 2. First progression
+  FEATURED // 3. Strong engagement
+  SPOTLIGHT // 4. Top performers
+  GLOBAL // 5. Reserved for top global performers
+}
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+/// Who can view the creator's profile page and listed performances (feeds also respect this).
+enum ProfileVisibilityLevel {
+  PUBLIC
+  FOLLOWERS_ONLY
+  PRIVATE
+}
+
+/// Second factor after password / OAuth — not the same as sign-up email verification.
+enum TwoFactorMethod {
+  NONE
+  TOTP
+  EMAIL_OTP
+  SMS_OTP
+}
+
+enum VideoStatus {
+  PROCESSING
+  READY
+  FAILED
+  HIDDEN
+  REPORTED
+}
+
+/// Direct upload lifecycle: draft → uploading → uploaded (or failed).
+enum UploadStatus {
+  DRAFT
+  UPLOADING
+  UPLOADED
+  FAILED
+}
+
+/// Who may discover the performance in public feeds and non-owner surfaces.
+enum VideoVisibility {
+  PUBLIC
+  PRIVATE
+}
+
+/// Who may comment on a performance. Enforced server-side.
+enum CommentPermission {
+  EVERYONE
+  FOLLOWERS
+  FOLLOWING
+  OFF
+}
+
+/// Post-upload processing: thumbnail, premium audio (loudness/limiter), audio analysis, integrity/moderation.
+enum ProcessingStatus {
+  PENDING_PROCESSING
+  GENERATING_THUMBNAIL
+  PROCESSING_AUDIO
+  ANALYZING_AUDIO
+  CHECKING_INTEGRITY
+  READY
+  PROCESSING_FAILED
+  FLAGGED
+}
+
+/// Quick per-video moderation filter (detailed state in MediaIntegrityAnalysis).
+enum VideoModerationStatus {
+  PENDING
+  APPROVED
+  FLAGGED
+  BLOCKED
+}
+
+/// Content type for copyright and monetization: original work vs derivative.
+enum ContentType {
+  ORIGINAL // Creator's own composition/performance
+  COVER // Cover of existing work; future licensing integration
+  REMIX // Remix/adaptation; future licensing integration
+}
+
+enum CoinTransactionType {
+  PURCHASE
+  GIFT_SENT
+  GIFT_RECEIVED
+  PLATFORM_FEE
+  REFUND
+  BONUS
+  DAILY_BONUS
+  VIDEO_UPLOAD_REWARD
+  RECEIVED_VOTES
+  SUPER_VOTE_SPENT
+  CHALLENGE_REWARD
+  ADMIN_ADJUSTMENT
+}
+
+enum GiftType {
+  BRONZE_MIC
+  SILVER_GUITAR
+  GOLDEN_PIANO
+  DIAMOND_VOICE
+}
+
+enum GiftTransactionStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+enum LedgerSourceType {
+  GIFT_TRANSACTION
+  COIN_PURCHASE
+  BONUS
+  REFUND
+}
+
+enum GiftRarityTier {
+  COMMON
+  RARE
+  EPIC
+  LEGENDARY
+  MYTHIC
+}
+
+/// Weekly Global Live Challenge lifecycle. See docs/WEEKLY-GLOBAL-LIVE-CHALLENGE.md
+enum ChallengeStatus {
+  DRAFT           // Not visible; being configured
+  SCHEDULED       // Configured; waiting for entry open
+  ENTRY_OPEN      // Accepting entries (replaces legacy OPEN)
+  ENTRY_CLOSED    // No more entries; live windows upcoming or active
+  LIVE_UPCOMING   // Live windows scheduled, none live yet
+  LIVE_ACTIVE     // At least one live window is live
+  VOTING_CLOSED   // Voting closed; winners not yet locked (replaces legacy VOTING)
+  WINNERS_LOCKED  // Winners computed and locked (replaces legacy ENDED)
+  ARCHIVED        // Fully complete; historical
+  /// @deprecated Use ENTRY_OPEN
+  OPEN
+  /// @deprecated Use VOTING_CLOSED
+  VOTING
+  /// @deprecated Use WINNERS_LOCKED
+  ENDED
+}
+
+/// Live battle lifecycle. See docs/LIVE-BATTLE-SCORING-AND-DATA.md
+enum BattleStatus {
+  SCHEDULED
+  LIVE
+  ENDED
+}
+
+/// Type of viewer support during a live battle. All contribute to battle_score.
+enum BattleVoteType {
+  GIFT // Gift coin value
+  COIN_VOTE // Direct coin vote
+  SUPER_VOTE // Premium vote value
+}
+
+model User {
+  id                       String      @id @default(cuid())
+  email                    String      @unique
+  username                 String      @unique
+  /// Null for Google-only accounts until they set a password.
+  passwordHash             String?
+  /// Proves the user can receive email at this address — not legal identity.
+  emailVerifiedAt          DateTime?
+  /// Google "sub" — unique per Google account. Used for OAuth sign-in and linking.
+  googleId                 String?     @unique
+  displayName              String
+  avatarUrl                String?
+  bio                      String?
+  /// ISO 3166-1 alpha-2 country code (e.g. US, HU, JP). Use lib/countries for name and flagEmoji.
+  country                  String?
+  city                     String?
+  talentType               String?
+  role                     UserRole    @default(USER)
+  creatorTier              CreatorTier @default(STARTER)
+  uploadLimitSec           Int         @default(90)
+  /// Sum of Video.score across creator's videos (votes / leaderboard score). Updated by ranking job.
+  totalVotes               Int         @default(0)
+  /// Progress toward next tier (0.0–1.0). Updated by ranking job.
+  rankProgress             Float       @default(0)
+  /// Last time tier/progress was recomputed by the talent ranking job.
+  rankUpdatedAt            DateTime?
+  followersCount           Int         @default(0)
+  followingCount           Int         @default(0)
+  videosCount              Int         @default(0)
+  totalViews               Int         @default(0)
+  totalLikes               Int         @default(0)
+  totalComments            Int         @default(0)
+  totalCoinsReceived       Int         @default(0)
+  totalCoinsSpent          Int         @default(0)
+  /// Creator / trust badge (moderation). Not the same as emailVerifiedAt.
+  isVerified               Boolean     @default(false)
+  /// Stronger login protection (TOTP / future email OTP / SMS).
+  twoFactorEnabled         Boolean     @default(false)
+  twoFactorMethod          TwoFactorMethod @default(NONE)
+  /// AES-GCM ciphertext (base64) of TOTP secret — never store raw secret.
+  twoFactorSecretEncrypted String?
+  /// E.164 if present; separate trust signal from email — not implemented for SMS send yet.
+  phoneE164                String?
+  phoneVerifiedAt          DateTime?
+  /// When the user accepted Fair Play / Authentic Performance / Anti-Fraud policies at registration.
+  fairPlayPolicyAcceptedAt DateTime?
+  /// When the user accepted Terms of Service and Creator Rules at registration.
+  acceptedTermsAt          DateTime?
+  /// Preferred UI language code (e.g. en, es, fr, hu). Applied after login.
+  preferredLocale          String?     @default("en")
+  /// Profile page + discovery: who may view this creator's public presence.
+  profileVisibility        ProfileVisibilityLevel @default(PUBLIC)
+  /// Default CommentPermission for newly created videos (per-video override still applies after publish).
+  defaultCommentPermission CommentPermission      @default(EVERYONE)
+  /// When false, other users cannot submit talent votes (1–10) on this creator's performances.
+  allowVotesOnPerformances Boolean     @default(true)
+  notifyChallenges         Boolean     @default(true)
+  /// Likes-as-vote + gift alerts on your performances (in-app notification list).
+  notifyVotes              Boolean     @default(true)
+  notifyFollowers          Boolean     @default(true)
+  notifyComments           Boolean     @default(true)
+  notifyAnnouncements      Boolean     @default(true)
+  createdAt                DateTime    @default(now())
+  updatedAt                DateTime    @updatedAt
+
+  videos     Video[]
+  comments   Comment[]
+  commentLikes CommentLike[]
+  commentReportsFiled CommentReport[] @relation("CommentReportReporter")
+  commentMentionsReceived CommentMention[] @relation("CommentMentionUser")
+  notificationReads NotificationRead[]
+  likes      Like[]
+  votes      Vote[]
+  userWallet UserWallet?
+
+  followers Follow[] @relation("UserFollowers")
+  following Follow[] @relation("UserFollowing")
+
+  giftTransactionsSent                 GiftTransaction[]         @relation("GiftTransactionSender")
+  giftTransactionsReceived             GiftTransaction[]         @relation("GiftTransactionReceiver")
+  creatorEarningsLedger                CreatorEarningsLedger[]
+  creatorEarningsSummary               CreatorEarningsSummary?
+  creatorEarningsRiskHolds             CreatorEarningsRiskHold[]
+  creatorSupportWeekly                 CreatorSupportWeekly[]
+  creatorSupporterSummariesAsCreator   CreatorSupporterSummary[] @relation("CreatorSupporterSummaryCreator")
+  creatorSupporterSummariesAsSupporter CreatorSupporterSummary[] @relation("CreatorSupporterSummarySupporter")
+  videoSupporterSummaries              VideoSupporterSummary[]
+
+  coinPurchaseOrders   CoinPurchaseOrder[]
+  coinTransactionsFrom CoinTransaction[]   @relation("CoinTransactionFromUser")
+  coinTransactionsTo   CoinTransaction[]   @relation("CoinTransactionToUser")
+  purchaseReversalCases PurchaseReversalCase[]
+
+  challengeEntries   ChallengeEntry[]
+  challengeWins      ChallengeWinner[]
+  challengeVotesCast ChallengeVote[] @relation("ChallengeVoteVoter")
+  challengeVotesReceived ChallengeVote[] @relation("ChallengeVoteCreator")
+
+  liveChallengeSessionsAsPerformer LivePerformanceSlot[] @relation("LiveSlotPerformer")
+  liveVotesCast                   LiveVote[]            @relation("LiveVoteVoter")
+  liveVotesReceived              LiveVote[]            @relation("LiveVotePerformer")
+  liveGiftsSent                  LiveGift[]            @relation("LiveGiftSender")
+  liveGiftsReceived              LiveGift[]            @relation("LiveGiftPerformer")
+
+  creatorPayoutProfile CreatorPayoutProfile?
+  payoutRecords        CreatorPayoutRecord[]
+
+  liveBattleParticipations LiveBattleParticipant[]
+  battleVotesSent          BattleVote[]            @relation("BattleVoteSender")
+  battleVotesReceived      BattleVote[]            @relation("BattleVoteRecipient")
+  battlesWon               LiveBattle[]            @relation("BattleWinner")
+  battleWinnerRecords      BattleWinner[]          @relation("BattleWinner")
+  battleLoserRecords       BattleWinner[]          @relation("BattleLoser")
+
+  fraudEvents                FraudEvent[]
+  accountRiskProfile         AccountRiskProfile?
+  supportReviewFlagsAsActor  SupportReviewFlag[] @relation("SupportReviewFlagActor")
+  supportReviewFlagsAsTarget SupportReviewFlag[] @relation("SupportReviewFlagTarget")
+
+  /// Admin-set account trust status. Null/CLEAN = no restriction.
+  moderationStatus                AccountModerationStatus?
+  moderationActionLogsAsModerator ModerationActionLog[]
+  moderationNotesAsAuthor         ModerationNote[]
+  shareEvents                     ShareEvent[]
+  contentReports                  ContentReport[]          @relation("ContentReportReporter")
+  watchInteractions               UserWatchInteraction[]
+
+  dmConversationsAsUser1 DmConversation[] @relation("DmConversationUser1")
+  dmConversationsAsUser2 DmConversation[] @relation("DmConversationUser2")
+  dmMessagesSent         DmMessage[]      @relation("DmMessageSender")
+  dmMessagesReceived     DmMessage[]      @relation("DmMessageReceiver")
+
+  /// Creators this user dismissed from “suggested creators” surfaces (server-side; not shown again).
+  creatorRecommendationDismissalsAsViewer CreatorRecommendationDismissal[] @relation("CreatorRecommendationDismissalViewer")
+  /// Viewers who dismissed this user from creator recommendations.
+  creatorRecommendationDismissalsAsTarget CreatorRecommendationDismissal[] @relation("CreatorRecommendationDismissalTarget")
+
+  creatorVerification CreatorVerification?
+
+  /// Schema-level: test accounts. Exclude from notifications and organic engagement.
+  isTestAccount    Boolean   @default(false)
+  /// Schema-level: seed/demo accounts. Exclude from notifications.
+  isSeedAccount    Boolean   @default(false)
+  /// Referral: user who invited this user (from shared link ref param). Null = organic signup.
+  referrerId       String?
+  referrer         User?      @relation("Referrer", fields: [referrerId], references: [id], onDelete: SetNull)
+  referredUsers    User[]     @relation("Referrer")
+  referralsMade    Referral[] @relation("ReferralReferrer")
+  referralReceived Referral?  @relation("ReferralReceived")
+
+  emailVerificationTokens EmailVerificationToken[]
+  passwordResetTokens     PasswordResetToken[]
+  authAuditLogs           AuthAuditLog[]
+
+  @@index([creatorTier])
+  @@index([emailVerifiedAt])
+  @@index([googleId])
+  @@index([username])
+  @@index([moderationStatus])
+  @@index([totalCoinsReceived])
+  @@index([totalCoinsSpent])
+}
+
+// ---------------------------------------------------------------------------
+// Account auth: email verification, password reset, audit (not creator KYC)
+// ---------------------------------------------------------------------------
+
+model EmailVerificationToken {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// SHA-256 hex of the raw token (never store raw token)
+  tokenHash String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([tokenHash])
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([tokenHash])
+}
+
+model AuthAuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action    String
+  ip        String?
+  userAgent String?
+  meta      Json?
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([action, createdAt])
+}
+
+/// Persisted read-state for computed notifications (device/session independent).
+model NotificationRead {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  notificationId String
+  readAt         DateTime @default(now())
+  createdAt      DateTime @default(now())
+
+  @@unique([userId, notificationId])
+  @@index([userId, readAt(sort: Desc)])
+}
+
+// ---------------------------------------------------------------------------
+// Verified Creator (trust badge, verification levels, moderation review)
+// ---------------------------------------------------------------------------
+enum CreatorVerificationLevel {
+  STANDARD_CREATOR // No badge; default
+  IDENTITY_VERIFIED
+  TRUSTED_PERFORMER
+  OFFICIAL_ARTIST
+}
+
+enum CreatorVerificationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  REVOKED
+}
+
+model CreatorVerification {
+  id                 String                    @id @default(cuid())
+  userId             String                    @unique
+  user               User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  verificationLevel  CreatorVerificationLevel  @default(STANDARD_CREATOR)
+  verificationStatus CreatorVerificationStatus @default(PENDING)
+  reviewedBy         String?
+  reviewedAt         DateTime?
+  rejectionReason    String?                   @db.Text
+  requestPayload     Json? // social links, portfolio, music platform links
+  createdAt          DateTime                  @default(now())
+  updatedAt          DateTime                  @updatedAt
+
+  @@index([userId])
+  @@index([verificationStatus])
+}
+
+model Category {
+  id          String      @id @default(cuid())
+  name        String      @unique
+  slug        String      @unique
+  description String?
+  createdAt   DateTime    @default(now())
+  videos      Video[]
+  challenges  Challenge[]
+}
+
+/// Weekly challenge: theme, time window, prize, rules. See docs/WEEKLY-CHALLENGE-SYSTEM.md
+/// For Live Cover Challenges: artistTheme = platform-chosen artist, maxDurationSec = 90 (standard) or 150 (live slot).
+model Challenge {
+  id               String          @id @default(cuid())
+  slug             String          @unique
+  title            String
+  categoryId       String
+  category         Category        @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  description      String?
+  rules            Json? // Array of rule strings
+  prizeDescription String?
+  prizeCoins       Json? // e.g. { "1": 5000, "2": 3000, "3": 1000 } for top 3
+  status           ChallengeStatus @default(DRAFT)
+  startAt          DateTime
+  endAt            DateTime
+  /// Explicit entry open time (UTC). Used for lifecycle; falls back to startAt if null.
+  entryOpenAt      DateTime?
+  /// Explicit entry close time (UTC). No new entries after this.
+  entryCloseAt     DateTime?
+  /// Explicit voting close time (UTC). No votes/gifts count after this.
+  votingCloseAt    DateTime?
+  /// True if this is the flagship global weekly challenge.
+  isGlobalWeekly   Boolean         @default(false)
+  /// Artist theme for cover challenges (e.g. "Michael Jackson"). Platform-chosen; users perform covers.
+  artistTheme      String?
+  /// Week index 1–50 for preplanned Live Cover Challenge sequence.
+  weekIndex        Int?
+  /// Max performance length in seconds. Default 90 (standard) for cover challenges; up to 150 for live slots.
+  maxDurationSec   Int             @default(90)
+  /// When the weekly live event/show happens. Used for countdown. (Kept for backward compat.)
+  liveEventAt      DateTime?
+  /// When the live event actually starts (stream goes live). Distinct from liveEventAt.
+  liveStartAt      DateTime?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  entries     ChallengeEntry[]
+  winners     ChallengeWinner[]
+  challengeVotes ChallengeVote[]
+  liveSessions LiveChallengeSession[]
+  windows     ChallengeWindow[]
+
+  @@index([status])
+  @@index([categoryId])
+  @@index([startAt])
+  @@index([endAt])
+  @@index([weekIndex])
+  @@index([isGlobalWeekly])
+}
+
+/// Regional live window for a weekly challenge. Timezone-aware; stores UTC timestamps.
+model ChallengeWindow {
+  id           String   @id @default(cuid())
+  challengeId  String
+  challenge    Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  regionLabel  String   // e.g. Americas, EMEA, APAC
+  timezone     String   // IANA timezone (e.g. America/New_York)
+  startsAt     DateTime // UTC
+  endsAt       DateTime // UTC
+  status       String   @default("SCHEDULED") // SCHEDULED, LIVE, COMPLETED, CANCELLED
+  displayOrder Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  sessions LiveChallengeSession[]
+  entries  ChallengeEntry[]
+  eligibleCountries ChallengeWindowCountryEligibility[]
+
+  @@index([challengeId])
+  @@index([startsAt])
+}
+
+model ChallengeWindowCountryEligibility {
+  id          String          @id @default(cuid())
+  windowId    String
+  window      ChallengeWindow @relation(fields: [windowId], references: [id], onDelete: Cascade)
+  countryCode String
+  createdAt   DateTime        @default(now())
+
+  @@unique([windowId, countryCode])
+  @@index([countryCode])
+}
+
+enum ChallengeEntryFairnessStatus {
+  CLEAN
+  SUPPORT_EXCLUDED
+  FROZEN
+  DISQUALIFIED
+}
+
+enum ChallengeEntryStatus {
+  ACTIVE
+  WITHDRAWN
+}
+
+/// One performance per creator per challenge. Links a video as the creator's entry.
+/// For cover challenges: styleSlug = user-chosen performance style (pop, rnb, soul, gospel, etc.).
+model ChallengeEntry {
+  id             String                        @id @default(cuid())
+  challengeId    String
+  challenge      Challenge                     @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  creatorId      String
+  creator        User                          @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  status         ChallengeEntryStatus          @default(ACTIVE)
+  countryCode    String?
+  windowId       String?
+  window         ChallengeWindow?              @relation(fields: [windowId], references: [id], onDelete: SetNull)
+  joinedAt       DateTime                      @default(now())
+  updatedAt      DateTime                      @updatedAt
+  withdrawnAt    DateTime?
+  videoId        String
+  video          Video                         @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  /// User-chosen performance style for cover challenges (pop, rnb, soul, gospel, jazz, etc.).
+  styleSlug      String?
+  /// Set by moderators: exclude from ranking, freeze, or disqualify entry.
+  fairnessStatus ChallengeEntryFairnessStatus?
+  /// When true, entry is in finalist round (top N). Set by job or admin when challenge enters finalist phase.
+  isFinalist     Boolean                        @default(false)
+  createdAt      DateTime                      @default(now())
+
+  @@unique([challengeId, creatorId])
+  @@index([challengeId])
+  @@index([creatorId])
+  @@index([videoId])
+  @@index([fairnessStatus])
+  @@index([status])
+  @@index([windowId])
+  @@index([challengeId, status, joinedAt(sort: Desc)])
+}
+
+/// Star-rating vote (1–5) for challenge entries. Scoped to challenges only; not used in main For You feed.
+/// One vote per user per entry; update allowed. Self-vote blocked at service layer.
+model ChallengeVote {
+  id            String   @id @default(cuid())
+  challengeId   String
+  challenge     Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  videoId       String
+  video         Video     @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  voterUserId   String
+  voter         User      @relation("ChallengeVoteVoter", fields: [voterUserId], references: [id], onDelete: Cascade)
+  creatorUserId String
+  creator       User      @relation("ChallengeVoteCreator", fields: [creatorUserId], references: [id], onDelete: Cascade)
+  stars         Int       /// 1–5
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@unique([challengeId, videoId, voterUserId])
+  @@index([challengeId])
+  @@index([videoId])
+  @@index([challengeId, videoId])
+  @@index([voterUserId])
+  @@index([voterUserId, createdAt])
+}
+
+/// Top creators for a challenge; written when challenge ends. Drives badges, coin rewards, rank progress.
+model ChallengeWinner {
+  id           String    @id @default(cuid())
+  challengeId  String
+  challenge    Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  creatorId    String
+  creator      User      @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  rank         Int // 1 = first place
+  coinsAwarded Int       @default(0)
+  createdAt    DateTime  @default(now())
+
+  @@unique([challengeId, creatorId])
+  @@index([challengeId])
+  @@index([creatorId])
+}
+
+// ---------------------------------------------------------------------------
+// Live Challenge Session: real-time competitive performance system
+// Multiple performers, time slots, live voting, live gifts, instant leaderboard
+// ---------------------------------------------------------------------------
+
+enum LiveSessionStatus {
+  SCHEDULED
+  LIVE
+  ENDED
+}
+
+enum LiveSlotStatus {
+  WAITING
+  LIVE
+  COMPLETED
+}
+
+model LiveChallengeSession {
+  id                  String            @id @default(cuid())
+  challengeId         String
+  challenge           Challenge         @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  windowId            String?           /// Links to regional ChallengeWindow if applicable
+  window              ChallengeWindow?  @relation(fields: [windowId], references: [id], onDelete: SetNull)
+  status              LiveSessionStatus @default(SCHEDULED)
+  startedAt           DateTime?
+  endedAt             DateTime?
+  currentPerformerId  String?           /// User.id of performer currently live
+  roundNumber         Int               @default(1)
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+
+  slots   LivePerformanceSlot[]
+  votes   LiveVote[]
+  gifts   LiveGift[]
+
+  @@index([challengeId])
+  @@index([windowId])
+  @@index([status])
+  @@index([startedAt])
+}
+
+model LivePerformanceSlot {
+  id             String          @id @default(cuid())
+  sessionId      String
+  session        LiveChallengeSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  performerUserId String
+  performer      User            @relation("LiveSlotPerformer", fields: [performerUserId], references: [id], onDelete: Cascade)
+  videoId        String? /// Optional: pre-recorded video to play during slot
+  video          Video?          @relation(fields: [videoId], references: [id], onDelete: SetNull)
+  startTime      DateTime?
+  endTime       DateTime?
+  status         LiveSlotStatus  @default(WAITING)
+  slotOrder     Int             @default(0)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  @@unique([sessionId, slotOrder])
+  @@index([sessionId])
+  @@index([performerUserId])
+}
+
+model LiveVote {
+  id             String   @id @default(cuid())
+  sessionId      String
+  session        LiveChallengeSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  performerUserId String
+  performer      User     @relation("LiveVotePerformer", fields: [performerUserId], references: [id], onDelete: Cascade)
+  voterUserId   String
+  voter         User     @relation("LiveVoteVoter", fields: [voterUserId], references: [id], onDelete: Cascade)
+  stars         Int      /// 1–5
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([sessionId, performerUserId, voterUserId])
+  @@index([sessionId])
+  @@index([performerUserId])
+  @@index([voterUserId])
+  @@index([sessionId, performerUserId])
+}
+
+model LiveGift {
+  id             String   @id @default(cuid())
+  sessionId      String
+  session        LiveChallengeSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  performerUserId String
+  performer      User     @relation("LiveGiftPerformer", fields: [performerUserId], references: [id], onDelete: Cascade)
+  senderUserId   String
+  sender         User     @relation("LiveGiftSender", fields: [senderUserId], references: [id], onDelete: Cascade)
+  coins         Int
+  createdAt     DateTime @default(now())
+
+  @@index([sessionId])
+  @@index([performerUserId])
+  @@index([senderUserId])
+  @@index([sessionId, performerUserId])
+}
+
+// ---------------------------------------------------------------------------
+// Live Battle: two creators, 3 min, gifts/coins/super votes. See docs/LIVE-BATTLE-SCORING-AND-DATA.md
+// ---------------------------------------------------------------------------
+
+model LiveBattle {
+  id                  String       @id @default(cuid())
+  status              BattleStatus @default(SCHEDULED)
+  startAt             DateTime
+  endAt               DateTime
+  durationSec         Int          @default(180) // 3 minutes
+  winnerId            String? // Set when status = ENDED
+  winner              User?        @relation("BattleWinner", fields: [winnerId], references: [id], onDelete: SetNull)
+  bonusCoinsForWinner Int          @default(0)
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+
+  participants LiveBattleParticipant[]
+  votes        BattleVote[]
+  winnerRecord BattleWinner?
+
+  @@index([status])
+  @@index([startAt])
+}
+
+model LiveBattleParticipant {
+  id        String     @id @default(cuid())
+  battleId  String
+  battle    LiveBattle @relation(fields: [battleId], references: [id], onDelete: Cascade)
+  creatorId String
+  creator   User       @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  slot      Int // 1 or 2
+  createdAt DateTime   @default(now())
+
+  @@unique([battleId, slot])
+  @@index([battleId])
+  @@index([creatorId])
+}
+
+model BattleVote {
+  id                 String         @id @default(cuid())
+  battleId           String
+  battle             LiveBattle     @relation(fields: [battleId], references: [id], onDelete: Cascade)
+  recipientCreatorId String
+  recipient          User           @relation("BattleVoteRecipient", fields: [recipientCreatorId], references: [id], onDelete: Cascade)
+  senderId           String
+  sender             User           @relation("BattleVoteSender", fields: [senderId], references: [id], onDelete: Cascade)
+  voteType           BattleVoteType
+  amount             Int // Coin value (gift) or vote points (coin_vote, super_vote)
+  createdAt          DateTime       @default(now())
+
+  @@index([battleId])
+  @@index([recipientCreatorId])
+  @@index([senderId])
+}
+
+/// Winner record for badge and algorithm boost. Written when battle ends.
+model BattleWinner {
+  id           String     @id @default(cuid())
+  battleId     String     @unique
+  battle       LiveBattle @relation(fields: [battleId], references: [id], onDelete: Cascade)
+  winnerId     String
+  winner       User       @relation("BattleWinner", fields: [winnerId], references: [id], onDelete: Cascade)
+  winnerScore  Int
+  loserId      String
+  loser        User       @relation("BattleLoser", fields: [loserId], references: [id], onDelete: Cascade)
+  loserScore   Int
+  coinsAwarded Int        @default(0)
+  createdAt    DateTime   @default(now())
+
+  @@index([winnerId])
+  @@index([loserId])
+}
+
+model Video {
+  id                       String                @id @default(cuid())
+  creatorId                String
+  creator                  User                  @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  categoryId               String
+  category                 Category              @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  title                    String
+  description              String?
+  /// Object storage key (e.g. videos/{userId}/{videoId}.mp4). Set at init for direct upload.
+  storageKey               String?
+  /// Playback URL; set when upload completes or from external URL flow.
+  videoUrl                 String?
+  publicId                 String                @unique
+  thumbnailUrl             String?
+  durationSec              Int
+  fileSize                 Int? /// Bytes
+  mimeType                 String? /// e.g. video/mp4
+  uploadStatus             UploadStatus          @default(DRAFT)
+  processingStatus         ProcessingStatus      @default(PENDING_PROCESSING)
+  moderationStatus         VideoModerationStatus @default(PENDING)
+  status                   VideoStatus           @default(PROCESSING)
+  viewsCount               Int                   @default(0)
+  likesCount               Int                   @default(0)
+  commentsCount            Int                   @default(0)
+  votesCount               Int                   @default(0)
+  talentScore              Float? /// 0–10, 1 decimal; null until ≥5 votes
+  coinsCount               Int                   @default(0)
+  giftsCount               Int                   @default(0)
+  sharesCount              Int                   @default(0)
+  /// Shares in last 24h; updated on share. Used for viral velocity boost in ranking.
+  sharesLast24h            Int                   @default(0)
+  /// Performance style for cover challenges: pop, rnb, soul, gospel, jazz, acoustic, rock, latin, afrobeat, classical, worship
+  performanceStyle         String?
+  /// Content type for copyright and monetization: original vs cover vs remix
+  contentType              ContentType           @default(ORIGINAL)
+  /// Future licensing: ORIGINAL = full rights; COVER/REMIX = licensing integration when available
+  contentLicensingEligible Boolean               @default(true)
+  /// Cached count of content reports; updated when reports are created/resolved.
+  reportCount              Int                   @default(0)
+  /// Quick flag for moderation queue; set when reportCount > 0 or manual flag.
+  isFlagged                Boolean               @default(false)
+  score                    Int                   @default(0)
+  isFeatured               Boolean               @default(false)
+  /// Admin: multiplier for For You ranking (e.g. 1.5 = 50% boost). Null = no override.
+  rankingBoostMultiplier   Float?
+  /// Admin: when true, exclude from For You and Trending feeds.
+  rankingDisabled         Boolean               @default(false)
+  /// PRIVATE = owner-only on profile/dashboard; excluded from For You / Explore / public profile.
+  visibility              VideoVisibility       @default(PUBLIC)
+  /// Who may comment. EVERYONE = any signed-in user; FOLLOWERS = only followers of creator; FOLLOWING = only users creator follows; OFF = none.
+  commentPermission       CommentPermission     @default(EVERYONE)
+  processingStartedAt      DateTime?
+  processingCompletedAt    DateTime?
+  processingError          String? /// Error message when PROCESSING_FAILED; supports retry/audit
+  createdAt                DateTime              @default(now())
+  updatedAt                DateTime              @updatedAt
+
+  comments           Comment[]
+  likes              Like[]
+  votes              Vote[]
+  giftTransactions   GiftTransaction[]
+  giftCountByType    VideoGiftTypeSummary[]
+  supporterSummaries VideoSupporterSummary[]
+  leaderboardEntries LeaderboardEntry[]
+  coinTransactions   CoinTransaction[]
+  challengeEntries   ChallengeEntry[]
+  challengeVotes     ChallengeVote[]
+  livePerformanceSlots LivePerformanceSlot[]
+  supportStats       VideoSupportStats?
+  rankingStats       VideoRankingStats?
+  watchStats         VideoWatchStats?
+  audioAnalysis      VideoAudioAnalysis?
+  mediaIntegrity     MediaIntegrityAnalysis?
+  viewRecords        ViewRecord[]
+  contentReports     ContentReport[]
+  watchInteractions  UserWatchInteraction[]
+
+  @@index([creatorId])
+  /// Profile / dashboard: “creator legfrissebb videói” — ORDER BY createdAt DESC, filter creatorId.
+  @@index([creatorId, createdAt(sort: Desc)])
+  @@index([categoryId])
+  @@index([status])
+  /// Feed-style slices that filter by lifecycle status then sort by freshness (e.g. PROCESSING vs READY lists).
+  @@index([status, createdAt(sort: Desc)])
+  @@index([uploadStatus])
+  @@index([processingStatus])
+  @@index([score])
+  @@index([talentScore])
+  @@index([createdAt])
+  @@index([status, coinsCount])
+  @@index([visibility])
+}
+
+/// Talent Score vote: 1–10 per user per performance. One vote per user per video (upsert).
+/// Deleting the Video removes all Vote rows for that video (cascade).
+model Vote {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  videoId   String
+  video     Video    @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  value     Int /// 1–10
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, videoId])
+  /// Aggregates + “votes on this video” (unique covers userId+videoId lookups).
+  @@index([videoId])
+  @@index([userId])
+}
+
+model Comment {
+  id         String    @id @default(cuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  videoId    String
+  video      Video     @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  parentId   String?
+  parent     Comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies    Comment[] @relation("CommentReplies")
+  body       String
+  isDeleted  Boolean   @default(false)
+  likeCount  Int       @default(0)
+  replyCount Int       @default(0)
+  editedAt   DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@index([userId])
+  @@index([videoId])
+  @@index([parentId])
+  @@index([createdAt])
+  @@index([videoId, parentId])
+
+  likes    CommentLike[]
+  reports  CommentReport[]
+  mentions CommentMention[]
+}
+
+/// Per-user like on a comment (separate from video Like).
+model CommentLike {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  commentId String
+  comment   Comment  @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, commentId])
+  @@index([commentId])
+}
+
+/// User report of a comment (moderation queue).
+model CommentReport {
+  id         String              @id @default(cuid())
+  reporterId String
+  reporter   User                @relation("CommentReportReporter", fields: [reporterId], references: [id], onDelete: Cascade)
+  commentId  String
+  comment    Comment             @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  reportType ContentReportType
+  details    String?             @db.Text
+  status     ContentReportStatus @default(PENDING)
+  createdAt  DateTime            @default(now())
+
+  @@unique([reporterId, commentId])
+  @@index([commentId])
+  @@index([status])
+}
+
+/// @mention target persisted when comment is created (for notifications / discovery).
+model CommentMention {
+  id        String  @id @default(cuid())
+  commentId String
+  comment   Comment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User    @relation("CommentMentionUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([commentId, userId])
+  @@index([userId])
+}
+
+model Like {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  videoId   String
+  video     Video    @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, videoId])
+  @@index([videoId])
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([createdAt])
+}
+
+/// Share event for analytics: copy_link, external (e.g. social). resourceType VIDEO increments Video.sharesCount.
+enum ShareType {
+  COPY_LINK
+  EXTERNAL
+}
+
+enum ShareResourceType {
+  VIDEO
+  PROFILE
+}
+
+model ShareEvent {
+  id           String            @id @default(cuid())
+  userId       String? /// null when not logged in (sharer)
+  user         User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
+  shareType    ShareType
+  resourceType ShareResourceType
+  resourceId   String /// video id or user id (profile)
+  /// Referrer ID attached to shared link (same as userId when user shares own link).
+  referrerId   String? /// for growth metrics: who shared (attribution)
+  createdAt    DateTime          @default(now())
+
+  @@index([userId])
+  @@index([resourceType, resourceId])
+  @@index([createdAt])
+}
+
+/// Referral attribution: new user signed up via shared link. referrerId = sharer.
+model Referral {
+  id             String   @id @default(cuid())
+  referrerId     String
+  referrer       User     @relation("ReferralReferrer", fields: [referrerId], references: [id], onDelete: Cascade)
+  referredUserId String   @unique
+  referredUser   User     @relation("ReferralReceived", fields: [referredUserId], references: [id], onDelete: Cascade)
+  /// Optional: video that was shared when user clicked (context for growth metrics).
+  videoId        String?
+  createdAt      DateTime @default(now())
+
+  @@index([referrerId])
+  @@index([referredUserId])
+  @@index([createdAt])
+}
+
+/// Per-view record for throttling: one view per viewerKey (userId or sessionId) per video per THROTTLE_WINDOW.
+model ViewRecord {
+  id                String   @id @default(cuid())
+  viewerKey         String /// userId (if logged in) or sessionId cookie value
+  videoId           String
+  video             Video    @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  createdAt         DateTime @default(now())
+  /// Seconds of playback the client reported when the qualified view fired (server validates threshold).
+  qualifiedWatchSec Int      @default(0)
+  /// Optional SHA-256 prefix of client IP for anon audit / future rate limits (never store raw IP).
+  viewerIpHash      String?
+
+  @@index([viewerKey, videoId])
+  @@index([videoId, createdAt])
+  @@index([createdAt])
+}
+
+/// Per-user watch interaction for For You retention scoring. One row per user per video (upsert on each watch).
+/// Used to: exclude/down-rank watched, boost similar content, penalize fast skips.
+model UserWatchInteraction {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  videoId       String
+  video         Video    @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  watchTimeSec  Int      @default(0) /// Seconds watched this session
+  completedPct  Float    @default(0) /// 0–1, e.g. 0.8 = 80% watched
+  isRewatch     Boolean  @default(false) /// Watched again = strong positive signal
+  lastWatchedAt DateTime @updatedAt
+
+  @@unique([userId, videoId])
+  @@index([userId])
+  @@index([videoId])
+  @@index([lastWatchedAt])
+  @@index([userId, lastWatchedAt])
+}
+
+/// How the follow was created. ORGANIC = real user action. SEED/ONBOARDING/DEMO = do not notify.
+enum FollowSource {
+  ORGANIC
+  SEED
+  ONBOARDING
+  DEMO
+}
+
+/// Deleting a User removes all rows where they are follower or creator (both FKs cascade).
+model Follow {
+  id         String       @id @default(cuid())
+  followerId String
+  follower   User         @relation("UserFollowing", fields: [followerId], references: [id], onDelete: Cascade)
+  creatorId  String
+  creator    User         @relation("UserFollowers", fields: [creatorId], references: [id], onDelete: Cascade)
+  /// Only ORGANIC follows generate notifications.
+  source     FollowSource @default(ORGANIC)
+  createdAt  DateTime     @default(now())
+
+  @@unique([followerId, creatorId])
+  @@index([followerId])
+  @@index([creatorId])
+  /// “Ki követi a creatort?” időrenddel (followers list, growth analytics).
+  @@index([creatorId, createdAt(sort: Desc)])
+  @@index([source])
+}
+
+/// Logged-in viewer opted out of seeing a creator in recommendation surfaces (persistent, server-side).
+enum CreatorRecommendationDismissalReason {
+  NOT_INTERESTED
+  DISMISSED
+}
+
+model CreatorRecommendationDismissal {
+  id            String                             @id @default(cuid())
+  viewerUserId  String
+  viewer        User                               @relation("CreatorRecommendationDismissalViewer", fields: [viewerUserId], references: [id], onDelete: Cascade)
+  creatorUserId String
+  creator       User                               @relation("CreatorRecommendationDismissalTarget", fields: [creatorUserId], references: [id], onDelete: Cascade)
+  reason        CreatorRecommendationDismissalReason @default(NOT_INTERESTED)
+  createdAt     DateTime                           @default(now())
+
+  @@unique([viewerUserId, creatorUserId])
+  @@index([viewerUserId])
+  @@index([creatorUserId])
+}
+
+// ---------------------------------------------------------------------------
+// Coin & Gift economy (see docs/COIN-AND-GIFT-ECONOMY.md)
+// ---------------------------------------------------------------------------
+
+model CoinPackage {
+  id            String    @id @default(cuid())
+  internalName  String    @unique // e.g. package_100 — stable for code/APIs and future payment mapping
+  name          String // display name, e.g. "100 Coins"
+  coins         Int // base coin amount shown and credited (use + bonusCoins for total when set)
+  price         Decimal   @db.Decimal(10, 2) // displayed price
+  currency      String    @default("USD")
+  isActive      Boolean   @default(true)
+  sortOrder     Int       @default(0) // lower = higher in list
+  bonusCoins    Int? // optional extra coins (promos); total credited = coins + bonusCoins
+  validFrom     DateTime? // optional: package only available from this time
+  validUntil    DateTime? // optional: package only available until this time (limited-time offers)
+  isPromotional Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  coinPurchaseOrders CoinPurchaseOrder[]
+
+  @@index([isActive])
+  @@index([sortOrder])
+}
+
+// Purchase order: created before payment; wallet credited only when status = COMPLETED (e.g. after provider webhook).
+enum CoinPurchaseStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+enum ReversalStatus {
+  NONE
+  PENDING
+  PARTIAL
+  COMPLETED
+  BLOCKED
+}
+
+enum PurchaseRiskStatus {
+  NONE
+  REFUND_REPORTED
+  DISPUTE_OPEN
+  DISPUTE_WON
+  DISPUTE_LOST
+}
+
+enum CoinPurchaseProvider {
+  MOCK // placeholder / dev
+  STRIPE // future
+  PAYPAL // future
+}
+
+enum PaymentWebhookEventStatus {
+  RECEIVED
+  PROCESSING
+  PROCESSED
+  FAILED
+}
+
+model CoinPurchaseOrder {
+  id                  String               @id @default(cuid())
+  userId              String
+  user                User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  coinPackageId       String
+  coinPackage         CoinPackage          @relation(fields: [coinPackageId], references: [id], onDelete: Restrict)
+  coins               Int // effective coins to credit (package coins + bonus)
+  amountCents         Int // price in smallest currency unit for audit
+  currency            String               @default("USD")
+  status              CoinPurchaseStatus   @default(PENDING)
+  riskStatus          PurchaseRiskStatus   @default(NONE)
+  reversalStatus      ReversalStatus       @default(NONE)
+  refundedCents       Int                  @default(0)
+  reversedCoins       Int                  @default(0)
+  unrecoveredCoins    Int                  @default(0)
+  provider            CoinPurchaseProvider @default(MOCK)
+  providerReferenceId String? // e.g. Stripe payment_intent.id
+  createdAt           DateTime             @default(now())
+  completedAt         DateTime?
+  reversalUpdatedAt   DateTime?
+
+  reversalCases       PurchaseReversalCase[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([provider, providerReferenceId])
+  @@index([createdAt])
+}
+
+model PurchaseReversalCase {
+  id                     String             @id @default(cuid())
+  orderId                String
+  order                  CoinPurchaseOrder  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  userId                 String
+  user                   User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider               CoinPurchaseProvider
+  providerEventId        String
+  providerRefundId       String?
+  providerDisputeId      String?
+  eventType              String
+  riskStatus             PurchaseRiskStatus @default(NONE)
+  reversalStatus         ReversalStatus     @default(PENDING)
+  refundedCents          Int                @default(0)
+  targetReversalCoins    Int                @default(0)
+  reversedCoins          Int                @default(0)
+  unrecoveredCoins       Int                @default(0)
+  reason                 String?
+  metadata               Json?
+  createdAt              DateTime           @default(now())
+  updatedAt              DateTime           @updatedAt
+  resolvedAt             DateTime?
+
+  creatorEarningsRiskHolds CreatorEarningsRiskHold[]
+
+  @@index([orderId])
+  @@index([userId])
+  @@index([riskStatus])
+  @@index([reversalStatus])
+  @@unique([provider, providerEventId])
+  @@unique([provider, providerRefundId])
+  @@unique([provider, providerDisputeId])
+}
+
+/// Provider webhook event processing ledger for explicit idempotency and replay safety.
+model PaymentWebhookEvent {
+  id              String                    @id @default(cuid())
+  provider        CoinPurchaseProvider
+  providerEventId String
+  eventType       String
+  status          PaymentWebhookEventStatus @default(RECEIVED)
+  attempts        Int                       @default(1)
+  lastError       String?
+  createdAt       DateTime                  @default(now())
+  updatedAt       DateTime                  @updatedAt
+  processedAt     DateTime?
+
+  @@unique([provider, providerEventId])
+  @@index([provider, eventType])
+  @@index([status, updatedAt])
+}
+
+model Gift {
+  id            String         @id @default(cuid())
+  name          String
+  slug          String         @unique
+  icon          String?
+  animationType String?
+  coinCost      Int
+  rarityTier    GiftRarityTier @default(COMMON)
+  isActive      Boolean        @default(true)
+  createdAt     DateTime       @default(now())
+
+  giftTransactions       GiftTransaction[]
+  videoGiftTypeSummaries VideoGiftTypeSummary[]
+
+  @@index([slug])
+  @@index([rarityTier])
+  @@index([isActive])
+}
+
+model UserWallet {
+  id                    String    @id @default(cuid())
+  userId                String    @unique
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  coinBalance           Int       @default(0)
+  totalCoinsPurchased   Int       @default(0)
+  totalCoinsSpent       Int       @default(0)
+  lifetimeEarned        Int       @default(0)
+  lastDailyBonusClaimAt DateTime?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([userId])
+}
+
+/// Gift context: foryou = creator earnings + For You ranking signals; challenge = challenge ranking; live = live show (unified tx)
+enum GiftContext {
+  FORYOU
+  CHALLENGE
+  LIVE
+}
+
+/// Financial audit row: must survive performance (Video) deletion. videoId cleared on video delete (SetNull).
+model GiftTransaction {
+  id                 String                @id @default(cuid())
+  senderId           String
+  sender             User                  @relation("GiftTransactionSender", fields: [senderId], references: [id], onDelete: Cascade)
+  receiverId         String
+  receiver           User                  @relation("GiftTransactionReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
+  videoId            String?
+  video              Video?                @relation(fields: [videoId], references: [id], onDelete: SetNull)
+  giftId             String
+  gift               Gift                  @relation(fields: [giftId], references: [id], onDelete: Restrict)
+  coinAmount         Int
+  creatorShareCoins  Int
+  platformShareCoins Int
+  status             GiftTransactionStatus @default(COMPLETED)
+  /// foryou = creator earnings only; challenge = also affects VideoSupportStats for ranking
+  context            GiftContext           @default(FORYOU)
+  liveSessionId      String?
+  createdAt          DateTime              @default(now())
+  // Business rule: senderId != receiverId. Enforce in application; optional DB: ADD CONSTRAINT ... CHECK ("senderId" != "receiverId")
+
+  @@index([senderId])
+  /// Creator bevételek / ajándék feed időrendben (receiver = creator).
+  @@index([receiverId, createdAt(sort: Desc)])
+  @@index([receiverId])
+  /// Küldő költési history időrendben.
+  @@index([senderId, createdAt(sort: Desc)])
+  @@index([videoId])
+  @@index([giftId])
+  @@index([status])
+  @@index([createdAt])
+  @@index([videoId, createdAt])
+  @@index([liveSessionId])
+}
+
+// Idempotency keys for gift send: prevent replay/duplicate transactions. Server-side only.
+model GiftIdempotencyKey {
+  id           String   @id @default(cuid())
+  key          String   @unique
+  userId       String
+  responseBody String // JSON snapshot of successful response for replay
+  createdAt    DateTime @default(now())
+
+  @@index([key])
+  @@index([userId])
+  @@index([createdAt])
+}
+
+// Abuse/moderation flags: server-side only, no client-trusted accounting.
+enum GiftAbuseFlagKind {
+  SELF_GIFT_ATTEMPT
+  RATE_LIMIT_EXCEEDED
+  RAPID_GIFTING
+  HIGH_FREQUENCY_PAIR
+  NEW_ACCOUNT_GIFT
+  DUPLICATE_ATTEMPT
+  SUSPICIOUS_PATTERN
+}
+
+model GiftAbuseFlag {
+  id                String            @id @default(cuid())
+  giftTransactionId String? // null if request was blocked before tx created
+  senderId          String
+  receiverId        String?
+  videoId           String?
+  kind              GiftAbuseFlagKind
+  details           String? // JSON or text for moderation
+  createdAt         DateTime          @default(now())
+
+  @@index([senderId])
+  @@index([receiverId])
+  @@index([kind])
+  @@index([createdAt])
+}
+
+// Per-video, per-gift-type count. Updated in same tx as GiftTransaction; no recalc on read.
+model VideoGiftTypeSummary {
+  id      String @id @default(cuid())
+  videoId String
+  video   Video  @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  giftId  String
+  gift    Gift   @relation(fields: [giftId], references: [id], onDelete: Cascade)
+  count   Int    @default(0)
+
+  @@unique([videoId, giftId])
+  @@index([videoId])
+  @@index([giftId])
+}
+
+// Per-video, per-supporter (sender) summary for top supporters. Updated in same tx as GiftTransaction.
+model VideoSupporterSummary {
+  id                 String    @id @default(cuid())
+  videoId            String
+  video              Video     @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  userId             String
+  user               User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  totalCoinsSent     Int       @default(0)
+  giftsCount         Int       @default(0)
+  sessionStreakCount Int       @default(0)
+  lastStreakAt       DateTime?
+
+  @@unique([videoId, userId])
+  @@index([videoId])
+  @@index([userId])
+}
+
+// Per-creator, per-supporter summary for profile "top supporters". Updated in same tx as GiftTransaction.
+model CreatorSupporterSummary {
+  id             String @id @default(cuid())
+  creatorId      String
+  creator        User   @relation("CreatorSupporterSummaryCreator", fields: [creatorId], references: [id], onDelete: Cascade)
+  userId         String
+  supporter      User   @relation("CreatorSupporterSummarySupporter", fields: [userId], references: [id], onDelete: Cascade)
+  totalCoinsSent Int    @default(0)
+  giftsCount     Int    @default(0)
+
+  @@unique([creatorId, userId])
+  @@index([creatorId])
+  @@index([userId])
+}
+
+model CreatorEarningsLedger {
+  id                String           @id @default(cuid())
+  creatorId         String
+  creator           User             @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  sourceType        LedgerSourceType
+  sourceId          String
+  grossCoins        Int
+  creatorShareCoins Int
+  createdAt         DateTime         @default(now())
+
+  @@index([creatorId])
+  @@index([sourceType, sourceId])
+  @@index([createdAt])
+}
+
+model CreatorEarningsRiskHold {
+  id                String               @id @default(cuid())
+  creatorId         String
+  creator           User                 @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  reversalCaseId    String
+  reversalCase      PurchaseReversalCase @relation(fields: [reversalCaseId], references: [id], onDelete: Cascade)
+  giftTransactionId String
+  atRiskCoins       Int
+  status            ReversalStatus       @default(PENDING)
+  note              String?
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+
+  @@index([creatorId])
+  @@index([reversalCaseId])
+  @@index([status])
+  @@unique([reversalCaseId, giftTransactionId])
+}
+
+// Per-creator earnings summary: ledger-derived, updated atomically with CreatorEarningsLedger.
+// Source of truth for audit is the ledger; this table is a fast read cache.
+model CreatorEarningsSummary {
+  id                      String   @id @default(cuid())
+  creatorId               String   @unique
+  creator                 User     @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  availableEarningsCoins  Int      @default(0) // balance available for future payout
+  totalEarningsCoins      Int      @default(0) // lifetime creator share from gifts
+  totalGiftsReceivedCount Int      @default(0) // lifetime gift count
+  pendingPayoutCoins      Int      @default(0) // future: amount locked in pending payout
+  updatedAt               DateTime @updatedAt
+
+  @@index([creatorId])
+}
+
+// Per-creator, per-week support totals. Updated in same tx as GiftTransaction; supports weekly leaderboard.
+model CreatorSupportWeekly {
+  id                 String @id @default(cuid())
+  creatorId          String
+  creator            User   @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  year               Int
+  week               Int // ISO week 1–53
+  totalCoinsReceived Int    @default(0)
+  giftsCount         Int    @default(0)
+
+  @@unique([creatorId, year, week])
+  @@index([year, week, totalCoinsReceived])
+  @@index([creatorId])
+}
+
+model PlatformRevenueLedger {
+  id                 String           @id @default(cuid())
+  sourceType         LedgerSourceType
+  sourceId           String
+  grossCoins         Int
+  platformShareCoins Int
+  createdAt          DateTime         @default(now())
+
+  @@index([sourceType, sourceId])
+  @@index([createdAt])
+}
+
+model CoinTransaction {
+  id          String              @id @default(cuid())
+  fromUserId  String?
+  fromUser    User?               @relation("CoinTransactionFromUser", fields: [fromUserId], references: [id], onDelete: SetNull)
+  toUserId    String?
+  toUser      User?               @relation("CoinTransactionToUser", fields: [toUserId], references: [id], onDelete: SetNull)
+  videoId     String?
+  video       Video?              @relation(fields: [videoId], references: [id], onDelete: SetNull)
+  type        CoinTransactionType
+  amount      Int
+  referenceId String?
+  description String?
+  createdAt   DateTime            @default(now())
+
+  @@index([fromUserId])
+  @@index([toUserId])
+  @@index([videoId])
+  @@index([type])
+  @@index([createdAt])
+  @@index([type, createdAt])
+  @@index([referenceId])
+  @@unique([type, toUserId, referenceId])
+}
+
+model LeaderboardEntry {
+  id        String   @id @default(cuid())
+  videoId   String
+  video     Video    @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  year      Int
+  week      Int
+  score     Int
+  createdAt DateTime @default(now())
+
+  @@unique([videoId, year, week])
+  @@index([year, week, score])
+}
+
+/// Per-video super vote and coin support stats. Super votes + challenge gifts on totalCoinsEarned; For You gifts on forYou* fields.
+model VideoSupportStats {
+  id                   String    @id @default(cuid())
+  videoId              String    @unique
+  video                Video     @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  totalSuperVotes      Int       @default(0)
+  totalCoinsEarned     Int       @default(0)
+  forYouGiftCoinsTotal Int       @default(0)
+  recentGiftVelocity   Float     @default(0)
+  lastGiftVelocityAt   DateTime?
+  updatedAt            DateTime  @updatedAt
+
+  @@index([videoId])
+}
+
+/// Ranking and discovery: stored score and sub-scores for fast feed generation. Updated by ranking job or on events.
+model VideoRankingStats {
+  id              String   @id @default(cuid())
+  videoId         String   @unique
+  video           Video    @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  rankingScore    Float    @default(0)
+  watchTimeScore  Float    @default(0)
+  engagementScore Float    @default(0)
+  supportScore    Float    @default(0)
+  freshnessScore  Float    @default(0)
+  momentumScore   Float    @default(0)
+  updatedAt       DateTime @updatedAt
+
+  @@index([videoId])
+  @@index([rankingScore])
+}
+
+/// Optional: watch time and completion for ranking. Populated when client sends progress; else use views as proxy.
+model VideoWatchStats {
+  id                  String   @id @default(cuid())
+  videoId             String   @unique
+  video               Video    @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  totalWatchSeconds   Int      @default(0)
+  completedViewsCount Int      @default(0)
+  viewCount           Int      @default(0)
+  skipCount           Int      @default(0) /// Quick skips (<2s)
+  replayCount         Int      @default(0) /// Rewatches
+  updatedAt           DateTime @updatedAt
+
+  @@index([videoId])
+  @@index([viewCount, completedViewsCount(sort: Desc), totalWatchSeconds(sort: Desc)])
+}
+
+// ---------------------------------------------------------------------------
+// AI Vocal Scoring (see services/vocal-scoring.service, constants/vocal-scoring.ts)
+// ---------------------------------------------------------------------------
+
+enum AudioAnalysisStatus {
+  PENDING // Queued for analysis
+  PROCESSING // Claimed by worker; analysis in progress
+  COMPLETED // Analysis done; scores available
+  FLAGGED // Low quality / abuse / review needed
+  FAILED // Final failure (e.g. after max retries)
+  RETRYABLE_FAILED // Temporary failure; can be retried
+}
+
+/// Per-video AI vocal analysis result. Populated by analysis pipeline; used for ranking weight, challenge quality floor, dashboard.
+model VideoAudioAnalysis {
+  id                         String              @id @default(cuid())
+  videoId                    String              @unique
+  video                      Video               @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  pitchAccuracyScore         Float? // 0–100
+  rhythmTimingScore          Float? // 0–100
+  toneStabilityScore         Float? // 0–100
+  clarityScore               Float? // 0–100
+  dynamicControlScore        Float? // 0–100
+  performanceConfidenceScore Float? // 0–100
+  overallVocalScore          Float? // 0–100 weighted composite
+  analysisStatus             AudioAnalysisStatus @default(PENDING)
+  flagReason                 String? // If FLAGGED: e.g. LOW_QUALITY, NO_VOCAL, BACKING_DOMINANT
+  styleCategoryId            String? // Video category at analysis time (for style-aware fairness)
+  rawPayload                 Json? // Optional: future ML metadata (non–user-facing)
+  startedAt                  DateTime? // When worker claimed (PENDING -> PROCESSING)
+  finishedAt                 DateTime? // When analysis finished
+  attemptCount               Int                 @default(0)
+  lastError                  String?             @db.Text
+  analysisVersion            String?
+  createdAt                  DateTime            @default(now())
+  updatedAt                  DateTime            @updatedAt
+
+  @@index([videoId])
+  @@index([analysisStatus])
+  @@index([overallVocalScore])
+  @@index([analysisStatus, createdAt])
+}
+
+// ---------------------------------------------------------------------------
+// Fake content detection & media integrity. Design: lib/media-integrity-architecture.ts.
+// Implementation: services/media-integrity.service, constants/media-integrity.
+// ---------------------------------------------------------------------------
+
+enum AiVoiceRiskLevel {
+  LOW_RISK
+  MEDIUM_RISK
+  HIGH_RISK
+  REVIEW_REQUIRED
+}
+
+enum OriginalityStatus {
+  CLEAN
+  SUSPECTED_DUPLICATE
+  SUSPECTED_STOLEN
+  REVIEW_REQUIRED
+}
+
+enum ModerationStatus {
+  PENDING // PENDING_REVIEW in UI
+  APPROVED
+  FLAGGED
+  LIMITED
+  REJECTED
+  BLOCKED
+}
+
+/// Per-video media integrity analysis. Populated by detection pipeline; used for moderation and challenge originality.
+model MediaIntegrityAnalysis {
+  id                 String            @id @default(cuid())
+  videoId            String            @unique
+  video              Video             @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  audioFingerprint   String? // Hash or fingerprint for duplicate audio detection
+  videoFingerprint   String? // Hash or fingerprint for duplicate video / perceptual match
+  aiVoiceRiskScore   Float? // 0–100; higher = more likely synthetic
+  aiVoiceRiskLevel   AiVoiceRiskLevel? // Derived from score; do not auto-ban from one model
+  duplicateRiskScore Float? // 0–100; similarity to other known media
+  originalityStatus  OriginalityStatus @default(CLEAN)
+  moderationStatus   ModerationStatus  @default(PENDING)
+  flagReason         String? // If FLAGGED/BLOCKED: e.g. AI_VOICE_SUSPECT, DUPLICATE_AUDIO
+  lipSyncRiskScore   Float? // 0–100; mismatch between visible performance and audio (if applicable)
+  rawPayload         Json? // Optional: ML/detection metadata (non–user-facing)
+  reviewedAt         DateTime?
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  @@index([videoId])
+  @@index([moderationStatus])
+  @@index([originalityStatus])
+  @@index([aiVoiceRiskLevel])
+  @@index([audioFingerprint])
+  @@index([videoFingerprint])
+}
+
+// ---------------------------------------------------------------------------
+// Payout preparation (no live provider integration yet)
+// ---------------------------------------------------------------------------
+
+enum PayoutProfileStatus {
+  NOT_SET_UP
+  PENDING_VERIFICATION
+  READY
+  BLOCKED
+  UNDER_REVIEW
+}
+
+enum PayoutVerificationStatus {
+  NOT_STARTED
+  PENDING
+  APPROVED
+  REJECTED
+  REQUIRES_REVIEW
+}
+
+enum PayoutMethodType {
+  STRIPE // future
+  PAYPAL // future
+  BANK_TRANSFER // future
+  NOT_CONFIGURED
+}
+
+enum PayoutRecordStatus {
+  REQUESTED
+  PENDING
+  PROCESSING
+  PAID
+  FAILED
+  REVERSED
+}
+
+/// Creator payout profile: readiness state only. No real provider connection yet.
+model CreatorPayoutProfile {
+  id                     String                   @id @default(cuid())
+  userId                 String                   @unique
+  user                   User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status                 PayoutProfileStatus      @default(NOT_SET_UP)
+  verificationStatus     PayoutVerificationStatus @default(NOT_STARTED)
+  payoutMethodType       PayoutMethodType         @default(NOT_CONFIGURED)
+  payoutMethodConfigured Boolean                  @default(false)
+  minimumThresholdMet    Boolean                  @default(false)
+  createdAt              DateTime                 @default(now())
+  updatedAt              DateTime                 @updatedAt
+
+  @@index([userId])
+  @@index([status])
+}
+
+/// Future payout history record. No real payouts executed yet.
+model CreatorPayoutRecord {
+  id                  String             @id @default(cuid())
+  userId              String
+  user                User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amountCoins         Int
+  amountFiatEstimated Int? // cents or smallest unit when estimated
+  status              PayoutRecordStatus @default(REQUESTED)
+  requestedAt         DateTime           @default(now())
+  processedAt         DateTime?
+  payoutMethodType    PayoutMethodType   @default(NOT_CONFIGURED)
+  referenceId         String? // future: provider reference
+  createdAt           DateTime           @default(now())
+
+  @@index([userId])
+  @@index([status])
+  @@index([requestedAt])
+}
+
+// ---------------------------------------------------------------------------
+// Anti-cheat / fraud prevention. Design: lib/anti-cheat-architecture.ts.
+// Implementation: services/fraud-risk.service, support-validation.service; constants/anti-cheat.
+// ---------------------------------------------------------------------------
+
+enum FraudRiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum SupportReviewFlagType {
+  GIFT
+  SUPER_VOTE
+}
+
+enum SupportReviewFlagStatus {
+  PENDING // Awaiting trust review
+  CONFIRMED_FRAUD // Excluded from ranking / payout
+  DISMISSED // False positive
+}
+
+/// Logged fraud signal or event for risk scoring and audit. Do not auto-ban on one weak signal.
+model FraudEvent {
+  id        String         @id @default(cuid())
+  userId    String
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  eventType String // e.g. SELF_SUPPORT_ATTEMPT, LINKED_ACCOUNT_SUPPORT, RAPID_SUPPORT, BONUS_FARMING
+  riskLevel FraudRiskLevel @default(LOW)
+  details   Json? // Optional structured payload (e.g. ipHash, deviceId, targetUserId)
+  sourceId  String? // Related tx or support action id
+  createdAt DateTime       @default(now())
+
+  @@index([userId])
+  @@index([eventType])
+  @@index([riskLevel])
+  @@index([createdAt])
+}
+
+/// Per-user fraud risk profile. Updated by risk job or on support actions.
+model AccountRiskProfile {
+  id                     String         @id @default(cuid())
+  userId                 String         @unique
+  user                   User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fraudRiskScore         Int            @default(0) // 0–100 aggregate
+  riskLevel              FraudRiskLevel @default(LOW)
+  linkedAccountCount     Int            @default(0) // NOT IMPLEMENTED: always 0. Future: inferred from IP/device cluster when linked-account detection is built.
+  suspiciousSupportCount Int            @default(0)
+  payoutBlocked          Boolean        @default(false)
+  lastFraudEventAt       DateTime?
+  updatedAt              DateTime       @updatedAt
+
+  @@index([userId])
+  @@index([riskLevel])
+  @@index([payoutBlocked])
+}
+
+/// Flagged support action for trust review. Suspicious support can be excluded from ranking and payout.
+model SupportReviewFlag {
+  id           String                  @id @default(cuid())
+  userId       String // Actor (sender / voter)
+  user         User                    @relation("SupportReviewFlagActor", fields: [userId], references: [id], onDelete: Cascade)
+  targetUserId String // Creator who received support
+  targetUser   User                    @relation("SupportReviewFlagTarget", fields: [targetUserId], references: [id], onDelete: Cascade)
+  videoId      String?
+  type         SupportReviewFlagType
+  status       SupportReviewFlagStatus @default(PENDING)
+  sourceId     String? // GiftTransaction id or CoinTransaction id
+  reason       String? // e.g. SELF_SUPPORT, LINKED_ACCOUNT, RAPID_SPIKE
+  createdAt    DateTime                @default(now())
+
+  @@index([userId])
+  @@index([targetUserId])
+  @@index([videoId])
+  @@index([status])
+  @@index([type])
+  @@index([createdAt])
+}
+
+// ---------------------------------------------------------------------------
+// Moderation dashboard: audit trail and notes (see services/moderation-*.service)
+// ---------------------------------------------------------------------------
+
+enum AccountModerationStatus {
+  CLEAN
+  WATCHLIST
+  LIMITED
+  SUSPENDED
+  BANNED
+}
+
+enum ModerationTargetType {
+  VIDEO
+  USER
+  SUPPORT_FLAG
+  CHALLENGE_ENTRY
+  CREATOR_VERIFICATION
+  CONTENT_REPORT
+}
+
+enum ModerationActionType {
+  APPROVE
+  FLAG
+  LIMIT_DISCOVERY
+  REMOVE_FROM_CHALLENGE
+  BLOCK_VIDEO
+  DELETE_VIDEO
+  WARN
+  WATCHLIST
+  RESTRICT_SUPPORT
+  SUSPEND
+  BAN
+  VALIDATE_SUPPORT
+  EXCLUDE_FROM_RANKING
+  VOID_SUPPORT
+  REFUND
+  SEND_TO_FRAUD_REVIEW
+  FREEZE_PAYOUT
+  CLEAR_RISK_STATE
+  EXCLUDE_ENTRY_SUPPORT
+  FREEZE_ENTRY
+  DISQUALIFY_ENTRY
+  RESTORE_ENTRY
+  APPROVE_VERIFICATION
+  REJECT_VERIFICATION
+  REVOKE_VERIFICATION
+  REQUEST_MORE_INFO
+  DISMISS_REPORT
+  UPHOLD_REPORT
+  CLEAR_VIDEO_FLAGS
+}
+
+model ModerationActionLog {
+  id             String               @id @default(cuid())
+  moderatorId    String
+  moderator      User                 @relation(fields: [moderatorId], references: [id], onDelete: Restrict)
+  targetType     ModerationTargetType
+  targetId       String
+  actionType     ModerationActionType
+  previousStatus String?
+  newStatus      String?
+  note           String?
+  createdAt      DateTime             @default(now())
+
+  @@index([moderatorId])
+  @@index([targetType])
+  @@index([targetId])
+  @@index([createdAt])
+}
+
+model ModerationNote {
+  id          String               @id @default(cuid())
+  moderatorId String
+  moderator   User                 @relation(fields: [moderatorId], references: [id], onDelete: Restrict)
+  targetType  ModerationTargetType
+  targetId    String
+  note        String               @db.Text
+  createdAt   DateTime             @default(now())
+
+  @@index([targetType])
+  @@index([targetId])
+  @@index([createdAt])
+}
+
+// ---------------------------------------------------------------------------
+// Content reporting: fake performance, copyright, authenticity
+// ---------------------------------------------------------------------------
+
+enum ContentReportType {
+  FAKE_PERFORMANCE // Playback, lip-sync, or non-live performance
+  COPYRIGHT // Copyright infringement
+  INAPPROPRIATE // Inappropriate content
+  OTHER
+}
+
+enum ContentReportStatus {
+  PENDING
+  REVIEWING
+  RESOLVED
+  DISMISSED
+}
+
+/// DB-backed rate limit for login/register. Survives restarts.
+model RateLimit {
+  prefix     String
+  identifier String
+  count      Int      @default(0)
+  resetAt    DateTime
+
+  @@id([prefix, identifier])
+  @@index([resetAt])
+}
+
+model ContentReport {
+  id         String              @id @default(cuid())
+  reporterId String
+  reporter   User                @relation("ContentReportReporter", fields: [reporterId], references: [id], onDelete: Cascade)
+  videoId    String
+  video      Video               @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  reportType ContentReportType
+  details    String?             @db.Text
+  status     ContentReportStatus @default(PENDING)
+  reviewedBy String?
+  reviewedAt DateTime?
+  resolution String?             @db.Text
+  createdAt  DateTime            @default(now())
+  updatedAt  DateTime            @updatedAt
+
+  @@unique([reporterId, videoId, reportType])
+  @@index([videoId])
+  @@index([status])
+  @@index([reportType])
+  @@index([createdAt])
+}
+
+// ---------------------------------------------------------------------------
+// Direct messages (1:1 chat). user1Id < user2Id lexicographically (stable pair key).
+// ---------------------------------------------------------------------------
+
+model DmConversation {
+  id                 String    @id @default(cuid())
+  user1Id            String
+  user2Id            String
+  user1              User      @relation("DmConversationUser1", fields: [user1Id], references: [id], onDelete: Cascade)
+  user2              User      @relation("DmConversationUser2", fields: [user2Id], references: [id], onDelete: Cascade)
+  lastMessageAt      DateTime?
+  lastMessagePreview String?   @db.VarChar(500)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  messages           DmMessage[]
+
+  @@unique([user1Id, user2Id])
+  @@index([user1Id, lastMessageAt(sort: Desc)])
+  @@index([user2Id, lastMessageAt(sort: Desc)])
+}
+
+model DmMessage {
+  id             String         @id @default(cuid())
+  conversationId String
+  conversation   DmConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId       String
+  receiverId     String
+  sender         User           @relation("DmMessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver       User           @relation("DmMessageReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
+  content        String         @db.Text
+  isRead         Boolean        @default(false)
+  readAt         DateTime?
+  createdAt      DateTime       @default(now())
+
+  @@index([conversationId, createdAt])
+  @@index([receiverId, isRead])
+  @@index([senderId, createdAt])
+}

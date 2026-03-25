@@ -1,0 +1,27 @@
+/**
+ * API rate limits for abuse-sensitive routes.
+ * Values are tuned to prevent spam/automation while keeping normal usage unaffected.
+ */
+
+// Upload flow (authenticated creator actions)
+export const RATE_LIMIT_UPLOAD_INIT_PER_HOUR = 20;
+export const RATE_LIMIT_UPLOAD_COMPLETE_PER_HOUR = 30;
+
+// Watch-stat ingestion (high-volume endpoint; limit per video to avoid score spam)
+export const RATE_LIMIT_WATCH_STAT_PER_VIDEO_PER_MIN = 120;
+
+// Purchase intent creation (prevents order/session spam)
+export const RATE_LIMIT_PURCHASE_PER_USER_PER_HOUR = 12;
+export const RATE_LIMIT_PURCHASE_PER_IP_PER_HOUR = 30;
+export const RATE_LIMIT_DAILY_BONUS_CLAIM_PER_HOUR = 20;
+
+// Report submission (moderation queue abuse prevention)
+export const RATE_LIMIT_REPORTS_PER_USER_PER_HOUR = 20;
+export const RATE_LIMIT_REPORTS_PER_IP_PER_HOUR = 60;
+
+// Non-challenge vote endpoints (challenge votes already rate-limited in service layer)
+export const RATE_LIMIT_TALENT_VOTE_PER_USER_PER_HOUR = 120;
+export const RATE_LIMIT_TALENT_VOTE_PER_IP_PER_HOUR = 300;
+
+// Public contact form (spam prevention)
+export const RATE_LIMIT_CONTACT_PER_IP_PER_HOUR = 8;

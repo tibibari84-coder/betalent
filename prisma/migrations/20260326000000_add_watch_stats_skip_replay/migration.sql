@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "VideoWatchStats" ADD COLUMN "skipCount" INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE "VideoWatchStats" ADD COLUMN "replayCount" INTEGER NOT NULL DEFAULT 0;
