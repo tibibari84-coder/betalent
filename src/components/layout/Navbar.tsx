@@ -7,7 +7,8 @@
 
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useLayoutEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { IconSearch, IconUser, IconTrophy, IconMenu } from '@/components/ui/Icons';
 import NotificationsBell from '@/components/notifications/NotificationsBell';
 import { ChatNavButton } from '@/components/chat/ChatNavButton';
@@ -79,7 +80,10 @@ export default function Navbar({ onOpenDrawer }: { onOpenDrawer?: () => void }) 
   const router = useRouter();
   const pathname = usePathname();
   const { t } = useI18n();
-  const menuRef = useRef<HTMLDivElement>(null);
+  const profileMenuButtonRef = useRef<HTMLButtonElement>(null);
+  const profileMenuPanelRef = useRef<HTMLDivElement>(null);
+  const [profileMenuFixed, setProfileMenuFixed] = useState<{ top: number; right: number } | null>(null);
+  const [mounted, setMounted] = useState(false);
   const [user, setUser] = useState<NavUser | null | 'loading'>('loading');
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -102,16 +106,37 @@ export default function Navbar({ onOpenDrawer }: { onOpenDrawer?: () => void }) 
       .catch(() => setUser(null));
   }, []);
 
+  function updateProfileMenuPosition() {
+    const btn = profileMenuButtonRef.current;
+    if (!btn) return;
+    const r = btn.getBoundingClientRect();
+    setProfileMenuFixed({ top: r.bottom + 6, right: Math.max(8, window.innerWidth - r.right) });
+  }
+
+  useLayoutEffect(() => {
+    if (!menuOpen) {
+      setProfileMenuFixed(null);
+      return;
+    }
+    updateProfileMenuPosition();
+    const onScrollOrResize = () => updateProfileMenuPosition();
+    window.addEventListener('resize', onScrollOrResize);
+    window.addEventListener('scroll', onScrollOrResize, true);
+    return () => {
+      window.removeEventListener('resize', onScrollOrResize);
+      window.removeEventListener('scroll', onScrollOrResize, true);
+    };
+  }, [menuOpen]);
+
   useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setMenuOpen(false);
-      }
+    if (!menuOpen) return;
+    function handlePointerDown(e: PointerEvent) {
+      const t = e.target as Node;
+      if (profileMenuButtonRef.current?.contains(t) || profileMenuPanelRef.current?.contains(t)) return;
+      setMenuOpen(false);
     }
-    if (menuOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
-    }
+    document.addEventListener('pointerdown', handlePointerDown, true);
+    return () => document.removeEventListener('pointerdown', handlePointerDown, true);
   }, [menuOpen]);
 
   useEffect(() => {
@@ -144,10 +169,62 @@ export default function Navbar({ onOpenDrawer }: { onOpenDrawer?: () => void }) 
     }
   }
 
+  const profileMenuDropdown =
+    menuOpen && mounted && profileMenuFixed
+      ? createPortal(
+          <div
+            ref={profileMenuPanelRef}
+            role="menu"
+            className="fixed py-1.5 min-w-[172px] rounded-xl overflow-hidden z-[300] pointer-events-auto"
+            style={{
+              top: profileMenuFixed.top,
+              right: profileMenuFixed.right,
+              background: 'rgba(18,18,22,0.98)',
+              border: '1px solid rgba(255,255,255,0.08)',
+              boxShadow: '0 8px 24px rgba(0,0,0,0.45)',
+            }}
+          >
+            <Link
+              href="/profile/me"
+              role="menuitem"
+              className={cn('block px-3.5 py-2.5 text-[13px] font-medium text-white hover:bg-white/[0.08]', TOPBAR_TRANSITION)}
+              onClick={() => setMenuOpen(false)}
+            >
+              {t('topbar.profile')}
+            </Link>
+            <Link
+              href="/settings"
+              role="menuitem"
+              className={cn('block px-3.5 py-2.5 text-[13px] font-medium text-white/80 hover:bg-white/[0.08]', TOPBAR_TRANSITION)}
+              onClick={() => setMenuOpen(false)}
+            >
+              Settings
+            </Link>
+            <button
+              type="button"
+              role="menuitem"
+              onClick={handleSignOut}
+              className={cn('w-full text-left px-3.5 py-2.5 text-[13px] font-medium text-white/80 hover:bg-white/[0.08] border-t border-white/5', TOPBAR_TRANSITION)}
+            >
+              Sign out
+            </button>
+          </div>,
+          document.body
+        )
+      : null;
+
   const profileMenu =
     user && user !== 'loading' ? (
-      <div className="relative flex shrink-0 items-center" ref={menuRef}>
-        <button type="button" onClick={() => setMenuOpen((o) => !o)} className={cn(ICON_BTN, 'group')} aria-label={t('topbar.profile')} aria-expanded={menuOpen}>
+      <div className="relative flex shrink-0 items-center">
+        <button
+          ref={profileMenuButtonRef}
+          type="button"
+          onClick={() => setMenuOpen((o) => !o)}
+          className={cn(ICON_BTN, 'group')}
+          aria-label={t('topbar.profile')}
+          aria-expanded={menuOpen}
+          aria-haspopup="menu"
+        >
           <span
             className={cn(
               AVATAR_RING,
@@ -161,22 +238,7 @@ export default function Navbar({ onOpenDrawer }: { onOpenDrawer?: () => void }) 
             )}
           </span>
         </button>
-        {menuOpen && (
-          <div
-            className="absolute right-0 top-full mt-1.5 py-1.5 min-w-[172px] rounded-xl overflow-hidden z-[100]"
-            style={{ background: 'rgba(18,18,22,0.95)', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 8px 24px rgba(0,0,0,0.3)' }}
-          >
-            <Link href="/profile/me" className={cn('block px-3.5 py-2.5 text-[13px] font-medium text-white hover:bg-white/[0.08]', TOPBAR_TRANSITION)} onClick={() => setMenuOpen(false)}>
-              {t('topbar.profile')}
-            </Link>
-            <Link href="/settings" className={cn('block px-3.5 py-2.5 text-[13px] font-medium text-white/80 hover:bg-white/[0.08]', TOPBAR_TRANSITION)} onClick={() => setMenuOpen(false)}>
-              Settings
-            </Link>
-            <button type="button" onClick={handleSignOut} className={cn('w-full text-left px-3.5 py-2.5 text-[13px] font-medium text-white/80 hover:bg-white/[0.08] border-t border-white/5', TOPBAR_TRANSITION)}>
-              Sign out
-            </button>
-          </div>
-        )}
+        {profileMenuDropdown}
       </div>
     ) : null;
 
