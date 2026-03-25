@@ -14,6 +14,7 @@
     "lint": "next lint",
     "db:generate": "prisma generate",
     "db:deploy": "prisma migrate deploy",
+    "db:deploy:neon": "bash scripts/migrate-neon.sh",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
     "db:seed": "prisma db seed",
