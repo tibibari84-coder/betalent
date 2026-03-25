@@ -13,6 +13,7 @@ import { Prisma } from '@prisma/client';
 import { resolveGoogleUser } from '@/services/google-auth.service';
 import { getSession } from '@/lib/session';
 import { logAuthEvent } from '@/services/auth-audit.service';
+import { sendNewLoginAlertEmail } from '@/services/new-login-alert.service';
 import { getClientIp } from '@/lib/rate-limit';
 
 function redirectWithError(request: Request, code: string) {
@@ -79,6 +80,17 @@ export async function GET(request: Request) {
       userAgent: ua,
       meta: { linked },
     });
+
+    void sendNewLoginAlertEmail({
+      userId: user.id,
+      email: user.email,
+      displayName: info.name?.trim() || user.username,
+      preferredLocale: user.preferredLocale,
+      ip,
+      userAgent: ua,
+      method: 'google',
+      googleLinked: linked,
+    }).catch((e) => console.warn('[google/callback] new-login alert email', e));
 
     const nextPath = user.emailVerifiedAt ? '/feed' : '/verify-email';
     return NextResponse.redirect(new URL(nextPath, appOriginForOAuthRedirect(request)));

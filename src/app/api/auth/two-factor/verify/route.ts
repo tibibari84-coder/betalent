@@ -4,6 +4,7 @@ import { getSession } from '@/lib/session';
 import { totpVerifySchema } from '@/lib/validations';
 import { verifyTotpCode, getTotpSecretPlain } from '@/services/two-factor.service';
 import { logAuthEvent } from '@/services/auth-audit.service';
+import { sendNewLoginAlertEmail } from '@/services/new-login-alert.service';
 import { getClientIp } from '@/lib/rate-limit';
 
 export async function POST(request: Request) {
@@ -31,6 +32,7 @@ export async function POST(request: Request) {
         id: true,
         email: true,
         username: true,
+        displayName: true,
         role: true,
         preferredLocale: true,
         emailVerifiedAt: true,
@@ -56,6 +58,16 @@ export async function POST(request: Request) {
     await session.save();
 
     await logAuthEvent('LOGIN_SUCCESS', { userId, ip, userAgent: ua, meta: { step: 'totp_complete' } });
+
+    void sendNewLoginAlertEmail({
+      userId,
+      email: user.email,
+      displayName: user.displayName?.trim() || user.username,
+      preferredLocale: user.preferredLocale,
+      ip,
+      userAgent: ua,
+      method: 'totp',
+    }).catch((e) => console.warn('[2fa/verify] new-login alert email', e));
 
     return NextResponse.json({ ok: true });
   } catch (e) {

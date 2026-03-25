@@ -18,6 +18,29 @@ const ACTOR_SELECT = {
   isSeedAccount: true,
 } as const;
 
+function isSignInNotificationRow(row: { action: string; meta: unknown }): boolean {
+  if (row.action === 'GOOGLE_SIGNIN' || row.action === 'GOOGLE_LINKED') return true;
+  if (row.action !== 'LOGIN_SUCCESS') return false;
+  const meta = row.meta;
+  if (meta && typeof meta === 'object' && meta !== null && 'step' in meta) {
+    const step = (meta as { step?: string }).step;
+    if (step === 'password_ok_pending_totp') return false;
+  }
+  return true;
+}
+
+function signInNotificationMessage(row: { action: string; meta: unknown }): string {
+  if (row.action === 'GOOGLE_LINKED') return 'Your Google account was linked to BETALENT.';
+  if (row.action === 'GOOGLE_SIGNIN') return 'You signed in to BETALENT with Google.';
+  const meta = row.meta;
+  const step =
+    meta && typeof meta === 'object' && meta !== null && 'step' in meta
+      ? (meta as { step?: string }).step
+      : undefined;
+  if (step === 'totp_complete') return 'You signed in with your password and authenticator app.';
+  return 'You signed in to BETALENT.';
+}
+
 function timeAgo(d: Date) {
   const s = Math.floor((Date.now() - d.getTime()) / 1000);
   if (s < 60) return 'now';
@@ -29,7 +52,7 @@ function timeAgo(d: Date) {
 
 export type NotificationPayload = {
   id: string;
-  type: 'follow' | 'vote' | 'comment' | 'gift';
+  type: 'follow' | 'vote' | 'comment' | 'gift' | 'security';
   message: string;
   actorName: string;
   timestamp: string;
@@ -75,7 +98,7 @@ export async function GET() {
   const recentWhere = { createdAt: { gte: cutoff } } as const;
   const takeLimit = 100;
 
-  const [likes, commentsOnMyVideos, commentRepliesToMe, mentions, follows, gifts] = await Promise.all([
+  const [likes, commentsOnMyVideos, commentRepliesToMe, mentions, follows, gifts, signInAudits] = await Promise.all([
     prisma.like.findMany({
       where: { video: { creatorId: uid }, ...recentWhere },
       include: { user: { select: ACTOR_SELECT }, video: true },
@@ -131,6 +154,16 @@ export async function GET() {
       include: { sender: { select: ACTOR_SELECT }, video: true, gift: true },
       orderBy: { createdAt: 'desc' },
       take: takeLimit,
+    }),
+    prisma.authAuditLog.findMany({
+      where: {
+        userId: uid,
+        createdAt: { gte: cutoff },
+        action: { in: ['LOGIN_SUCCESS', 'GOOGLE_SIGNIN', 'GOOGLE_LINKED'] },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: takeLimit,
+      select: { id: true, action: true, meta: true, createdAt: true },
     }),
   ]);
 
@@ -237,6 +270,20 @@ export async function GET() {
     });
   }
 
+  for (const row of signInAudits) {
+    if (!isSignInNotificationRow(row)) continue;
+    items.push({
+      id: `signin-${row.id}`,
+      type: 'security',
+      message: signInNotificationMessage(row),
+      actorName: 'BETALENT',
+      timestamp: timeAgo(row.createdAt),
+      href: '/settings',
+      recipientId: uid,
+      createdAt: row.createdAt,
+    });
+  }
+
   for (const gift of gifts) {
     if (isUntrustedActor(gift.sender)) continue;
     const senderName = actor(gift.sender);
@@ -272,6 +319,8 @@ export async function GET() {
           return prefs.notifyFollowers;
         case 'gift':
           return prefs.notifyVotes;
+        case 'security':
+          return true;
         default:
           return true;
       }

@@ -6,6 +6,7 @@ import { loginSchema } from '@/lib/validations';
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
 import { RATE_LIMIT_LOGIN_ATTEMPTS_PER_ACCOUNT_PER_HOUR } from '@/constants/anti-cheat';
 import { logAuthEvent } from '@/services/auth-audit.service';
+import { sendNewLoginAlertEmail } from '@/services/new-login-alert.service';
 
 export async function POST(request: Request) {
   try {
@@ -94,6 +95,16 @@ export async function POST(request: Request) {
     await session.save();
 
     await logAuthEvent('LOGIN_SUCCESS', { userId: user.id, ip, userAgent: ua });
+
+    void sendNewLoginAlertEmail({
+      userId: user.id,
+      email: user.email,
+      displayName: user.displayName?.trim() || user.username,
+      preferredLocale: user.preferredLocale,
+      ip,
+      userAgent: ua,
+      method: 'password',
+    }).catch((e) => console.warn('[login] new-login alert email', e));
 
     return NextResponse.json({
       ok: true,

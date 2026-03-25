@@ -142,6 +142,148 @@ If you did not sign up, you can ignore this message.
   return { subject, text, html };
 }
 
+export function newLoginAlertEmailContent(params: {
+  displayName: string;
+  whenISO: string;
+  ip: string;
+  userAgentSummary: string;
+  methodLabel: string;
+  settingsUrl: string;
+  locale: 'en' | 'hu';
+  /** Google linked to an existing email/password account (not a standalone Google sign-in). */
+  variant?: 'sign_in' | 'google_linked';
+}) {
+  const {
+    displayName,
+    whenISO,
+    ip,
+    userAgentSummary,
+    methodLabel,
+    settingsUrl,
+    locale,
+    variant = 'sign_in',
+  } = params;
+  const isHu = locale === 'hu';
+  const whenHuman = new Date(whenISO).toUTCString();
+
+  if (variant === 'google_linked') {
+    const subject = isHu
+      ? 'Google-fiók összekapcsolva a BETALENT profiloddal'
+      : 'Google account linked to your BETALENT profile';
+    const text = isHu
+      ? `Szia ${displayName},
+
+Összekapcsoltunk egy Google-fiókot a BETALENT profiloddal.
+
+Időpont (UTC): ${whenHuman}
+IP: ${ip}
+Eszköz / böngésző (összegzés): ${userAgentSummary}
+
+Ha te kezdeményezted, minden rendben.
+
+Ha nem te voltál, azonnal változtasd meg a jelszavad, és nézd meg a fiókbeállításokat:
+${settingsUrl}
+
+— BETALENT`
+      : `Hi ${displayName},
+
+A Google account was linked to your BETALENT profile.
+
+Time (UTC): ${whenHuman}
+IP address: ${ip}
+Device / browser (summary): ${userAgentSummary}
+
+If you did this, no action is needed.
+
+If you didn’t, change your password and review your account in settings:
+${settingsUrl}
+
+— BETALENT`;
+    const html = isHu
+      ? `<p>Szia ${escapeHtml(displayName)},</p>
+<p><strong>Összekapcsoltunk egy Google-fiókot</strong> a BETALENT profiloddal.</p>
+<ul style="color:#333;line-height:1.5">
+<li><strong>Időpont (UTC):</strong> ${escapeHtml(whenHuman)}</li>
+<li><strong>IP:</strong> ${escapeHtml(ip)}</li>
+<li><strong>Eszköz / böngésző:</strong> ${escapeHtml(userAgentSummary)}</li>
+</ul>
+<p>Ha te kezdeményezted, nincs teendő.</p>
+<p style="color:#666;font-size:13px">Ha nem te voltál, változtasd meg a jelszavad: <a href="${escapeHtml(settingsUrl)}">beállítások</a>.</p>
+<p>— BETALENT</p>`
+      : `<p>Hi ${escapeHtml(displayName)},</p>
+<p>A <strong>Google account was linked</strong> to your BETALENT profile.</p>
+<ul style="color:#333;line-height:1.5">
+<li><strong>Time (UTC):</strong> ${escapeHtml(whenHuman)}</li>
+<li><strong>IP address:</strong> ${escapeHtml(ip)}</li>
+<li><strong>Device / browser:</strong> ${escapeHtml(userAgentSummary)}</li>
+</ul>
+<p>If you did this, no action is needed.</p>
+<p style="color:#666;font-size:13px">If you didn’t, change your password in <a href="${escapeHtml(settingsUrl)}">settings</a>.</p>
+<p>— BETALENT</p>`;
+    return { subject, text, html };
+  }
+
+  const subject = isHu ? 'Új bejelentkezés a BETALENT fiókodba' : 'New sign-in to your BETALENT account';
+
+  const text = isHu
+    ? `Szia ${displayName},
+
+Észleltünk egy új bejelentkezést a BETALENT fiókodba.
+
+Időpont (UTC): ${whenHuman}
+Bejelentkezés módja: ${methodLabel}
+IP: ${ip}
+Eszköz / böngésző (összegzés): ${userAgentSummary}
+
+Ha te voltál, nyugodtan hagyd figyelmen kívül ezt az üzenetet.
+
+Ha nem te voltál, javasoljuk, hogy azonnal változtasd meg a jelszavad, és ha be van kapcsolva, ellenőrizd a kétlépcsős bejelentkezést a beállításokban:
+${settingsUrl}
+
+— BETALENT`
+    : `Hi ${displayName},
+
+We noticed a new sign-in to your BETALENT account.
+
+Time (UTC): ${whenHuman}
+Sign-in method: ${methodLabel}
+IP address: ${ip}
+Device / browser (summary): ${userAgentSummary}
+
+If this was you, you can ignore this message.
+
+If this wasn’t you, change your password right away and review two-factor security in settings:
+${settingsUrl}
+
+— BETALENT`;
+
+  const html = isHu
+    ? `<p>Szia ${escapeHtml(displayName)},</p>
+<p>Észleltünk egy <strong>új bejelentkezést</strong> a BETALENT fiókodba.</p>
+<ul style="color:#333;line-height:1.5">
+<li><strong>Időpont (UTC):</strong> ${escapeHtml(whenHuman)}</li>
+<li><strong>Mód:</strong> ${escapeHtml(methodLabel)}</li>
+<li><strong>IP:</strong> ${escapeHtml(ip)}</li>
+<li><strong>Eszköz / böngésző:</strong> ${escapeHtml(userAgentSummary)}</li>
+</ul>
+<p>Ha te voltál, nincs teendő.</p>
+<p style="color:#666;font-size:13px">Ha nem te voltál, változtasd meg a jelszavad, és nézd meg a <a href="${escapeHtml(settingsUrl)}">beállításokat</a>.</p>
+<p>— BETALENT</p>`
+    : `<p>Hi ${escapeHtml(displayName)},</p>
+<p>We noticed a <strong>new sign-in</strong> to your BETALENT account.</p>
+<ul style="color:#333;line-height:1.5">
+<li><strong>Time (UTC):</strong> ${escapeHtml(whenHuman)}</li>
+<li><strong>Method:</strong> ${escapeHtml(methodLabel)}</li>
+<li><strong>IP address:</strong> ${escapeHtml(ip)}</li>
+<li><strong>Device / browser:</strong> ${escapeHtml(userAgentSummary)}</li>
+</ul>
+<p>If this was you, no action is needed.</p>
+<p style="color:#666;font-size:13px">If this wasn’t you, change your password and review security in <a href="${escapeHtml(settingsUrl)}">settings</a>.</p>
+<p>— BETALENT</p>`;
+
+  return { subject, text, html };
+}
+
 export function passwordResetEmailContent(resetUrl: string, displayName: string) {
   const subject = 'Reset your BETALENT password';
   const text = `Hi ${displayName},

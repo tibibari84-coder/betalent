@@ -91,6 +91,9 @@ export const RATE_LIMIT_PASSWORD_RESET_PER_EMAIL_PER_HOUR = 3;
 /** Max password-reset requests per IP per hour. */
 export const RATE_LIMIT_PASSWORD_RESET_PER_IP_PER_HOUR = 10;
 
+/** Max “new sign-in” alert emails per user per hour (abuse guard; real users rarely exceed this). */
+export const RATE_LIMIT_NEW_LOGIN_ALERT_EMAIL_PER_USER_PER_HOUR = 20;
+
 /** Max share events per user per hour (prevents share spam). */
 export const RATE_LIMIT_SHARES_PER_USER_PER_HOUR = 60;
 

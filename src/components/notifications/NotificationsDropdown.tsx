@@ -6,7 +6,7 @@ import { IconBell } from '@/components/ui/Icons';
 
 export interface NotificationItem {
   id: string;
-  type: 'follow' | 'vote' | 'challenge' | 'qualify' | 'comment' | 'gift';
+  type: 'follow' | 'vote' | 'challenge' | 'qualify' | 'comment' | 'gift' | 'security';
   message: string;
   avatarUrl?: string;
   actorName?: string;

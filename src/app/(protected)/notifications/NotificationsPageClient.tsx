@@ -58,7 +58,9 @@ export default function NotificationsPageClient() {
       >
         <IconBell className="w-14 h-14 text-text-muted mb-4 opacity-40" />
         <p className="text-[16px] text-text-secondary mb-2">No notifications yet</p>
-        <p className="text-[14px] text-text-muted">When you get votes, comments, mentions, followers, or gifts, they&apos;ll show up here.</p>
+        <p className="text-[14px] text-text-muted">
+          When you get votes, comments, mentions, followers, gifts, or security alerts (sign-ins), they&apos;ll show up here.
+        </p>
       </div>
     );
   }
