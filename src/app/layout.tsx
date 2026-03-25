@@ -32,10 +32,15 @@ const allMessages = {
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const session = await getSession();
+  let session: Awaited<ReturnType<typeof getSession>> | null = null;
+  try {
+    session = await getSession();
+  } catch (err) {
+    console.error('[RootLayout] getSession failed:', err instanceof Error ? err.message : err);
+  }
   /** Full app chrome: signed in + email verified + not mid–2FA. Unverified users keep public shell until they confirm email. */
   const isAppMember = Boolean(
-    session.user && !session.pending2FAUserId && session.user.emailVerified
+    session?.user && !session.pending2FAUserId && session.user.emailVerified
   );
   const headersList = await headers();
   const cookieStore = await cookies();
