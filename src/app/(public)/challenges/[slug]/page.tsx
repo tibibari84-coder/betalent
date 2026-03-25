@@ -9,6 +9,7 @@ import {
   ChallengeArenaLeaderboardTable,
   ChallengeArenaParticipantStrip,
 } from '@/components/challenge/arena';
+import { ChallengeHeroBackdrop } from '@/components/challenge/ChallengeHeroBackdrop';
 import { getFlagEmoji } from '@/lib/countries';
 import { CHALLENGE_MAX_DURATION_SEC_DB_DEFAULT, getLiveChallengeRecordingCapSec } from '@/constants/recording-modes';
 
@@ -342,14 +343,12 @@ export default function ChallengePage({ params }: { params: { slug: string } }) 
 
   return (
     <div className="min-h-screen pb-24 md:pb-12 min-w-0 overflow-x-hidden" style={{ backgroundColor: '#0D0D0E' }}>
-      {/* 1. CHALLENGE HERO */}
-      <header
-        className="relative flex flex-col justify-end px-4 md:px-6 laptop:px-8 pt-6 md:pt-8 laptop:pt-12 pb-6 md:pb-8 laptop:pb-10 min-h-[240px] md:min-h-[340px] laptop:min-h-[380px]"
-        style={{
-          background: 'linear-gradient(180deg, rgba(13,13,14,0.3) 0%, rgba(13,13,14,0.8) 45%, #0D0D0E 100%), radial-gradient(ellipse 70% 60% at 50% 20%, rgba(177,18,38,0.18) 0%, transparent 55%)',
-        }}
+      {/* 1. CHALLENGE HERO — stage photo + lights (same language as /trending); #1 entry thumbnail when available */}
+      <ChallengeHeroBackdrop
+        imageUrl={currentLeader?.thumbnailUrl ?? null}
+        className="flex flex-col justify-end px-4 md:px-6 laptop:px-8 pt-6 md:pt-8 laptop:pt-12 pb-6 md:pb-8 laptop:pb-10 min-h-[260px] md:min-h-[340px] laptop:min-h-[400px] rounded-b-2xl md:rounded-b-3xl"
       >
-        <div className="w-full max-w-[1200px] mx-auto min-w-0 overflow-hidden">
+        <header className="w-full max-w-[1200px] mx-auto min-w-0 overflow-hidden">
           <div className="flex flex-wrap items-center gap-2 mb-1.5">
             <p className="text-[11px] uppercase tracking-widest text-white/50 font-medium">
               {isCoverChallenge ? 'Weekly Live Cover Challenge' : 'Weekly Challenge'}
@@ -389,15 +388,40 @@ export default function ChallengePage({ params }: { params: { slug: string } }) 
             )}
           </p>
           <div className="flex flex-wrap gap-3">
-            <Link
-              href="#arena-leaderboard"
-              className="inline-flex items-center justify-center h-11 px-5 rounded-xl font-semibold text-[15px] border border-white/20 text-white hover:bg-white/10 transition-colors"
-            >
-              Arena leaderboard
-            </Link>
+            {['WINNERS_LOCKED', 'ARCHIVED', 'VOTING_CLOSED'].includes(c.status) ? (
+              <>
+                <Link
+                  href="#arena-leaderboard"
+                  className="inline-flex items-center justify-center min-h-[44px] px-5 rounded-xl font-semibold text-[15px] text-white bg-accent hover:bg-accent-hover transition-colors shadow-[0_10px_30px_rgba(177,18,38,0.35)]"
+                >
+                  View leaderboard
+                </Link>
+                <a
+                  href="#arena-leaderboard"
+                  className="inline-flex items-center justify-center min-h-[44px] px-5 rounded-xl font-semibold text-[15px] border border-white/25 text-white hover:bg-white/10 transition-colors"
+                >
+                  Watch entries
+                </a>
+              </>
+            ) : (
+              <>
+                <Link
+                  href={`/upload?challenge=${encodeURIComponent(slug)}`}
+                  className="inline-flex items-center justify-center min-h-[44px] px-5 rounded-xl font-semibold text-[15px] text-white bg-accent hover:bg-accent-hover transition-colors shadow-[0_10px_30px_rgba(177,18,38,0.35)]"
+                >
+                  Join Challenge
+                </Link>
+                <a
+                  href="#arena-leaderboard"
+                  className="inline-flex items-center justify-center min-h-[44px] px-5 rounded-xl font-semibold text-[15px] border border-white/25 text-white hover:bg-white/10 transition-colors"
+                >
+                  Watch entries
+                </a>
+              </>
+            )}
           </div>
-        </div>
-      </header>
+        </header>
+      </ChallengeHeroBackdrop>
 
       <div className="w-full max-w-[1200px] mx-auto px-4 md:px-6 laptop:px-8 -mt-2 relative z-10 min-w-0">
         {/* 2. CHALLENGE SUMMARY STRIP */}

@@ -12,6 +12,7 @@ import { CHALLENGE_MAX_DURATION_SEC_DB_DEFAULT, getLiveChallengeRecordingCapSec 
 import { isDatabaseUnavailableError } from '@/lib/db-errors';
 import type { ChallengeLeaderboardEntry } from '@/types/challenge';
 import type { VideoVisibility } from '@prisma/client';
+import { DEFAULT_CHALLENGE_HERO_IMAGE } from '@/constants/challenge-hero';
 
 // Entries: velocity-based trending (getTrendingVideos), not viewsCount.
 // Challenge hero: real active challenge when available.
@@ -155,8 +156,7 @@ export default async function TrendingPage() {
           <div
             className="absolute inset-0"
             style={{
-              background:
-                'linear-gradient(135deg, rgba(177,18,38,0.3) 0%, rgba(13,13,14,0.85) 50%), url("https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=1200") center/cover',
+              background: `linear-gradient(135deg, rgba(177,18,38,0.3) 0%, rgba(13,13,14,0.85) 50%), url(${JSON.stringify(DEFAULT_CHALLENGE_HERO_IMAGE)}) center/cover`,
             }}
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/30 to-transparent" />
