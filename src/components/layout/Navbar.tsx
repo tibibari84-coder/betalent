@@ -87,6 +87,7 @@ export default function Navbar({ onOpenDrawer }: { onOpenDrawer?: () => void }) 
   const isImmersiveFeedRoute = pathname === '/feed';
   const isSettingsRoute = pathname === '/settings' || (pathname?.startsWith('/settings/') ?? false);
   const hideGlobalRightPanel = isImmersiveFeedRoute || isSettingsRoute;
+  const isChallengesRoute = pathname === '/challenges' || (pathname?.startsWith('/challenges/') ?? false);
 
   useEffect(() => {
     fetch('/api/auth/me')
@@ -203,7 +204,15 @@ export default function Navbar({ onOpenDrawer }: { onOpenDrawer?: () => void }) 
 
   const utilities = (
     <>
-      <Link href="/trending" className={ICON_BTN} aria-label={t('topbar.challenges')}>
+      <Link
+        href="/challenges"
+        className={cn(
+          ICON_BTN,
+          isChallengesRoute && 'text-white bg-white/[0.08] ring-1 ring-white/[0.12]'
+        )}
+        aria-label={t('topbar.challenges')}
+        aria-current={isChallengesRoute ? 'page' : undefined}
+      >
         <IconTrophy className="w-[18px] h-[18px] shrink-0" />
       </Link>
       <div className="flex shrink-0 items-center justify-center [&_*]:min-w-0">

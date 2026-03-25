@@ -249,7 +249,7 @@ export default function ChallengePage({ params }: { params: { slug: string } }) 
       <div className="min-h-screen pb-24 md:pb-12 flex flex-col items-center justify-center gap-4 px-4" style={{ backgroundColor: '#0D0D0E' }}>
         <p className="text-text-primary font-semibold text-[18px]">Challenge not found</p>
         <p className="text-text-secondary text-[15px] text-center">This challenge may have ended or the link is incorrect.</p>
-        <Link href="/trending" className="btn-primary inline-flex items-center gap-2">View challenges</Link>
+        <Link href="/challenges" className="btn-primary inline-flex items-center gap-2">View challenges</Link>
       </div>
     );
   }
