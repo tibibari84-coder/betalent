@@ -1,7 +1,27 @@
-import { appBaseUrl } from '@/lib/email';
 import { assertGoogleOAuthConfigured } from '@/lib/runtime-config';
 
 const GOOGLE_CALLBACK_PATH = '/api/auth/google/callback';
+
+function getProductionOAuthBaseUrl(): string {
+  const configured = process.env.NEXT_PUBLIC_APP_URL?.trim().replace(/\/$/, '');
+  if (!configured) {
+    throw new Error('GOOGLE_OAUTH_APP_URL_MISSING');
+  }
+  // Accept either:
+  // - https://betalent-ooe6.vercel.app
+  // - betalent-ooe6.vercel.app
+  // - http://betalent-ooe6.vercel.app (normalized to https)
+  if (configured.startsWith('http://')) {
+    return `https://${configured.slice('http://'.length)}`;
+  }
+  if (configured.startsWith('https://')) {
+    return configured;
+  }
+  if (configured.startsWith('http')) {
+    throw new Error('GOOGLE_OAUTH_APP_URL_UNSUPPORTED_SCHEME');
+  }
+  return `https://${configured}`;
+}
 
 /**
  * Dev + Cloudflare quick tunnel: `request.url` is often `http://localhost:3000/...` while the browser
@@ -37,7 +57,7 @@ function getDevPublicOrigin(request: Request): string {
  */
 export function getGoogleRedirectUriForRequest(request: Request): string {
   if (process.env.NODE_ENV === 'production') {
-    return `${appBaseUrl()}${GOOGLE_CALLBACK_PATH}`;
+    return `${getProductionOAuthBaseUrl()}${GOOGLE_CALLBACK_PATH}`;
   }
   return `${getDevPublicOrigin(request)}${GOOGLE_CALLBACK_PATH}`;
 }
@@ -45,7 +65,7 @@ export function getGoogleRedirectUriForRequest(request: Request): string {
 /** Same origin as the incoming callback request (dev + prod). */
 export function appOriginForOAuthRedirect(request: Request): string {
   if (process.env.NODE_ENV === 'production') {
-    return appBaseUrl();
+    return getProductionOAuthBaseUrl();
   }
   return getDevPublicOrigin(request);
 }
