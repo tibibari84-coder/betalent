@@ -23,6 +23,7 @@ yarn-error.log*
 # Env
 .env
 .env.neon
+.env.vercel*.tmp
 .env.local
 .env.development.local
 .env.test.local
