@@ -35,7 +35,8 @@ export function assertTwoFactorCryptoConfigured(): void {
 }
 
 /**
- * In production, Stripe must be all-or-nothing and live-only. Partial env is a misconfiguration.
+ * Production Stripe env sanity: log-only so the app (e.g. /feed) keeps running if payouts are not ready.
+ * Coin purchase + webhook routes enforce readiness separately; never crash the whole deployment for partial Stripe setup.
  */
 export function assertProductionStripeEnvConsistency(): void {
   if (!isProduction()) return;
@@ -45,21 +46,26 @@ export function assertProductionStripeEnvConsistency(): void {
   const any = !!(sk || pk || wh);
   const all = !!(sk && pk && wh);
   if (any && !all) {
-    throw new Error(
-      '[Deploy] Stripe configuration incomplete: set all of STRIPE_SECRET_KEY, NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY, STRIPE_WEBHOOK_SECRET, or omit all three.'
+    console.error(
+      '[Deploy] Stripe env incomplete: set all of STRIPE_SECRET_KEY, NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY, STRIPE_WEBHOOK_SECRET, or remove all three. Purchases stay disabled until fixed.'
     );
+    return;
   }
   if (!all) return;
   if (!sk!.startsWith('sk_live_')) {
-    throw new Error('[Deploy] Production requires STRIPE_SECRET_KEY with live prefix (sk_live_...).');
+    console.error(
+      '[Deploy] STRIPE_SECRET_KEY must use sk_live_... in production when all three Stripe vars are set. Purchases disabled until corrected.'
+    );
+    return;
   }
   if (!pk!.startsWith('pk_live_')) {
-    throw new Error(
-      '[Deploy] Production requires NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY with live prefix (pk_live_...).'
+    console.error(
+      '[Deploy] NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY must use pk_live_... in production when Stripe is fully configured.'
     );
+    return;
   }
   if (!wh!.startsWith('whsec_')) {
-    throw new Error('[Deploy] STRIPE_WEBHOOK_SECRET must be a webhook signing secret (whsec_...).');
+    console.error('[Deploy] STRIPE_WEBHOOK_SECRET must be whsec_... when Stripe is fully configured.');
   }
 }
 
