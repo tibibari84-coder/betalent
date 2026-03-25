@@ -11,6 +11,7 @@ import {
   AuthTrustStrip,
   AuthAlert,
 } from '@/components/auth/AuthExperience';
+import { sanitizeAppInternalRedirectPath } from '@/lib/safe-redirect-path';
 
 const REMEMBER_EMAIL_KEY = 'betalent_login_email';
 
@@ -44,10 +45,7 @@ export default function LoginForm() {
   const searchParams = useSearchParams();
   const { t } = useI18n();
   const rawFrom = searchParams?.get('from');
-  const redirectTo =
-    typeof rawFrom === 'string' && rawFrom.startsWith('/') && !rawFrom.startsWith('//')
-      ? rawFrom
-      : '/feed';
+  const redirectTo = sanitizeAppInternalRedirectPath(rawFrom, '/feed');
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');

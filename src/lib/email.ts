@@ -6,6 +6,8 @@
  * Dev: logs the message (never silent-fail verification in dev UX).
  */
 
+import { getPublicAppBaseUrlForServerLinks } from '@/lib/public-app-url';
+
 function parseMailbox(from: string): { email: string; name?: string } {
   const t = from.trim();
   const angled = t.match(/^(.+?)\s*<([^>]+)>$/);
@@ -18,12 +20,7 @@ function parseMailbox(from: string): { email: string; name?: string } {
 }
 
 function appBaseUrl(): string {
-  const u =
-    process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '') ||
-    process.env.VERCEL_URL?.replace(/\/$/, '') ||
-    'http://localhost:3000';
-  if (u.startsWith('http')) return u;
-  return `https://${u}`;
+  return getPublicAppBaseUrlForServerLinks();
 }
 
 export interface SendEmailParams {

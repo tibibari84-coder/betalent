@@ -1,26 +1,24 @@
+import { getProductionPublicAppBaseUrl } from '@/lib/public-app-url';
 import { assertGoogleOAuthConfigured } from '@/lib/runtime-config';
 
 const GOOGLE_CALLBACK_PATH = '/api/auth/google/callback';
 
 function getProductionOAuthBaseUrl(): string {
-  const configured = process.env.NEXT_PUBLIC_APP_URL?.trim().replace(/\/$/, '');
-  if (!configured) {
+  try {
+    return getProductionPublicAppBaseUrl();
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : '';
+    if (msg === 'NEXT_PUBLIC_APP_URL_REQUIRED') {
+      throw new Error('GOOGLE_OAUTH_APP_URL_MISSING');
+    }
+    if (msg === 'NEXT_PUBLIC_APP_URL_LOCALHOST_IN_PRODUCTION') {
+      throw new Error('GOOGLE_OAUTH_APP_URL_LOCALHOST');
+    }
+    if (msg === 'NEXT_PUBLIC_APP_URL_UNSUPPORTED_SCHEME') {
+      throw new Error('GOOGLE_OAUTH_APP_URL_UNSUPPORTED_SCHEME');
+    }
     throw new Error('GOOGLE_OAUTH_APP_URL_MISSING');
   }
-  // Accept either:
-  // - https://betalent-ooe6.vercel.app
-  // - betalent-ooe6.vercel.app
-  // - http://betalent-ooe6.vercel.app (normalized to https)
-  if (configured.startsWith('http://')) {
-    return `https://${configured.slice('http://'.length)}`;
-  }
-  if (configured.startsWith('https://')) {
-    return configured;
-  }
-  if (configured.startsWith('http')) {
-    throw new Error('GOOGLE_OAUTH_APP_URL_UNSUPPORTED_SCHEME');
-  }
-  return `https://${configured}`;
 }
 
 /**

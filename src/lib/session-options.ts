@@ -39,13 +39,14 @@ export function getSessionPassword(): string {
 }
 
 export function getIronSessionOptions(): SessionOptions {
+  const isProduction = process.env.NODE_ENV === 'production';
   return {
     password: getSessionPassword(),
     cookieName: SESSION_COOKIE_NAME,
     ttl: getSessionTtlSeconds(),
     cookieOptions: {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: isProduction,
       sameSite: 'lax' as const,
       maxAge: getSessionTtlSeconds(),
       path: '/',

@@ -9,7 +9,10 @@ export async function GET() {
   try {
   const sessionUser = await getCurrentUser();
   if (!sessionUser) {
-    return NextResponse.json({ ok: false, message: 'Unauthorized' }, { status: 401 });
+    return NextResponse.json(
+      { ok: false, authenticated: false, message: 'Unauthorized' },
+      { status: 401 }
+    );
   }
 
   const userRow = await prisma.user.findUnique({
@@ -34,6 +37,7 @@ export async function GET() {
       totalCoinsReceived: true,
       isVerified: true,
       emailVerifiedAt: true,
+      googleId: true,
       phoneE164: true,
       phoneVerifiedAt: true,
       twoFactorEnabled: true,
@@ -54,12 +58,16 @@ export async function GET() {
     },
   });
   if (!userRow) {
-    return NextResponse.json({ ok: false, message: 'User not found' }, { status: 404 });
+    return NextResponse.json(
+      { ok: false, authenticated: true, message: 'User not found', staleSession: true },
+      { status: 404 }
+    );
   }
   const { creatorVerification, ...rest } = userRow;
   const verificationLevel = creatorVerification?.verificationLevel ?? null;
   const {
     emailVerifiedAt,
+    googleId,
     phoneE164,
     phoneVerifiedAt,
     twoFactorEnabled,
@@ -77,6 +85,7 @@ export async function GET() {
 
   const user = {
     ...profileRest,
+    googleLinked: !!googleId,
     countryCode: profileRest.country,
     countryName: getCountryName(profileRest.country),
     countryFlag: getFlagEmoji(profileRest.country),
@@ -105,12 +114,19 @@ export async function GET() {
 
   return NextResponse.json({
     ok: true,
+    authenticated: true,
     user: { ...user, wallet },
   });
   } catch (e) {
     if (isDatabaseUnavailableError(e)) {
-      return NextResponse.json({ ok: false, message: 'Service temporarily unavailable' }, { status: 503 });
+      return NextResponse.json(
+        { ok: false, authenticated: false, message: 'Service temporarily unavailable' },
+        { status: 503 }
+      );
     }
-    return NextResponse.json({ ok: false, message: 'Failed to load account' }, { status: 500 });
+    return NextResponse.json(
+      { ok: false, authenticated: false, message: 'Failed to load account' },
+      { status: 500 }
+    );
   }
 }

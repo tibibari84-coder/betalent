@@ -12,13 +12,13 @@ import {
   AuthTrustStrip,
   AuthLegalNote,
 } from '@/components/auth/AuthExperience';
+import { sanitizeAppInternalRedirectPath } from '@/lib/safe-redirect-path';
 
 function TwoFactorForm() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const rawFrom = searchParams?.get('from');
-  const redirectTo =
-    typeof rawFrom === 'string' && rawFrom.startsWith('/') && !rawFrom.startsWith('//') ? rawFrom : '/feed';
+  const redirectTo = sanitizeAppInternalRedirectPath(rawFrom, '/feed');
 
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);

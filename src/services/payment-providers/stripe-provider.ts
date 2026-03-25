@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma';
+import { getPublicAppBaseUrlForServerLinks } from '@/lib/public-app-url';
 import type { CreatePurchaseIntentFn, PurchaseIntentResult } from '@/types/payment';
 import { getStripeTestClient, isStripeTestClientAvailable } from '@/lib/stripe-client';
 
@@ -22,10 +23,7 @@ export const createStripeCheckoutSession: CreatePurchaseIntentFn = async (params
     };
   }
 
-  const origin =
-    process.env.NEXT_PUBLIC_APP_URL?.trim() ||
-    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null) ||
-    'http://localhost:3000';
+  const origin = getPublicAppBaseUrlForServerLinks();
 
   try {
     const session = await stripe.checkout.sessions.create({
