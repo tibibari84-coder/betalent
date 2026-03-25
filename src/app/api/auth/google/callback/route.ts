@@ -9,6 +9,7 @@ import {
   fetchGoogleUserInfo,
   getGoogleRedirectUriForRequest,
 } from '@/lib/google-oauth';
+import { Prisma } from '@prisma/client';
 import { resolveGoogleUser } from '@/services/google-auth.service';
 import { getSession } from '@/lib/session';
 import { logAuthEvent } from '@/services/auth-audit.service';
@@ -90,6 +91,26 @@ export async function GET(request: Request) {
       return redirectWithError(request, 'google_account_conflict');
     }
     if (msg === 'GOOGLE_NOT_CONFIGURED' || msg === 'GOOGLE_TOKEN_EXCHANGE_FAILED') {
+      return redirectWithError(request, 'google_not_configured');
+    }
+    if (msg === 'GOOGLE_USERINFO_FAILED') {
+      return redirectWithError(request, 'google_userinfo');
+    }
+    if (e instanceof Prisma.PrismaClientKnownRequestError) {
+      console.error('[google/callback] prisma', e.code, e.message);
+      if (e.code === 'P2002') {
+        return redirectWithError(request, 'google_account_conflict');
+      }
+      if (e.code === 'P2021' || e.code === 'P2022') {
+        return redirectWithError(request, 'google_db_schema');
+      }
+    }
+    if (e instanceof Prisma.PrismaClientInitializationError) {
+      console.error('[google/callback] prisma init', e.message);
+      return redirectWithError(request, 'google_db_unavailable');
+    }
+    if (msg.includes('SESSION_SECRET') || msg.includes('iron-session:')) {
+      console.error('[google/callback] session/config', msg);
       return redirectWithError(request, 'google_not_configured');
     }
     console.error('[google/callback]', e);

@@ -100,7 +100,14 @@ export async function exchangeGoogleAuthorizationCode(
     console.error('[google-oauth] token exchange failed', res.status, t);
     throw new Error('GOOGLE_TOKEN_EXCHANGE_FAILED');
   }
-  return res.json() as Promise<{ access_token: string; id_token?: string }>;
+  const data = (await res.json()) as Record<string, unknown>;
+  const access_token = typeof data.access_token === 'string' ? data.access_token : '';
+  if (!access_token) {
+    console.error('[google-oauth] token response missing access_token', data);
+    throw new Error('GOOGLE_TOKEN_EXCHANGE_FAILED');
+  }
+  const id_token = typeof data.id_token === 'string' ? data.id_token : undefined;
+  return { access_token, id_token };
 }
 
 export async function fetchGoogleUserInfo(accessToken: string): Promise<{

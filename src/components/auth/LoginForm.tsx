@@ -23,6 +23,9 @@ const GOOGLE_ERROR_COPY: Record<string, string> = {
   google_config:
     'Google sign-in is not configured. Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in .env or .env.local, set NEXT_PUBLIC_APP_URL, add the redirect URI in Google Cloud Console, restart the dev server — then try again. You can still use email and password.',
   google_failed: 'Google sign-in didn’t complete. Try again or use your email and password.',
+  google_userinfo: 'Google didn’t return a usable profile (email). Try another Google account or use email/password.',
+  google_db_schema: 'Sign-in can’t finish: the server database doesn’t match the app version. Deploy migrations (e.g. prisma migrate deploy) or contact support.',
+  google_db_unavailable: 'Sign-in can’t finish: the database is unreachable. Try again later.',
   google_state: 'That sign-in link expired. Please try again.',
   google_state_expired: 'That sign-in link expired. Please try again.',
   google_bad_request: 'Something went wrong starting Google sign-in. Please try again.',
