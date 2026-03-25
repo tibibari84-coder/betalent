@@ -81,5 +81,6 @@ export async function register(input: RegisterInput) {
       preferredLocale: user.preferredLocale ?? 'en',
     },
     verificationEmailSent: emailResult.ok,
+    verificationEmailHint: emailResult.ok ? null : (emailResult.error ?? 'Email could not be sent.'),
   };
 }

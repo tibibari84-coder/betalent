@@ -28,6 +28,7 @@ function VerifyEmailContent() {
   const [resendMsg, setResendMsg] = useState<string | null>(null);
   const [resendTone, setResendTone] = useState<'info' | 'warning' | 'error'>('info');
   const [cooldown, setCooldown] = useState(0);
+  const [registrationEmailHint, setRegistrationEmailHint] = useState<string | null>(null);
 
   useEffect(() => {
     if (cooldown <= 0) return;
@@ -141,6 +142,15 @@ function VerifyEmailContent() {
             Confirm your email to open protected routes (for example dashboard, upload, profile, wallet, settings, and creator tools).
             Public pages stay available.
           </AuthAlert>
+        ) : null}
+
+        {registrationEmailHint && status !== 'success' ? (
+          <div className="mb-4">
+            <AuthAlert tone="warning" key="email-hint">
+              We could not send the verification email automatically: {registrationEmailHint} Use &quot;Resend verification email&quot;
+              below after the operator sets RESEND_API_KEY or SENDGRID_API_KEY on the server, or check spam folders if it was sent.
+            </AuthAlert>
+          </div>
         ) : null}
 
         <div className={`text-center mb-6 ${gateRequired && status !== 'success' ? 'mt-5' : ''}`}>

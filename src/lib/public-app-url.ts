@@ -24,10 +24,24 @@ function normalizeConfiguredBase(trimmed: string): string {
   return `https://${trimmed}`;
 }
 
-/** Required in production: NEXT_PUBLIC_APP_URL (https, non-loopback). */
+/**
+ * Production public base URL.
+ * Prefer NEXT_PUBLIC_APP_URL (custom domain, exact links in email/OAuth).
+ * On Vercel, if unset, fall back to https://VERCEL_URL so verify links and Google redirect URIs still work.
+ */
 export function getProductionPublicAppBaseUrl(): string {
   const configured = process.env.NEXT_PUBLIC_APP_URL?.trim().replace(/\/$/, '') ?? '';
-  return normalizeConfiguredBase(configured);
+  if (configured) {
+    return normalizeConfiguredBase(configured);
+  }
+  const vercelHost = process.env.VERCEL_URL?.trim().replace(/^https?:\/\//, '').split('/')[0] ?? '';
+  if (process.env.VERCEL === '1' && vercelHost) {
+    const h = vercelHost.toLowerCase();
+    if (h !== 'localhost' && !h.startsWith('127.')) {
+      return `https://${vercelHost}`;
+    }
+  }
+  throw new Error('NEXT_PUBLIC_APP_URL_REQUIRED');
 }
 
 /**

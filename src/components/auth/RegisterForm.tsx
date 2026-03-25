@@ -120,7 +120,16 @@ export default function RegisterForm({ referrerId, googleConfigError }: Register
         return;
       }
       const q = new URLSearchParams({ registered: '1' });
-      if (data.verificationEmailSent === false) q.set('email', 'pending');
+      if (data.verificationEmailSent === false) {
+        q.set('email', 'pending');
+        if (typeof window !== 'undefined' && typeof data.verificationEmailHint === 'string' && data.verificationEmailHint) {
+          try {
+            sessionStorage.setItem('betalent_register_email_hint', data.verificationEmailHint);
+          } catch {
+            /* ignore quota / private mode */
+          }
+        }
+      }
       router.push(`/verify-email?${q.toString()}`);
       router.refresh();
     } catch {

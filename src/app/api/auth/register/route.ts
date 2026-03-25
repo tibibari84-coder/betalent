@@ -23,7 +23,7 @@ export async function POST(request: Request) {
     if (parsed.referrerId && session?.user?.id && session.user.id === parsed.referrerId) {
       parsed = { ...parsed, referrerId: undefined };
     }
-    const { user, verificationEmailSent } = await registerUser(parsed);
+    const { user, verificationEmailSent, verificationEmailHint } = await registerUser(parsed);
 
     const sess = await getSession();
     sess.pending2FAUserId = undefined;
@@ -42,6 +42,7 @@ export async function POST(request: Request) {
       ok: true,
       user,
       verificationEmailSent,
+      ...(verificationEmailHint ? { verificationEmailHint } : {}),
     });
   } catch (e) {
     const message = e instanceof Error ? e.message : 'Registration failed';
