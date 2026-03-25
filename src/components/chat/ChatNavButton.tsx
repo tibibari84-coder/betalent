@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 
 const TOPBAR_TRANSITION = 'transition-all duration-150 ease-out';
 const ICON_BTN =
-  'relative inline-flex items-center justify-center shrink-0 h-10 w-10 min-h-10 min-w-10 rounded-[10px] text-white/80 hover:text-white/95 hover:bg-white/[0.06] hover:scale-[1.02] active:scale-[0.98] ' +
+  'relative inline-flex items-center justify-center shrink-0 h-9 w-9 min-h-9 min-w-9 rounded-[10px] text-white/80 hover:text-white/95 hover:bg-white/[0.06] hover:scale-[1.02] active:scale-[0.98] ' +
   TOPBAR_TRANSITION;
 
 export function ChatNavButton() {

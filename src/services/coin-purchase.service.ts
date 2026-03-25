@@ -1,6 +1,7 @@
+import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { getById, getEffectiveCoins, isCurrentlyValid } from '@/services/coin-package.service';
-import { credit } from '@/services/wallet.service';
+import { applyPurchaseCreditInTransaction } from '@/services/wallet.service';
 import type { CreatePurchaseIntentFn, PurchaseIntentResult } from '@/types/payment';
 
 /**
@@ -38,6 +39,14 @@ export async function createOrder(
     return { ok: false, code: 'PACKAGE_INVALID', message: 'Package is outside its validity window' };
   }
 
+  if (process.env.NODE_ENV === 'production' && provider === 'STRIPE' && !(pkg.stripePriceId?.trim())) {
+    return {
+      ok: false,
+      code: 'PACKAGE_INVALID',
+      message: 'Package is not available for purchase',
+    };
+  }
+
   const coins = pkg.effectiveCoins;
   const amountCents = Math.round(Number(pkg.price) * 100);
 
@@ -61,6 +70,7 @@ export async function createOrder(
     currency: pkg.currency,
     coins,
     packageInternalName: pkg.internalName,
+    stripePriceId: pkg.stripePriceId,
   });
 
   return {
@@ -78,52 +88,82 @@ export type FulfillOrderResult =
 /**
  * Marks order COMPLETED and credits the user's wallet. Idempotent for same order.
  * Call this when the payment provider confirms payment (e.g. Stripe webhook).
- * Wallet logic is delegated to wallet.service.credit; we do not trust client for amount.
+ * Credits are applied in a single DB transaction with row-level locking; amounts come from the order row only.
  */
 export async function fulfillOrder(orderId: string): Promise<FulfillOrderResult> {
-  const order = await prisma.coinPurchaseOrder.findUnique({
-    where: { id: orderId },
-    select: { id: true, userId: true, coins: true, status: true },
-  });
+  try {
+    const outcome = await prisma.$transaction(async (tx) => {
+      const rows = await tx.$queryRaw<
+        Array<{ id: string; userId: string; coins: number; status: string }>
+      >(
+        Prisma.sql`
+          SELECT id, "userId", coins, status::text AS status
+          FROM "CoinPurchaseOrder"
+          WHERE id = ${orderId}
+          FOR UPDATE
+        `
+      );
+      const row = rows[0];
+      if (!row) {
+        return { kind: 'NOT_FOUND' as const };
+      }
+      if (row.status === 'COMPLETED') {
+        const wallet = await tx.userWallet.findUnique({
+          where: { userId: row.userId },
+          select: { coinBalance: true },
+        });
+        return { kind: 'DONE' as const, newBalance: wallet?.coinBalance ?? 0 };
+      }
+      if (row.status !== 'PENDING') {
+        return { kind: 'BAD_STATUS' as const, status: row.status };
+      }
 
-  if (!order) {
-    return { ok: false, code: 'ORDER_NOT_FOUND', message: 'Order not found' };
-  }
-  if (order.status === 'COMPLETED') {
-    const wallet = await prisma.userWallet.findUnique({
-      where: { userId: order.userId },
-      select: { coinBalance: true },
+      const desc = `Coin purchase order ${row.id}`;
+      const creditResult = await applyPurchaseCreditInTransaction(
+        tx,
+        row.userId,
+        row.coins,
+        row.id,
+        desc
+      );
+      if (!creditResult.ok) {
+        throw new Error(creditResult.reason);
+      }
+
+      await tx.coinPurchaseOrder.update({
+        where: { id: orderId },
+        data: { status: 'COMPLETED', completedAt: new Date() },
+      });
+
+      return { kind: 'DONE' as const, newBalance: creditResult.newBalance };
     });
-    return { ok: true, newBalance: wallet?.coinBalance ?? 0 };
-  }
-  if (order.status === 'FAILED' || order.status === 'REFUNDED') {
+
+    if (outcome.kind === 'NOT_FOUND') {
+      return { ok: false, code: 'ORDER_NOT_FOUND', message: 'Order not found' };
+    }
+    if (outcome.kind === 'BAD_STATUS') {
+      if (outcome.status === 'FAILED' || outcome.status === 'REFUNDED') {
+        return {
+          ok: false,
+          code: 'ORDER_FAILED',
+          message: `Order is ${outcome.status}`,
+        };
+      }
+      return {
+        ok: false,
+        code: 'ORDER_FAILED',
+        message: `Order is ${outcome.status}`,
+      };
+    }
+    return { ok: true, newBalance: outcome.newBalance };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : '';
     return {
       ok: false,
       code: 'ORDER_FAILED',
-      message: `Order is ${order.status}`,
+      message: msg || 'Fulfillment failed',
     };
   }
-
-  const creditResult = await credit(order.userId, order.coins, {
-    type: 'PURCHASE',
-    referenceId: order.id,
-    description: `Coin purchase order ${order.id}`,
-  });
-
-  if (!creditResult.success) {
-    return {
-      ok: false,
-      code: 'ORDER_FAILED',
-      message: creditResult.reason ?? 'Wallet credit failed',
-    };
-  }
-
-  await prisma.coinPurchaseOrder.update({
-    where: { id: orderId },
-    data: { status: 'COMPLETED', completedAt: new Date() },
-  });
-
-  return { ok: true, newBalance: creditResult.newBalance };
 }
 
 /**

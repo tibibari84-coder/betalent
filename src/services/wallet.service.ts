@@ -1,5 +1,5 @@
 import type { CoinTransactionType } from '@prisma/client';
-import type { Prisma } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 
 /**
@@ -223,6 +223,66 @@ export async function credit(
 
   // credit() transaction only returns ok: true; failure would throw
   return { success: true, newBalance: result.newBalance };
+}
+
+/**
+ * Purchase credit inside an existing transaction. Idempotent per order via
+ * `@@unique([type, toUserId, referenceId])` on CoinTransaction: duplicate inserts are skipped
+ * without double-incrementing the wallet.
+ */
+export async function applyPurchaseCreditInTransaction(
+  tx: Prisma.TransactionClient,
+  userId: string,
+  coins: number,
+  orderId: string,
+  description: string | null
+): Promise<{ ok: true; newBalance: number } | { ok: false; reason: string }> {
+  if (coins <= 0) {
+    return { ok: false, reason: 'Invalid amount' };
+  }
+
+  const inserted = await tx.coinTransaction.createMany({
+    data: [
+      {
+        fromUserId: null,
+        toUserId: userId,
+        type: 'PURCHASE',
+        amount: coins,
+        referenceId: orderId,
+        description,
+      },
+    ],
+    skipDuplicates: true,
+  });
+
+  if (inserted.count === 0) {
+    const wallet = await tx.userWallet.findUnique({
+      where: { userId },
+      select: { coinBalance: true },
+    });
+    return { ok: true, newBalance: wallet?.coinBalance ?? 0 };
+  }
+
+  await tx.userWallet.upsert({
+    where: { userId },
+    create: {
+      userId,
+      coinBalance: coins,
+      totalCoinsPurchased: coins,
+      totalCoinsSpent: 0,
+      lifetimeEarned: 0,
+    },
+    update: {
+      coinBalance: { increment: coins },
+      totalCoinsPurchased: { increment: coins },
+    },
+  });
+
+  const wallet = await tx.userWallet.findUniqueOrThrow({
+    where: { userId },
+    select: { coinBalance: true },
+  });
+  return { ok: true, newBalance: wallet.coinBalance };
 }
 
 /**

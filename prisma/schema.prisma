@@ -1106,6 +1106,8 @@ model CoinPackage {
   coins         Int // base coin amount shown and credited (use + bonusCoins for total when set)
   price         Decimal   @db.Decimal(10, 2) // displayed price
   currency      String    @default("USD")
+  /// Stripe Price ID (price_...). Required for live-mode Checkout; optional in test (server-side price_data fallback).
+  stripePriceId String?
   isActive      Boolean   @default(true)
   sortOrder     Int       @default(0) // lower = higher in list
   bonusCoins    Int? // optional extra coins (promos); total credited = coins + bonusCoins

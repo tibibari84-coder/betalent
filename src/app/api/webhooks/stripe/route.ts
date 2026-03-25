@@ -1,21 +1,33 @@
 import { NextResponse } from 'next/server';
 import type Stripe from 'stripe';
-import {
-  fulfillOrderByProviderRef,
-  markOrderFailedByProviderRef,
-} from '@/services/coin-purchase.service';
+import { fulfillOrder, markOrderFailedByProviderRef } from '@/services/coin-purchase.service';
 import { prisma } from '@/lib/prisma';
 import { processRefundOrDispute } from '@/services/purchase-reversal.service';
-import { getStripeTestClient } from '@/lib/stripe-client';
+import { getStripeServerClient } from '@/lib/stripe-client';
+import { verifyPaidCheckoutSessionMatchesOrder } from '@/lib/stripe-checkout-verification';
+
+/**
+ * Explicit allowlist: unlisted signed events are acknowledged without persistence or side effects.
+ * Includes completion, subscription billing, failure, and reversal signals.
+ */
+const STRIPE_WEBHOOK_HANDLED_EVENT_TYPES = new Set<string>([
+  'checkout.session.completed',
+  'payment_intent.succeeded',
+  'invoice.paid',
+  'checkout.session.expired',
+  'checkout.session.async_payment_failed',
+  'charge.refunded',
+  'charge.dispute.created',
+  'charge.dispute.closed',
+  'payment_intent.payment_failed',
+]);
 
 export async function POST(request: Request) {
-  const stripe = getStripeTestClient();
+  const stripe = getStripeServerClient();
   const secret = process.env.STRIPE_WEBHOOK_SECRET?.trim();
   if (!stripe || !secret?.startsWith('whsec_')) {
-    console.error(
-      'Stripe webhook secret missing. Run: stripe listen --forward-to localhost:3000/api/webhooks/stripe'
-    );
-    return NextResponse.json({ error: 'Webhook not configured' }, { status: 503 });
+    console.error('[webhook/stripe] Stripe client or webhook secret not configured');
+    return NextResponse.json({ error: 'Unavailable' }, { status: 503 });
   }
 
   let body: string;
@@ -33,10 +45,16 @@ export async function POST(request: Request) {
   let event: Stripe.Event;
   try {
     event = stripe.webhooks.constructEvent(body, sig, secret);
-  } catch (e) {
-    console.error('[webhook/stripe] Signature verification failed', e);
+  } catch {
+    console.error('[webhook/stripe] Signature verification failed');
     return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
   }
+
+  if (!STRIPE_WEBHOOK_HANDLED_EVENT_TYPES.has(event.type)) {
+    return NextResponse.json({ received: true });
+  }
+
+  console.info('[webhook/stripe] event', event.type, event.id);
 
   await prisma.paymentWebhookEvent.upsert({
     where: {
@@ -102,8 +120,16 @@ export async function POST(request: Request) {
         lastError: err instanceof Error ? err.message : 'Webhook processing failed',
       },
     });
-    console.error('[webhook/stripe] Event processing failed', event.type, err);
-    return NextResponse.json({ error: 'Webhook processing failed' }, { status: 500 });
+    console.error('[webhook/stripe] processing failed', event.type, event.id);
+    return NextResponse.json({ error: 'Processing failed' }, { status: 500 });
+  }
+}
+
+async function fulfillFromCheckoutSessionId(stripe: Stripe, checkoutSessionId: string): Promise<void> {
+  const { orderId } = await verifyPaidCheckoutSessionMatchesOrder(stripe, checkoutSessionId);
+  const result = await fulfillOrder(orderId);
+  if (!result.ok) {
+    throw new Error(`${result.code}: ${result.message}`);
   }
 }
 
@@ -112,13 +138,18 @@ async function handleStripeEvent(stripe: Stripe, event: Stripe.Event): Promise<v
     case 'checkout.session.completed': {
       const session = event.data.object as Stripe.Checkout.Session;
       if (!session.id) throw new Error('Missing checkout session id');
-      if (session.mode !== 'payment') throw new Error('Invalid checkout mode');
-      if (session.payment_status !== 'paid') throw new Error('Checkout not paid');
-      if (session.status !== 'complete') throw new Error('Checkout not complete');
-      const result = await fulfillOrderByProviderRef('STRIPE', session.id);
-      if (!result.ok) {
-        throw new Error(`${result.code}: ${result.message}`);
-      }
+      await fulfillFromCheckoutSessionId(stripe, session.id);
+      return;
+    }
+    case 'payment_intent.succeeded': {
+      const pi = event.data.object as Stripe.PaymentIntent;
+      const checkoutSessionId = await resolveCheckoutSessionIdFromPaymentIntent(stripe, pi.id);
+      if (!checkoutSessionId) return;
+      await fulfillFromCheckoutSessionId(stripe, checkoutSessionId);
+      return;
+    }
+    case 'invoice.paid': {
+      // Subscription billing hook — no coin fulfillment until a product maps to internal entitlements.
       return;
     }
     case 'checkout.session.expired':

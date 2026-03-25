@@ -11,6 +11,7 @@ import { useRef, useState } from 'react';
 import { IconSearch } from '@/components/ui/Icons';
 import { APP_NAME } from '@/constants/app';
 import { BrandWordmark } from '@/components/brand/BrandWordmark';
+import { BrandMarkLockupNav } from '@/components/brand/BrandMarkLockup';
 import { useI18n } from '@/contexts/I18nContext';
 import { cn } from '@/lib/utils';
 
@@ -47,21 +48,22 @@ export default function PublicNavbar() {
       }}
     >
       <div
-        className="mx-auto w-full min-w-0 flex items-center gap-3 px-[var(--layout-pad)]"
+        className="mx-auto flex h-[var(--topbar-height)] w-full min-w-0 max-w-[var(--shell-max-width)] items-center gap-3"
         style={{
-          maxWidth: 'var(--shell-max-width)',
+          paddingLeft: 'var(--topbar-pad-x)',
+          paddingRight: 'var(--topbar-pad-x)',
           columnGap: 'var(--layout-gap, 24px)',
-          minHeight: 'var(--topbar-height)',
         }}
       >
-        <div className="flex shrink-0 items-center min-w-0 gap-2">
+        <div className="flex min-w-0 shrink-0 items-center gap-2">
           <Link
             href="/landing"
             aria-label={APP_NAME}
-            className="group inline-flex items-center min-w-0 gap-1.5 rounded-lg py-0.5 text-[17px] sm:text-[18px] transition-opacity duration-200 hover:opacity-95"
+            className="group inline-flex min-w-0 items-center rounded-lg py-0.5 text-[17px] sm:text-[18px] transition-opacity duration-200 hover:opacity-95"
           >
-            <img src="/logo.png" alt="" width={20} height={20} className="object-contain shrink-0 h-5 w-5" />
-            <BrandWordmark variant="nav" />
+            <BrandMarkLockupNav>
+              <BrandWordmark variant="nav" />
+            </BrandMarkLockupNav>
           </Link>
         </div>
 

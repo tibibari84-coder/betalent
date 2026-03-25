@@ -81,7 +81,7 @@ export default function NotificationsBell() {
         onClick={handleOpen}
         className="
           flex items-center justify-center shrink-0 relative
-          h-10 w-10 min-h-10 min-w-10
+          h-9 w-9 min-h-9 min-w-9
           rounded-[10px]
           text-white/80 hover:text-white/95 hover:bg-white/[0.06]
           hover:scale-[1.02] active:scale-[0.98]

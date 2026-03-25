@@ -338,14 +338,14 @@ export function IconInbox({ className = '', ...props }: SVGProps<SVGSVGElement>)
   );
 }
 
-/** Direct messages / chat bubble */
+/** Direct messages — refined message-square outline (matches bell / trophy stroke weight). */
 export function IconChat({ className = '', ...props }: SVGProps<SVGSVGElement>) {
   return (
     <svg className={iconClassName(className)} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5} {...props}>
       <path
         strokeLinecap="round"
         strokeLinejoin="round"
-        d="M20.25 8.511c.884.284 1.5 1.128 1.5 2.097v4.786c0 1.218-.843 2.298-2.018 2.59-1.227.304-2.503.516-3.785.516-1.18 0-2.335-.184-3.432-.52M4.5 19.5l1.5-3M4.5 19.5h15a2.25 2.25 0 002.25-2.25v-4.5A2.25 2.25 0 0019.5 10.5h-9.75a2.25 2.25 0 00-2.25 2.25v4.5A2.25 2.25 0 006 19.5z"
+        d="M7.5 8.25h9M7.5 12h5.25M6.75 4.75h10.5a2 2 0 012 2v6.5a2 2 0 01-2 2h-3.19l-3.56 2.25V17.25H6.75a2 2 0 01-2-2v-6.5a2 2 0 012-2z"
       />
     </svg>
   );

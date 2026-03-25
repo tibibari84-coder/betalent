@@ -48,8 +48,8 @@ function RootShellContent({ children }: { children: React.ReactNode }) {
             )}
             style={{
               maxWidth: 'var(--shell-max-width)',
-              paddingLeft: 'var(--layout-pad, 16px)',
-              paddingRight: 'var(--layout-pad, 16px)',
+              paddingLeft: 'var(--topbar-pad-x)',
+              paddingRight: 'var(--topbar-pad-x)',
             }}
           >
             {/*

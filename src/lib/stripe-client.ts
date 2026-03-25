@@ -1,20 +1,32 @@
 import Stripe from 'stripe';
 
-/**
- * Single source of truth for Stripe SDK construction.
- *
- * **Current product phase:** test mode only (`sk_test_` / `pk_test_`). Live keys are
- * intentionally not wired — enable only after the separate real-money milestone.
- * Checkout + webhook must use this helper so they stay in sync.
- */
-const STRIPE_TEST_SECRET_PREFIX = 'sk_test_';
-
-export function getStripeTestClient(): Stripe | null {
-  const key = process.env.STRIPE_SECRET_KEY?.trim();
-  if (!key || !key.startsWith(STRIPE_TEST_SECRET_PREFIX)) return null;
-  return new Stripe(key);
+function isProductionNodeEnv(): boolean {
+  return process.env.NODE_ENV === 'production';
 }
 
-export function isStripeTestClientAvailable(): boolean {
-  return getStripeTestClient() !== null;
+/**
+ * Server-only Stripe SDK. Enforces test vs live key alignment with `NODE_ENV`:
+ * - `production`: only `sk_live_` + publishable must be `pk_live_` (never test keys).
+ * - non-production: only `sk_test_` + `pk_test_` (never live keys in dev).
+ *
+ * Secrets are never logged. Returns null if misconfigured.
+ */
+export function getStripeServerClient(): Stripe | null {
+  const secret = process.env.STRIPE_SECRET_KEY?.trim();
+  const publishable = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY?.trim();
+  if (!secret || !publishable) return null;
+
+  if (isProductionNodeEnv()) {
+    if (!secret.startsWith('sk_live_')) return null;
+    if (!publishable.startsWith('pk_live_')) return null;
+  } else {
+    if (!secret.startsWith('sk_test_')) return null;
+    if (!publishable.startsWith('pk_test_')) return null;
+  }
+
+  return new Stripe(secret);
+}
+
+export function isStripeServerClientAvailable(): boolean {
+  return getStripeServerClient() !== null;
 }

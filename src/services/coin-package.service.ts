@@ -10,6 +10,7 @@ export type CoinPackagePublic = {
   effectiveCoins: number;
   price: number;
   currency: string;
+  stripePriceId: string | null;
   isActive: boolean;
   isPromotional: boolean;
   validFrom: Date | null;
@@ -48,6 +49,7 @@ function toPublic(pkg: CoinPackage): CoinPackagePublic {
     effectiveCoins,
     price,
     currency: pkg.currency,
+    stripePriceId: pkg.stripePriceId,
     isActive: pkg.isActive,
     isPromotional: pkg.isPromotional,
     validFrom: pkg.validFrom,

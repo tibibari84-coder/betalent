@@ -31,4 +31,6 @@ export type CreatePurchaseIntentFn = (params: {
   currency: string;
   coins: number;
   packageInternalName: string;
+  /** Stripe Price id (price_...). Required for live Checkout; optional in test (server price_data). */
+  stripePriceId: string | null;
 }) => Promise<PurchaseIntentResult>;

@@ -26,11 +26,8 @@ const bodySchema = z.object({
  * Body: { packageId: string }
  *
  * Creates order (PENDING) + Stripe Checkout Session, returns redirectUrl.
- * Client redirects to Stripe Checkout; after payment, Stripe redirects back to /wallet.
- * Webhook checkout.session.completed fulfills order and credits wallet.
- *
- * **Current wiring:** test keys only (`sk_test_` / `pk_test_` / `whsec_...` via {@link getStripeTestClient}).
- * Live billing is a separate milestone — do not enable `sk_live_` in code until then.
+ * Amounts and Stripe Price IDs come from the database only; the client cannot set price.
+ * Production requires live Stripe keys and `CoinPackage.stripePriceId` per sellable package.
  */
 export async function POST(req: Request) {
   try {
@@ -120,8 +117,12 @@ export async function POST(req: Request) {
     }
 
     if (result.intent.status === 'FAILED') {
+      const safeMessage =
+        process.env.NODE_ENV === 'production'
+          ? 'Could not start checkout.'
+          : (result.intent.message ?? 'Payment failed');
       return NextResponse.json(
-        { ok: false, code: 'PAYMENT_FAILED', message: result.intent.message ?? 'Payment failed' },
+        { ok: false, code: 'PAYMENT_FAILED', message: safeMessage },
         { status: 400 }
       );
     }

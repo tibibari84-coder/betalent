@@ -102,11 +102,14 @@
   --layout-pad: 16px;
   --shell-right: 0;
   --shell-gap: 16px;
-  --topbar-height: 48px;
-  --topbar-laptop: 48px;
-  --topbar-desktop: 48px;
-  --topbar-xl: 48px;
+  /* Topbar: mobile 64px, tablet 68px, desktop 72px */
+  --topbar-height: 64px;
+  --topbar-pad-x: 16px;
   --topbar-shell-max: 1280px;
+  --utility-btn-size: 36px;
+  --utility-icon-size: 18px;
+  --utility-gap: 10px;
+  --avatar-topbar: 30px;
   --bottom-nav-height: 68px;
   --space-1: 4px;
   --space-2: 8px;
@@ -148,12 +151,20 @@
 @media (min-width: 768px) {
   :root {
     --layout-pad: 20px;
+    --topbar-height: 68px;
+    --topbar-pad-x: 20px;
+    --avatar-topbar: 32px;
   }
 }
+@media (min-width: 1024px) {
+  :root {
+    --topbar-pad-x: 24px;
+  }
+}
+
 /* Laptop 1000px+ */
 @media (min-width: 1000px) {
   :root {
-    --topbar-height: var(--topbar-laptop);
     --shell-pad: 20px;
     --layout-pad: 24px;
     --shell-sidebar: 208px;
@@ -166,7 +177,8 @@
 /* Desktop 1200px+ */
 @media (min-width: 1200px) {
   :root {
-    --topbar-height: var(--topbar-desktop);
+    --topbar-height: 72px;
+    --topbar-pad-x: 32px;
     --shell-pad: 24px;
     --layout-pad: 32px;
     --shell-sidebar: 208px;
@@ -176,10 +188,15 @@
     --shell-gap: 24px;
   }
 }
+@media (min-width: 1280px) {
+  :root {
+    --avatar-topbar: 34px;
+  }
+}
+
 /* Large desktop 1400px+ */
 @media (min-width: 1400px) {
   :root {
-    --topbar-height: var(--topbar-xl);
     --shell-pad: 24px;
     --layout-pad: 32px;
     --shell-sidebar: 224px;
