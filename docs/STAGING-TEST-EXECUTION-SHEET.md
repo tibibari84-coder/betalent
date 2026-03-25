@@ -32,7 +32,6 @@ Instructions: Run steps **in order**. Mark **Pass** or **Fail**. If **Fail**, no
 | B5 | Confirm **`R2_PUBLIC_URL`** if playback depends on public CDN | Videos play after upload | Broken playback URLs | ☐ | ☐ | |
 | B6 | Confirm **Stripe test:** `STRIPE_SECRET_KEY` (`sk_test_…`), `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`, `STRIPE_WEBHOOK_SECRET` (`whsec_…`) | Checkout + webhook path configurable | Missing keys or mode mismatch | ☐ | ☐ | |
 | B7 | Confirm **`NEXT_PUBLIC_APP_URL`** matches staging URL | Redirects after checkout land on staging | Wrong host / broken return URL | ☐ | ☐ | |
-| B8 | Confirm **`CRON_SECRET`** set | Cron `POST` with correct header returns **2xx**; wrong secret → **401** | Jobs run without secret or wrong behavior | ☐ | ☐ | |
 
 ---
 
@@ -93,13 +92,11 @@ Instructions: Run steps **in order**. Mark **Pass** or **Fail**. If **Fail**, no
 
 ---
 
-## Section H — Cron & ops
+## Section H — Ops
 
 | # | Step | Expected result | Fail if… | Pass | Fail | Notes |
 |---|------|-----------------|----------|:----:|:----:|-------|
-| H1 | **`POST`** each configured cron route with **`Authorization: Bearer <CRON_SECRET>`** | **2xx** and expected JSON shape | 401/500 (except intentional misconfig test) | ☐ | ☐ | |
-| H2 | Same **`POST`** with **wrong** secret. | **401** | 2xx | ☐ | ☐ | |
-| H3 | Document: backup / restore contact for staging DB | Written down | No owner for data loss | ☐ | ☐ | |
+| H1 | Document: backup / restore contact for staging DB | Written down | No owner for data loss | ☐ | ☐ | |
 
 ---
 
@@ -107,7 +104,7 @@ Instructions: Run steps **in order**. Mark **Pass** or **Fail**. If **Fail**, no
 
 | # | Step | Expected result | Fail if… | Pass | Fail | Notes |
 |---|------|-----------------|----------|:----:|:----:|-------|
-| I1 | All **critical** sections **A–E** and **G1–G3**, **H1–H2** are **Pass** | Ready for go/no-go | Any critical step Fail | ☐ | ☐ | |
+| I1 | All **critical** sections **A–E** and **G1–G3**, **H1** are **Pass** | Ready for go/no-go | Any critical step Fail | ☐ | ☐ | |
 | I2 | **Product owner go / no-go** recorded | Decision documented | Launch without decision | ☐ | ☐ | |
 
 **Overall staging result:** ☐ **PASS**  ☐ **FAIL** (blockers: _________________________________)

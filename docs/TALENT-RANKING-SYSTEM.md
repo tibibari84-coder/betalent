@@ -79,39 +79,19 @@ Defined in `src/constants/talent-ranking.ts`.
 
 ## System rules
 
-- **Daily job** – Run automatically (e.g. cron) to recompute tier and progress for all users.
+- **Daily job** – Recompute tier and progress for all users on a schedule you operate (e.g. external worker calling `talent-ranking.service`).
 - **Badges** – Profile and discovery surfaces use `creatorTier` (via `TALENT_TIER_LABELS`) for badge text.
 - **Discovery** – Higher tiers can be weighted more in discovery/feeds (implementation in feed/explore services).
 - **Upload limits** – `uploadLimitSec` is updated by the job; enforce in upload API.
 
 ## Running the job
 
-### Cron (production)
-
-Call daily, e.g.:
-
-```bash
-curl -X POST "https://your-domain.com/api/cron/rank-talents" \
-  -H "Authorization: Bearer YOUR_CRON_SECRET"
-# or
-curl -X POST "https://your-domain.com/api/cron/rank-talents" \
-  -H "x-cron-secret: YOUR_CRON_SECRET"
-```
-
-Set `CRON_SECRET` in your environment (**required**). If it is missing or empty, all cron routes return **500** with an explicit error and **no job runs** (fail closed). Wrong or missing credentials when the secret is set → **401**.
-
-### Manual (dev)
-
-```bash
-curl -X POST http://localhost:3000/api/cron/rank-talents \
-  -H "Authorization: Bearer YOUR_CRON_SECRET"
-```
+There is no first-party HTTP cron endpoint in this app. Schedule recomputation from your own runner (script, queue worker, or platform job) by importing and invoking the functions in `src/services/talent-ranking.service.ts` (see that file for entry points).
 
 ## Code locations
 
 - **Constants / thresholds:** `src/constants/talent-ranking.ts`  
 - **Algorithm & job:** `src/services/talent-ranking.service.ts`  
-- **Cron route:** `src/app/api/cron/rank-talents/route.ts`  
 - **Schema:** `prisma/schema.prisma` – `CreatorTier` enum, `User.rankProgress`, `User.rankUpdatedAt`, `User.totalVotes`  
 
 ## Migration

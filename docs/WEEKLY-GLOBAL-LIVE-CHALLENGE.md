@@ -18,9 +18,7 @@ The Weekly Global Live Challenge is a lifecycle-driven system supporting global 
 | WINNERS_LOCKED | Winners computed and locked |
 | ARCHIVED | Fully complete; historical |
 
-Transitions are driven by:
-1. **Cron** (`POST /api/cron/challenge-lifecycle`) – timestamp-based automation
-2. **Admin** (`POST /api/admin/challenges/[slug]` with `action`) – manual override
+Transitions are driven by **Admin** (`POST /api/admin/challenges/[slug]` with `action`) — manual override and scripted transitions.
 
 ## Global Windows
 
@@ -65,10 +63,6 @@ Window status is updated when a linked `LiveChallengeSession` starts/ends.
 - `GET/POST /api/admin/challenges/[slug]/windows` – list or create windows
 - `POST /api/live/challenges/[slug]/session` – create live session (admin)
 - `POST /api/live/sessions/[sessionId]/admin` – start/next/end (admin)
-
-## Cron
-
-- `POST /api/cron/challenge-lifecycle` – transitions status by timestamps, auto-locks winners when voting closed
 
 ## Integrity Honesty
 

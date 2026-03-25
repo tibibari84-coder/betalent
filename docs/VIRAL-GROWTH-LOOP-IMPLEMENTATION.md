@@ -13,7 +13,6 @@ BeTalent now has a viral growth loop similar to TikTok: shareable deep links wit
 | **GET** | `/api/share/url?resourceType=video\|profile&resourceId=<id>` | Returns shareable URL with `?ref=userId` when authenticated. Used by ShareModal. |
 | **POST** | `/api/share` | Track share event. **Changed:** rate limit (60/hr), stores `referrerId` on ShareEvent. |
 | **GET** | `/api/growth/metrics` | Growth metrics: shares by type, top referrers, top shared videos. Requires auth. |
-| **POST** | `/api/cron/shares-velocity` | Cron: recalculates `Video.sharesLast24h` from ShareEvent. Run hourly. Header: `x-cron-secret`. |
 
 ### Deep Link Route
 
@@ -33,7 +32,7 @@ BeTalent now has a viral growth loop similar to TikTok: shareable deep links wit
 ### Video
 | Field | Type | Description |
 |-------|------|-------------|
-| `sharesLast24h` | Int | Shares in last 24h. Updated by cron. Used for viral velocity boost. |
+| `sharesLast24h` | Int | Shares in last 24h. Keep fresh via your own scheduled job that recomputes from `ShareEvent`. Used for viral velocity boost. |
 
 ### ShareEvent
 | Field | Type | Description |
@@ -71,7 +70,7 @@ BeTalent now has a viral growth loop similar to TikTok: shareable deep links wit
 ### Share Velocity
 
 - `Video.sharesLast24h` = count of ShareEvent for this video in last 24h.
-- Updated by cron `POST /api/cron/shares-velocity` (run hourly).
+- Recompute on a schedule you operate (no built-in HTTP endpoint for this).
 
 ### Scoring Change
 
@@ -112,17 +111,7 @@ Videos with high share velocity get a temporary boost in For You ranking.
 
 ---
 
-## 7. Env / Cron
-
-| Env | Purpose |
-|-----|---------|
-| `CRON_SECRET` | Required for `POST /api/cron/shares-velocity` |
-
-**Cron schedule:** Run `POST /api/cron/shares-velocity` every hour to keep `sharesLast24h` accurate.
-
----
-
-## 8. Migration
+## 7. Migration
 
 ```bash
 npx prisma db push
