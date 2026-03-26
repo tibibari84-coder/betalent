@@ -6,10 +6,10 @@ import { IconX } from '@/components/ui/Icons';
 import Sidebar from './Sidebar';
 
 const DRAWER_STYLE: React.CSSProperties = {
-  background: 'rgba(8,8,10,0.95)',
-  backdropFilter: 'blur(24px)',
-  WebkitBackdropFilter: 'blur(24px)',
-  boxShadow: '4px 0 48px rgba(0,0,0,0.35), 0 0 0 1px rgba(255,255,255,0.03)',
+  background: 'rgba(8,8,10,0.96)',
+  backdropFilter: 'blur(22px)',
+  WebkitBackdropFilter: 'blur(22px)',
+  boxShadow: '4px 0 40px rgba(0,0,0,0.34), 0 0 0 1px rgba(255,255,255,0.03)',
 };
 
 export function SidebarDrawer({
@@ -55,7 +55,7 @@ export function SidebarDrawer({
         role="button"
         tabIndex={-1}
         aria-label="Close menu"
-        className="fixed inset-0 z-[60] bg-black/60 transition-opacity duration-200 lg:hidden"
+        className="fixed inset-0 z-[60] bg-black/55 transition-opacity duration-200 ease-out lg:hidden"
         style={{ opacity: isOpen ? 1 : 0, pointerEvents: isOpen ? 'auto' : 'none' }}
         onClick={onClose}
         onKeyDown={(e) => e.key === 'Enter' && onClose()}
@@ -65,25 +65,25 @@ export function SidebarDrawer({
         role="dialog"
         aria-modal="true"
         aria-label="Main navigation"
-        className="fixed left-0 top-0 z-[61] h-full w-[280px] max-w-[85vw] flex flex-col transition-transform duration-300 ease-out lg:hidden"
+        className="fixed left-0 top-0 z-[61] h-full w-[clamp(248px,78vw,360px)] max-w-[88vw] sm:max-w-[82vw] md:max-w-[68vw] flex flex-col transition-transform duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] lg:hidden"
         style={{
           ...DRAWER_STYLE,
           transform: isOpen ? 'translateX(0)' : 'translateX(-100%)',
           borderRight: '1px solid rgba(255,255,255,0.06)',
         }}
       >
-        <div className="flex items-center justify-between shrink-0 px-4 py-3 border-b border-white/[0.06]">
-          <span className="font-display text-[15px] font-semibold text-white tracking-wide">Menu</span>
+        <div className="flex items-center justify-between shrink-0 px-3.5 sm:px-4 py-2.5 sm:py-3 border-b border-white/[0.06]">
+          <span className="font-display text-[14px] sm:text-[15px] font-semibold text-white tracking-wide">Menu</span>
           <button
             type="button"
             onClick={onClose}
-            className="flex h-10 w-10 items-center justify-center rounded-xl text-white/80 hover:text-white hover:bg-white/10 transition-colors"
+            className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-[10px] text-white/80 hover:text-white hover:bg-white/10 transition-colors"
             aria-label="Close menu"
           >
-            <IconX className="w-5 h-5" />
+            <IconX className="w-4.5 h-4.5 sm:w-5 sm:h-5" />
           </button>
         </div>
-        <div className="flex-1 overflow-y-auto overflow-x-hidden py-4 px-3">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden py-3 sm:py-3.5 px-2.5 sm:px-3">
           <Sidebar variant="drawer" />
         </div>
       </aside>
