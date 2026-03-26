@@ -24,7 +24,7 @@ function PublicShellInner({ children }: { children: React.ReactNode }) {
       <div className="app-shell flex flex-col flex-1 min-h-0 w-full min-w-0">
         <PublicNavbar />
         <div
-          className={cn('flex-1 w-full min-w-0 box-border min-h-0 pt-5 laptop:pt-6 mx-auto')}
+          className={cn('flex-1 w-full min-w-0 box-border min-h-0 pt-[var(--shell-content-gap-mobile)] laptop:pt-[var(--shell-content-gap-desktop)] mx-auto')}
           style={{
             maxWidth: 'var(--shell-max-width)',
             paddingLeft: 'var(--layout-pad, 16px)',
@@ -36,7 +36,7 @@ function PublicShellInner({ children }: { children: React.ReactNode }) {
             role="main"
             style={{
               paddingBottom: hasMobileNav
-                ? 'calc(var(--bottom-nav-height) + max(8px, env(safe-area-inset-bottom, 0px)) + 8px)'
+                ? 'calc(var(--bottom-nav-height) + max(10px, env(safe-area-inset-bottom, 0px)) + 12px)'
                 : 0,
             }}
           >

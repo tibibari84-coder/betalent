@@ -90,18 +90,20 @@
   --font-inter: system-ui, -apple-system, sans-serif;
   /* Global app shell system */
   --shell-max-width: min(100%, 1680px);
-  --topbar-height: 58px;
+  --topbar-height: 56px;
   --topbar-pad-x: 14px;
   --shell-sidebar: 248px;
   --shell-right: 272px;
   --shell-gap: 20px;
   --layout-content-max: 1320px;
   --layout-pad: 0px;
-  --utility-btn-size: 36px;
+  --utility-btn-size: 34px;
   --utility-icon-size: 18px;
-  --utility-gap: 10px;
-  --avatar-topbar: 30px;
+  --utility-gap: 8px;
+  --avatar-topbar: 28px;
   --bottom-nav-height: 68px;
+  --shell-content-gap-mobile: 12px;
+  --shell-content-gap-desktop: 20px;
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -145,6 +147,7 @@
     --topbar-pad-x: 20px;
     --avatar-topbar: 32px;
     --shell-gap: 22px;
+    --shell-content-gap-mobile: 16px;
   }
 }
 @media (min-width: 1024px) {
@@ -153,6 +156,7 @@
     --topbar-pad-x: 24px;
     --shell-sidebar: 256px;
     --shell-right: 272px;
+    --shell-content-gap-desktop: 24px;
   }
 }
 

@@ -381,6 +381,21 @@ export default function Navbar({ onOpenDrawer }: { onOpenDrawer?: () => void }) 
               <IconSettings className={MENU_ICON} aria-hidden />
               {t('nav.settings')}
             </Link>
+            <Link
+              href="/challenges"
+              role="menuitem"
+              data-account-menu-item
+              tabIndex={0}
+              className={cn(
+                'flex items-center gap-2.5 px-2.5 py-1.5 text-[12.5px] font-medium text-white hover:bg-white/[0.08]',
+                'sm:px-3.5 sm:py-2.5 sm:text-[13px] sm:gap-3',
+                TOPBAR_TRANSITION
+              )}
+              onClick={closeProfileMenu}
+            >
+              <IconTrophy className={MENU_ICON} aria-hidden />
+              {t('topbar.challenges')}
+            </Link>
             <button
               type="button"
               role="menuitem"
@@ -495,6 +510,7 @@ export default function Navbar({ onOpenDrawer }: { onOpenDrawer?: () => void }) 
         href="/challenges"
         className={cn(
           ICON_BTN,
+          'hidden sm:inline-flex',
           isChallengesRoute && 'text-white bg-white/[0.08] ring-1 ring-white/[0.12]'
         )}
         aria-label={t('topbar.challenges')}
@@ -511,7 +527,7 @@ export default function Navbar({ onOpenDrawer }: { onOpenDrawer?: () => void }) 
           }}
         />
       </div>
-      {user && user !== 'loading' ? <ChatNavButton /> : null}
+      {user && user !== 'loading' ? <div className="hidden sm:flex"><ChatNavButton /></div> : null}
       {accountMenuTrigger}
       {loginOrLoading}
     </>

@@ -44,7 +44,7 @@ function RootShellContent({ children }: { children: React.ReactNode }) {
           <div
             className={cn(
               'flex-1 w-full min-w-0 box-border min-h-0 mx-auto',
-              isImmersiveFeedRoute || isSettingsRoute ? 'pt-0 laptop:pt-0' : 'pt-5 laptop:pt-6'
+              isImmersiveFeedRoute || isSettingsRoute ? 'pt-0 laptop:pt-0' : 'pt-[var(--shell-content-gap-mobile)] laptop:pt-[var(--shell-content-gap-desktop)]'
             )}
             style={{
               maxWidth: 'var(--shell-max-width)',
@@ -89,7 +89,7 @@ function RootShellContent({ children }: { children: React.ReactNode }) {
                   paddingBottom: isImmersiveFeedRoute
                     ? 0
                     : hasMobileNav
-                      ? 'calc(var(--bottom-nav-height) + max(8px, env(safe-area-inset-bottom, 0px)) + 8px)'
+                      ? 'calc(var(--bottom-nav-height) + max(10px, env(safe-area-inset-bottom, 0px)) + 12px)'
                       : 0,
                 }}
               >
