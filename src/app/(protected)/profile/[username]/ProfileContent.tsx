@@ -85,7 +85,7 @@ export default function ProfileContent({
     <div className="mt-6 md:mt-8">
       {/* Tab bar - 52px height, active underline #ff2a4d */}
       <div
-        className="flex items-center gap-6 md:gap-8 border-b border-[rgba(255,255,255,0.08)] mb-6"
+        className="flex items-center gap-5 md:gap-8 border-b border-[rgba(255,255,255,0.08)] mb-6 overflow-x-auto no-scrollbar"
         style={{ height: 52 }}
       >
         {TABS.map((tab) => (
@@ -183,7 +183,7 @@ export default function ProfileContent({
       )}
 
       {activeTab === 'challenges' && (
-        <div className="space-y-3 max-w-2xl">
+        <div className="space-y-3 max-w-2xl w-full mx-auto">
           {challenges.length === 0 ? (
             <p className="text-[14px] text-text-muted py-6">No challenge entries yet.</p>
           ) : null}
@@ -213,7 +213,7 @@ export default function ProfileContent({
 
       {activeTab === 'about' && (
         <div
-          className="rounded-[24px] p-6 md:p-8 max-w-[720px] border border-[rgba(255,255,255,0.08)]"
+          className="rounded-[24px] p-6 md:p-8 max-w-[720px] w-full mx-auto border border-[rgba(255,255,255,0.08)]"
           style={{
             background: 'rgba(18,22,31,0.7)',
             backdropFilter: 'blur(20px)',

@@ -133,7 +133,7 @@ export default function UploadFormContent(props: Props) {
 
   if (!showSuccess && uploadEntryMode === 'studio') {
     return (
-      <div className="w-full max-w-[960px] mx-auto px-4 md:px-6 laptop:px-8 py-5 md:py-6 laptop:py-8 min-w-0 pb-40 md:pb-28">
+      <div className="mobile-page-column w-full max-w-[960px] py-5 md:py-6 laptop:py-8 min-w-0 pb-40 md:pb-28">
         <RecordingStudio
           maxDurationSec={maxStudioDurationSec}
           mode={studioRecordingMode}
@@ -163,7 +163,7 @@ export default function UploadFormContent(props: Props) {
 
   return (
     <>
-      <div className="w-full max-w-[960px] mx-auto px-4 md:px-6 laptop:px-8 py-5 md:py-6 laptop:py-8 min-w-0">
+      <div className="mobile-page-column w-full max-w-[960px] py-5 md:py-6 laptop:py-8 min-w-0">
         {showSuccess ? (
           <PublishSuccessCard
             successReady={successReady}

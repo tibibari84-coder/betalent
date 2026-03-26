@@ -79,9 +79,9 @@ export default function ChallengesPage() {
     <div className="min-h-screen pb-24 md:pb-12 min-w-0 overflow-x-hidden" style={{ backgroundColor: '#0D0D0E' }}>
       <ChallengeHeroBackdrop
         imageUrl={null}
-        className="px-4 md:px-6 laptop:px-8 pt-7 md:pt-9 laptop:pt-12 pb-10 md:pb-12 min-h-[280px] md:min-h-[360px] rounded-b-2xl md:rounded-b-3xl border-b border-white/[0.08]"
+        className="pt-7 md:pt-9 laptop:pt-12 pb-10 md:pb-12 min-h-[280px] md:min-h-[360px] rounded-b-2xl md:rounded-b-3xl border-b border-white/[0.08]"
       >
-        <div className="w-full max-w-[var(--layout-content-max,1320px)] mx-auto min-w-0">
+        <div className="mobile-page-column w-full max-w-[var(--layout-content-max,1320px)] min-w-0">
           <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_340px] gap-5 lg:gap-6 items-end">
             <div className="min-w-0">
               <p className="text-[11px] uppercase tracking-[0.22em] text-white/65 font-semibold mb-2">
@@ -160,7 +160,7 @@ export default function ChallengesPage() {
         </div>
       </ChallengeHeroBackdrop>
 
-      <div className="w-full max-w-[var(--layout-content-max,1320px)] mx-auto px-4 md:px-6 laptop:px-8 pt-5 laptop:pt-7 pb-8 space-y-7 md:space-y-8">
+      <div className="mobile-page-column w-full max-w-[var(--layout-content-max,1320px)] pt-5 laptop:pt-7 pb-8 space-y-7 md:space-y-8">
         {loading ? (
           <p className="text-white/55 text-[15px]">Loading challenges…</p>
         ) : (

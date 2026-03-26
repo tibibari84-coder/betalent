@@ -96,7 +96,8 @@
   --shell-right: 272px;
   --shell-gap: 20px;
   --layout-content-max: 1320px;
-  --layout-pad: 0px;
+  --layout-pad: 14px;
+  --mobile-content-max: 980px;
   --utility-btn-size: 34px;
   --utility-icon-size: 18px;
   --utility-gap: 8px;
@@ -148,6 +149,7 @@
     --avatar-topbar: 32px;
     --shell-gap: 22px;
     --shell-content-gap-mobile: 16px;
+    --layout-pad: 18px;
   }
 }
 @media (min-width: 1024px) {
@@ -157,6 +159,7 @@
     --shell-sidebar: 256px;
     --shell-right: 272px;
     --shell-content-gap-desktop: 24px;
+    --layout-pad: 24px;
   }
 }
 
@@ -366,6 +369,24 @@ body::before {
     padding-left: var(--layout-pad, 24px);
     padding-right: var(--layout-pad, 24px);
   }
+}
+
+/* One mobile-first content column for page bodies/cards */
+.mobile-page-column {
+  width: 100%;
+  min-width: 0;
+  max-width: min(100%, var(--mobile-content-max, 980px));
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: var(--layout-pad, 14px);
+  padding-right: var(--layout-pad, 14px);
+  box-sizing: border-box;
+}
+
+.mobile-centered-card {
+  width: 100%;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 /* Explore page center feed: stable 4-column grid, consistent gaps */

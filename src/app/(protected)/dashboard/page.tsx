@@ -48,7 +48,7 @@ export default function DashboardPage() {
   }, []);
 
   return (
-    <div className="w-full max-w-[1200px] mx-auto px-4 md:px-8 py-6 pb-24" style={{ backgroundColor: '#0D0D0E' }}>
+    <div className="mobile-page-column w-full max-w-[1200px] py-6 pb-24" style={{ backgroundColor: '#0D0D0E' }}>
       <h1 className="font-display text-[28px] md:text-[36px] font-bold text-text-primary mb-2">Dashboard</h1>
       <p className="text-[15px] text-text-secondary mb-8 md:mb-10">Your creator overview</p>
 

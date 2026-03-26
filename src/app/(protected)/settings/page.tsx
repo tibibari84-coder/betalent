@@ -665,7 +665,7 @@ export default function SettingsPage() {
         At lg (~1024px) viewport, main ≈ 764px → middle track would be ~136px → “vertical” titles + overlap.
         Fix: 2 cols (nav | main) from lg until xl-screen; 3rd rail only when viewport ≥ 1400px (xl-screen).
       */}
-      <div className="mx-auto w-full max-w-[1600px] px-4 sm:px-6 lg:px-8 py-5 md:py-6 lg:py-8 grid grid-cols-1 lg:grid-cols-[260px_minmax(0,1fr)] xl-screen:grid-cols-[260px_minmax(0,1fr)_320px] gap-6 lg:gap-6 items-start min-w-0 isolate">
+      <div className="mobile-page-column mx-auto w-full max-w-[1600px] py-5 md:py-6 lg:py-8 grid grid-cols-1 lg:grid-cols-[260px_minmax(0,1fr)] xl-screen:grid-cols-[260px_minmax(0,1fr)_320px] gap-6 lg:gap-6 items-start min-w-0 isolate">
         {/* Left: fixed-width rail — aligns with app shell sidebar (260px) */}
         <aside
           className="min-w-0 w-full lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto space-y-6"
@@ -766,7 +766,7 @@ export default function SettingsPage() {
 
         {/* Center: primary — full width of 1fr cell; cap line length on ultra-wide */}
         <div className="min-w-0 w-full max-w-full flex flex-col">
-          <div className="w-full max-w-[min(100%,900px)] mx-auto space-y-6 lg:space-y-8 pb-40 md:pb-24 min-w-0 px-5 sm:px-6 lg:px-8">
+          <div className="w-full max-w-[min(100%,900px)] mx-auto space-y-6 lg:space-y-8 pb-40 md:pb-24 min-w-0 px-0 lg:px-2">
             {activeSection === 'profile' && (
               <Section id="profile" title={t('settings.profile')}>
                 {profileLoading ? (
@@ -1395,7 +1395,7 @@ export default function SettingsPage() {
                 backdropFilter: 'blur(20px)',
               }}
             >
-              <div className="mx-auto w-full max-w-[1600px] px-4 sm:px-6 lg:px-8 py-4 grid lg:grid-cols-[260px_minmax(0,1fr)] xl-screen:grid-cols-[260px_minmax(0,1fr)_320px] gap-6 items-center min-w-0">
+              <div className="mobile-page-column mx-auto w-full max-w-[1600px] py-4 grid lg:grid-cols-[260px_minmax(0,1fr)] xl-screen:grid-cols-[260px_minmax(0,1fr)_320px] gap-6 items-center min-w-0">
                 <div className="min-w-0" aria-hidden />
                 <div className="min-w-0 flex justify-end">
                   <div className="w-full max-w-[min(100%,900px)] ml-auto flex justify-end">
@@ -1420,7 +1420,7 @@ export default function SettingsPage() {
                 borderTop: '1px solid rgba(255,255,255,0.08)',
               }}
             >
-              <div className="mx-auto w-full max-w-[min(100%,900px)]">
+              <div className="mobile-page-column mx-auto w-full max-w-[min(100%,900px)] px-0">
                 <button type="button" className="w-full btn-primary min-h-[48px]" onClick={handleSaveClick} disabled={stickyDisabled}>
                   {stickyDisabled ? 'Saving…' : t('settings.saveChanges')}
                 </button>

@@ -133,7 +133,7 @@ export default async function ProfilePage({ params }: Props) {
         isOwner={isOwner}
         showBack={!isOwner}
       />
-      <div className="w-full max-w-[1440px] mx-auto px-4 md:px-6 lg:px-8 py-4 md:py-6 min-w-0">
+      <div className="mobile-page-column py-4 md:py-6 min-w-0">
         <ProfileHeader
           displayName={profile.displayName ?? profile.username}
           username={profile.username}
@@ -149,7 +149,7 @@ export default async function ProfilePage({ params }: Props) {
           isOwner={isOwner}
         />
 
-        <div className="mt-5 md:mt-6">
+        <div className="mt-5 md:mt-6 mobile-centered-card">
           <ProfileStatsBar
             followers={truthfulStats.followersCount}
             following={truthfulStats.followingCount}
@@ -160,7 +160,7 @@ export default async function ProfilePage({ params }: Props) {
           />
         </div>
 
-        <div className="mt-4 flex flex-wrap gap-3">
+        <div className="mt-4 flex flex-wrap gap-3 justify-center md:justify-start">
           <ProfileRankingBadge username={username} countryCode={profile.country} />
         </div>
 

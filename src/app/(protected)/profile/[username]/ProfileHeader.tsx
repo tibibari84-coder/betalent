@@ -101,11 +101,11 @@ export default function ProfileHeader({
           ) : null}
 
           {bioTrimmed ? (
-            <p className="text-[14px] text-left leading-relaxed break-words overflow-hidden" style={{ color: '#B7BDC7' }}>
+            <p className="text-[14px] text-center md:text-left leading-relaxed break-words overflow-hidden" style={{ color: '#B7BDC7' }}>
               {bioTrimmed}
             </p>
           ) : (
-            <p className="text-[14px] text-left italic" style={{ color: '#6b7280' }}>
+            <p className="text-[14px] text-center md:text-left italic" style={{ color: '#6b7280' }}>
               {isOwner ? (
                 <Link href="/settings" className="text-accent/90 hover:text-accent underline-offset-2 hover:underline not-italic font-medium">
                   Add a bio in Settings
