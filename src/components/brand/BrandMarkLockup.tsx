@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils';
 import { BrandWordmark } from '@/components/brand/BrandWordmark';
 
 const MARK_SIZES =
-  'h-[18px] w-[18px] md:h-5 md:w-5 lg:h-[22px] lg:w-[22px] shrink-0 object-contain';
+  'h-[20px] w-[20px] md:h-[22px] md:w-[22px] lg:h-[24px] lg:w-[24px] shrink-0 object-contain';
 const LOCKUP_GAP = 'gap-2 lg:gap-[10px]';
 
 /**

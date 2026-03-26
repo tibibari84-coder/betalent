@@ -11,7 +11,7 @@ export type BrandWordmarkVariant = 'hero' | 'nav' | 'auth' | 'inline' | 'footer'
 const VARIANT_STYLES: Record<BrandWordmarkVariant, string> = {
   hero:
     'font-display font-semibold uppercase tracking-[0.18em] text-[clamp(1.25rem,3vw,1.5rem)] animate-fade-in',
-  nav: 'truncate font-display font-semibold leading-none tracking-[0.12em] uppercase text-[#F5F7FA]',
+  nav: 'truncate font-display font-semibold leading-none tracking-[0.12em] uppercase text-[#F5F7FA] text-[18px] md:text-[19px] lg:text-[20px]',
   auth: 'font-display font-semibold uppercase tracking-[0.14em] leading-none text-[#f5f5f5]',
   inline: 'font-display font-semibold uppercase tracking-[0.1em] align-baseline text-current',
   footer:
