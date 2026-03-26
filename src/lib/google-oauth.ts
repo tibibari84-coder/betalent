@@ -21,109 +21,6 @@ function getProductionOAuthBaseUrl(): string {
   }
 }
 
-/** Host part only, lowercased (no port for standard HTTPS). */
-function hostnameFromRequest(request: Request): string | null {
-  const forwardedHost = request.headers.get('x-forwarded-host')?.split(',')[0]?.trim();
-  const hostHeader = request.headers.get('host')?.split(',')[0]?.trim();
-  const raw = forwardedHost || hostHeader || new URL(request.url).host;
-  if (!raw) return null;
-  return raw.split(':')[0].replace(/^\[|\]$/g, '').toLowerCase();
-}
-
-/**
- * Trusted public origin from the incoming request (production only).
- * Fixes Google `redirect_uri_mismatch` when the browser uses a different hostname than
- * `NEXT_PUBLIC_APP_URL` / `VERCEL_URL` (e.g. new Vercel project URL or preview domain).
- * Host must be allowlisted — not arbitrary Host headers.
- */
-function getTrustedProductionRequestOrigin(request: Request): string | null {
-  const hostname = hostnameFromRequest(request);
-  if (!hostname || hostname === 'localhost' || hostname.startsWith('127.') || hostname === '::1') {
-    return null;
-  }
-
-  const vercelHost =
-    process.env.VERCEL_URL?.replace(/^https?:\/\//, '').split('/')[0]?.split(':')[0]?.toLowerCase() ?? '';
-  const isVercelApp = hostname.endsWith('.vercel.app');
-  const matchesDeployment = vercelHost !== '' && hostname === vercelHost;
-
-  const extraAllow =
-    process.env.GOOGLE_OAUTH_ALLOWED_HOSTS?.split(',')
-      .map((s) => s.trim().toLowerCase())
-      .filter(Boolean) ?? [];
-  const allowedExtra = extraAllow.includes(hostname);
-
-  let configuredHost: string | null = null;
-  const np = process.env.NEXT_PUBLIC_APP_URL?.trim();
-  if (np) {
-    try {
-      const u = new URL(np.startsWith('http') ? np : `https://${np}`);
-      configuredHost = u.hostname.toLowerCase();
-    } catch {
-      /* ignore */
-    }
-  }
-  const matchesConfigured = configuredHost !== null && hostname === configuredHost;
-
-  if (!isVercelApp && !matchesDeployment && !allowedExtra && !matchesConfigured) {
-    return null;
-  }
-
-  const xfProto = request.headers.get('x-forwarded-proto')?.split(',')[0]?.trim();
-  const proto = xfProto === 'http' || xfProto === 'https' ? xfProto : 'https';
-  return `${proto}://${hostname}`;
-}
-
-/**
- * Vercel’s stable production hostname (no `git-…` deployment slug). Set automatically on Vercel builds.
- * @see https://vercel.com/docs/projects/environment-variables/system-environment-variables
- */
-function getVercelProductionCanonicalOrigin(): string | null {
-  if (process.env.VERCEL !== '1') return null;
-  const raw = process.env.VERCEL_PROJECT_PRODUCTION_URL?.trim()
-    .replace(/^https?:\/\//, '')
-    .split('/')[0]
-    ?.split(':')[0];
-  if (!raw) return null;
-  const h = raw.toLowerCase();
-  if (h === 'localhost' || h.startsWith('127.')) return null;
-  return `https://${h}`;
-}
-
-/**
- * Production OAuth base URL (must match a row in Google Cloud → Authorized redirect URIs exactly).
- *
- * Order:
- * 1. `NEXT_PUBLIC_APP_URL` when set — your explicit canonical domain.
- * 2. On Vercel **production** only: `VERCEL_PROJECT_PRODUCTION_URL` (e.g. `betalent-v1.vercel.app`), so OAuth
- *    does not use the long `*-git-main-*.vercel.app` deployment host (which is almost never added in Google).
- * 3. Trusted request Host (previews, or fallback).
- * 4. Env fallback (`VERCEL_URL`, etc.).
- *
- * If Google still shows redirect_uri_mismatch: add **this project’s** production URL in Console (not an old
- * project like `…-ooe6…` when you now deploy `…-v1…`).
- */
-function getProductionOAuthOrigin(request: Request): string {
-  const np = process.env.NEXT_PUBLIC_APP_URL?.trim();
-  if (np) {
-    try {
-      return getProductionPublicAppBaseUrl();
-    } catch {
-      /* misconfigured NEXT_PUBLIC_APP_URL — fall through */
-    }
-  }
-
-  if (process.env.VERCEL_ENV === 'production') {
-    const canonical = getVercelProductionCanonicalOrigin();
-    if (canonical) return canonical;
-  }
-
-  const trusted = getTrustedProductionRequestOrigin(request);
-  if (trusted) return trusted;
-
-  return getProductionOAuthBaseUrl();
-}
-
 /**
  * Dev + Cloudflare quick tunnel: `request.url` is often `http://localhost:3000/...` while the browser
  * used `https://*.trycloudflare.com`. Google then sees redirect_uri=localhost → Console mismatch.
@@ -153,20 +50,20 @@ function getDevPublicOrigin(request: Request): string {
 }
 
 /**
- * Production: redirect_uri matches trusted Host (Vercel / configured domain) or env fallback.
+ * Production: `NEXT_PUBLIC_APP_URL` only (via getProductionPublicAppBaseUrl). No request-host or Vercel inference.
  * Development: public origin from Host / forwarded headers (Cloudflare tunnel, LAN hostname).
  */
 export function getGoogleRedirectUriForRequest(request: Request): string {
   if (process.env.NODE_ENV === 'production') {
-    return `${getProductionOAuthOrigin(request)}${GOOGLE_CALLBACK_PATH}`;
+    return `${getProductionOAuthBaseUrl()}${GOOGLE_CALLBACK_PATH}`;
   }
   return `${getDevPublicOrigin(request)}${GOOGLE_CALLBACK_PATH}`;
 }
 
-/** Same origin as the incoming OAuth request (dev + prod) — used for post-login redirects. */
+/** Same origin as production OAuth base (dev: request-derived). */
 export function appOriginForOAuthRedirect(request: Request): string {
   if (process.env.NODE_ENV === 'production') {
-    return getProductionOAuthOrigin(request);
+    return getProductionOAuthBaseUrl();
   }
   return getDevPublicOrigin(request);
 }
