@@ -17,7 +17,13 @@ import PerformanceModal from '@/components/performance/PerformanceModal';
 import { SidebarDrawer } from '@/components/layout/SidebarDrawer';
 import { isMobileOrTabletDevice } from '@/lib/device';
 
-function RootShellContent({ children }: { children: React.ReactNode }) {
+function RootShellContent({
+  children,
+  authUser,
+}: {
+  children: React.ReactNode;
+  authUser: { username: string; email?: string | null } | null;
+}) {
   const { videoId, onClose } = usePerformanceModal();
   const [hasMobileNav, setHasMobileNav] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -38,7 +44,7 @@ function RootShellContent({ children }: { children: React.ReactNode }) {
   return (
     <>
       <div className="app-shell flex flex-col flex-1 min-h-0 w-full min-w-0">
-          <Navbar onOpenDrawer={() => setDrawerOpen(true)} />
+          <Navbar onOpenDrawer={() => setDrawerOpen(true)} initialAuthUser={authUser} isAuthenticatedShell />
           <SidebarDrawer isOpen={drawerOpen} onClose={() => setDrawerOpen(false)} />
           {/* lg+: flex row — Sidebar | main | Right rail from shell tokens (except /feed & /settings). */}
           <div
@@ -129,11 +135,17 @@ function RootShellContent({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function RootShell({ children }: { children: React.ReactNode }) {
+export function RootShell({
+  children,
+  authUser,
+}: {
+  children: React.ReactNode;
+  authUser: { username: string; email?: string | null } | null;
+}) {
   return (
     <ShellProviders>
       <ChatPanelProvider>
-        <RootShellContent>{children}</RootShellContent>
+        <RootShellContent authUser={authUser}>{children}</RootShellContent>
         <DmSlidingPanel />
         <GlobalGiftCelebrationHost />
       </ChatPanelProvider>

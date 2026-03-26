@@ -98,7 +98,15 @@ function TopbarSearchForm({
   );
 }
 
-export default function Navbar({ onOpenDrawer }: { onOpenDrawer?: () => void }) {
+export default function Navbar({
+  onOpenDrawer,
+  initialAuthUser,
+  isAuthenticatedShell = false,
+}: {
+  onOpenDrawer?: () => void;
+  initialAuthUser?: { username: string; email?: string | null } | null;
+  isAuthenticatedShell?: boolean;
+}) {
   const router = useRouter();
   const pathname = usePathname();
   const { t } = useI18n();
@@ -106,7 +114,18 @@ export default function Navbar({ onOpenDrawer }: { onOpenDrawer?: () => void }) 
   const profileMenuButtonRef = useRef<HTMLButtonElement>(null);
   const profileMenuPanelRef = useRef<HTMLDivElement>(null);
   const [mounted, setMounted] = useState(false);
-  const [user, setUser] = useState<NavUser | null | 'loading'>('loading');
+  const [user, setUser] = useState<NavUser | null | 'loading'>(
+    initialAuthUser?.username
+      ? {
+          username: initialAuthUser.username,
+          email: initialAuthUser.email ?? null,
+          displayName: null,
+          avatarUrl: null,
+        }
+      : isAuthenticatedShell
+        ? 'loading'
+        : 'loading'
+  );
   const [profileMenu, setProfileMenu] = useState<ProfileMenuState>({ open: false });
   const [mobileTopbarPanel, setMobileTopbarPanel] = useState<'profile' | 'notifications' | null>(null);
   const [scrolled, setScrolled] = useState(false);
@@ -135,11 +154,11 @@ export default function Navbar({ onOpenDrawer }: { onOpenDrawer?: () => void }) 
             avatarUrl: data.user.avatarUrl ?? null,
           });
         } else {
-          setUser(null);
+          setUser((prev) => (isAuthenticatedShell ? (prev === 'loading' ? null : prev) : null));
         }
       })
-      .catch(() => setUser(null));
-  }, []);
+      .catch(() => setUser((prev) => (isAuthenticatedShell ? prev : null)));
+  }, [isAuthenticatedShell]);
 
   function getProfileMenuWidth(): number {
     if (typeof window === 'undefined') return PROFILE_MENU_WIDTH_DESKTOP;
@@ -508,7 +527,15 @@ export default function Navbar({ onOpenDrawer }: { onOpenDrawer?: () => void }) 
       </div>
     ) : null;
 
-  const loginOrLoading = (
+  const loginOrLoading = isAuthenticatedShell ? (
+    <>
+      {user === 'loading' && (
+        <span className={cn(ICON_BTN, 'pointer-events-none text-white/35')} aria-hidden>
+          <IconUser className="w-[var(--utility-icon-size)] h-[var(--utility-icon-size)] shrink-0" />
+        </span>
+      )}
+    </>
+  ) : (
     <>
       {user === 'loading' && (
         <span className={cn(ICON_BTN, 'pointer-events-none text-white/35')} aria-hidden>

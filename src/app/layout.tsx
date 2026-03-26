@@ -42,6 +42,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const isAppMember = Boolean(
     session?.user && !session.pending2FAUserId
   );
+  const authUser = session?.user
+    ? {
+        username: session.user.username,
+        email: session.user.email,
+      }
+    : null;
   const headersList = await headers();
   const cookieStore = await cookies();
   const acceptLanguage = headersList.get('accept-language');
@@ -53,7 +59,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <html lang={locale}>
       <body className={`${playfair.variable} min-h-screen flex flex-col bg-[#070707] text-[#f5f5f5] antialiased font-sans`}>
         <I18nLayoutWrapper initialLocale={locale} allMessages={allMessages}>
-          <AuthAwareShell isAppMember={isAppMember}>{children}</AuthAwareShell>
+          <AuthAwareShell isAppMember={isAppMember} authUser={authUser}>
+            {children}
+          </AuthAwareShell>
         </I18nLayoutWrapper>
       </body>
     </html>

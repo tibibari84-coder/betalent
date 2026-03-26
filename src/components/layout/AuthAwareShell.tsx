@@ -15,56 +15,25 @@ function isAuthPath(pathname: string | null): boolean {
   return false;
 }
 
-function isPublicOnlyPath(pathname: string | null): boolean {
-  if (pathname == null) return false;
-  if (pathname === '/' || pathname === '/landing') return true;
-  if (pathname === '/terms' || pathname === '/privacy' || pathname === '/refund' || pathname === '/contact') return true;
-  return false;
-}
-
-function isAppShellPath(pathname: string | null): boolean {
-  if (pathname == null) return false;
-  if (pathname === '/' || pathname === '/landing') return true;
-  if (pathname === '/feed' || pathname.startsWith('/feed/')) return true;
-  if (pathname === '/explore' || pathname.startsWith('/explore/')) return true;
-  if (pathname === '/challenges' || pathname.startsWith('/challenges/')) return true;
-  if (pathname === '/leaderboard' || pathname.startsWith('/leaderboard/')) return true;
-  if (pathname === '/upload' || pathname.startsWith('/upload/')) return true;
-  if (pathname === '/inbox' || pathname.startsWith('/inbox/')) return true;
-  if (pathname === '/messages' || pathname.startsWith('/messages/')) return true;
-  if (pathname === '/profile' || pathname.startsWith('/profile/')) return true;
-  if (pathname === '/settings' || pathname.startsWith('/settings/')) return true;
-  if (pathname === '/wallet' || pathname.startsWith('/wallet/')) return true;
-  if (pathname === '/notifications' || pathname.startsWith('/notifications/')) return true;
-  if (pathname === '/following' || pathname.startsWith('/following/')) return true;
-  if (pathname === '/dashboard' || pathname.startsWith('/dashboard/')) return true;
-  if (pathname === '/my-videos' || pathname.startsWith('/my-videos/')) return true;
-  if (pathname === '/moderation' || pathname.startsWith('/moderation/')) return true;
-  if (pathname === '/admin' || pathname.startsWith('/admin/')) return true;
-  if (pathname === '/creator' || pathname.startsWith('/creator/')) return true;
-  return false;
-}
-
 /**
  * - Auth routes: standalone pages (no marketing shell, no app shell).
- * - App shell is route-scoped + member-scoped (never shown on public/auth routes).
- * - Public/auth routes always use public/auth shell variants, even for signed-in users.
+ * - Signed-in users get app shell on all non-auth routes.
+ * - Signed-out users get public shell.
  */
 export function AuthAwareShell({
   children,
   isAppMember,
+  authUser,
 }: {
   children: React.ReactNode;
-  /** True when signed in, email verified, and not mid–2FA (see root layout). */
+  /** True when signed in and not mid–2FA (see root layout). */
   isAppMember: boolean;
+  authUser: { username: string; email?: string | null } | null;
 }) {
   const pathname = usePathname();
   if (isAuthPath(pathname)) {
     return <>{children}</>;
   }
-  // Single source of truth: authenticated users get app chrome on all non-auth pages.
-  // This removes mixed public/auth chrome regressions on routes that might be omitted from route lists.
-  if (isAppMember) return <RootShell>{children}</RootShell>;
-  if (isPublicOnlyPath(pathname) || isAppShellPath(pathname)) return <PublicShell>{children}</PublicShell>;
+  if (isAppMember) return <RootShell authUser={authUser}>{children}</RootShell>;
   return <PublicShell>{children}</PublicShell>;
 }
