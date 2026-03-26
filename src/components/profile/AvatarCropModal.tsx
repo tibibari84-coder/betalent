@@ -1,7 +1,11 @@
 'use client';
 
 import { useCallback, useRef, useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { IconX } from '@/components/ui/Icons';
+
+/** Above Navbar profile dropdown (z-300) so overlay and close controls receive clicks. */
+const MODAL_Z = 400;
 
 const OUTPUT_SIZE = 512;
 const CROP_PX = 280;
@@ -28,6 +32,14 @@ export default function AvatarCropModal({ imageSrc, onCancel, onComplete }: Avat
     setPan({ x: 0, y: 0 });
     setNatural({ w: 1, h: 1 });
   }, [imageSrc]);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onCancel();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onCancel]);
 
   /** Scale so the image covers the CROP_PX square (same idea as object-fit: cover). */
   const coverScale =
@@ -113,14 +125,19 @@ export default function AvatarCropModal({ imageSrc, onCancel, onComplete }: Avat
     );
   }, [natural.w, onComplete]);
 
-  return (
+  const overlay = (
     <div
-      className="fixed inset-0 z-[240] flex items-start justify-center overflow-y-auto overflow-x-hidden bg-black/85 backdrop-blur-md p-4 sm:p-6"
+      className="fixed inset-0 flex items-start justify-center overflow-y-auto overflow-x-hidden bg-black/85 backdrop-blur-md p-4 sm:p-6"
+      style={{ zIndex: MODAL_Z }}
       role="dialog"
       aria-modal="true"
       aria-labelledby="avatar-crop-title"
+      onClick={onCancel}
     >
-      <div className="my-auto w-full max-w-[min(100%,420px)] rounded-2xl border border-white/[0.1] bg-[#101012] shadow-[0_24px_80px_rgba(0,0,0,0.65)] flex flex-col max-h-[min(100vh-2rem,calc(100dvh-2rem))] min-h-0">
+      <div
+        className="my-auto w-full max-w-[min(100%,420px)] rounded-2xl border border-white/[0.1] bg-[#101012] shadow-[0_24px_80px_rgba(0,0,0,0.65)] flex flex-col max-h-[min(100vh-2rem,calc(100dvh-2rem))] min-h-0"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="flex shrink-0 items-center justify-between px-4 py-3 border-b border-white/[0.06]">
           <h2 id="avatar-crop-title" className="text-[16px] font-semibold text-white">
             Profile photo
@@ -186,4 +203,10 @@ export default function AvatarCropModal({ imageSrc, onCancel, onComplete }: Avat
       </div>
     </div>
   );
+
+  if (typeof document === 'undefined') {
+    return null;
+  }
+
+  return createPortal(overlay, document.body);
 }
