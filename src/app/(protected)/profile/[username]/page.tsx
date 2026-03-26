@@ -133,7 +133,7 @@ export default async function ProfilePage({ params }: Props) {
         isOwner={isOwner}
         showBack={!isOwner}
       />
-      <div className="mobile-page-column py-4 md:py-6 min-w-0">
+      <div className="mobile-page-column py-4 md:py-6 min-w-0 max-w-[1040px]">
         <ProfileHeader
           displayName={profile.displayName ?? profile.username}
           username={profile.username}

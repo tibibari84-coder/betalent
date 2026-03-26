@@ -82,10 +82,10 @@ export default function ProfileContent({
   const [activeTab, setActiveTab] = useState<TabId>('videos');
 
   return (
-    <div className="mt-6 md:mt-8">
+    <div className="mt-6 md:mt-8 mobile-centered-card">
       {/* Tab bar - 52px height, active underline #ff2a4d */}
       <div
-        className="flex items-center gap-5 md:gap-8 border-b border-[rgba(255,255,255,0.08)] mb-6 overflow-x-auto no-scrollbar"
+        className="mobile-centered-card flex items-center justify-start md:justify-center gap-5 md:gap-8 border-b border-[rgba(255,255,255,0.08)] mb-6 overflow-x-auto no-scrollbar"
         style={{ height: 52 }}
       >
         {TABS.map((tab) => (
@@ -114,7 +114,7 @@ export default function ProfileContent({
         <>
           {videos.length === 0 ? (
             <div
-              className="rounded-[20px] border border-[rgba(255,255,255,0.08)] px-5 py-8 text-center max-w-xl mx-auto"
+              className="mobile-centered-card rounded-[20px] border border-[rgba(255,255,255,0.08)] px-5 py-8 text-center max-w-xl mx-auto"
               style={{
                 background: 'rgba(10,12,18,0.9)',
                 backdropFilter: 'blur(20px)',
@@ -129,7 +129,7 @@ export default function ProfileContent({
               {isOwner && (
                 <a
                   href="/upload"
-                  className="inline-flex items-center justify-center px-5 py-2.5 rounded-[999px] text-[13px] font-semibold text-white transition-all hover:opacity-95 hover:shadow-[0_10px_30px_rgba(177,18,38,0.45)]"
+                  className="inline-flex min-h-[40px] items-center justify-center px-5 py-2.5 rounded-[999px] text-[13px] font-semibold text-white transition-all hover:opacity-95 hover:shadow-[0_10px_30px_rgba(177,18,38,0.45)]"
                   style={{
                     background: 'linear-gradient(135deg,#c4122f,#e11d48)',
                     boxShadow: '0 10px 30px rgba(196,18,47,0.55)',
@@ -140,7 +140,7 @@ export default function ProfileContent({
               )}
             </div>
           ) : (
-            <div className="grid grid-cols-3 gap-2 md:grid-cols-[repeat(auto-fill,minmax(140px,1fr))] md:gap-4">
+            <div className="mobile-centered-card grid grid-cols-3 gap-2 md:grid-cols-[repeat(auto-fill,minmax(140px,1fr))] md:gap-4">
               {videos.map((v) => (
                 <ProfileVideoThumbnail
                   key={v.id}
@@ -167,7 +167,7 @@ export default function ProfileContent({
               {isOwner ? 'Videos you like will appear here.' : 'No liked videos to show.'}
             </p>
           ) : (
-            <div className="grid grid-cols-3 gap-2 md:grid-cols-[repeat(auto-fill,minmax(140px,1fr))] md:gap-4">
+            <div className="mobile-centered-card grid grid-cols-3 gap-2 md:grid-cols-[repeat(auto-fill,minmax(140px,1fr))] md:gap-4">
               {likedVideos.map((v) => (
                 <ProfileVideoThumbnail
                   key={v.id}
@@ -183,7 +183,7 @@ export default function ProfileContent({
       )}
 
       {activeTab === 'challenges' && (
-        <div className="space-y-3 max-w-2xl w-full mx-auto">
+        <div className="mobile-centered-card space-y-3 max-w-2xl w-full mx-auto">
           {challenges.length === 0 ? (
             <p className="text-[14px] text-text-muted py-6">No challenge entries yet.</p>
           ) : null}

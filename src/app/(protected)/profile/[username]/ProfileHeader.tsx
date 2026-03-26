@@ -45,7 +45,7 @@ export default function ProfileHeader({
 
   return (
     <header
-      className="relative w-full overflow-hidden rounded-3xl px-4 md:px-5 laptop:px-6 lg:px-8 py-6 md:py-7"
+      className="mobile-centered-card relative w-full overflow-hidden rounded-[24px] md:rounded-3xl px-4 md:px-5 laptop:px-6 lg:px-8 py-5 md:py-7"
       style={{
         background:
           'radial-gradient(circle at 0% 0%, rgba(196,18,47,0.32), transparent 55%), radial-gradient(circle at 100% 0%, rgba(196,18,47,0.22), transparent 60%), linear-gradient(180deg, rgba(10,12,18,0.98) 0%, rgba(5,6,10,1) 100%)',
@@ -60,10 +60,10 @@ export default function ProfileHeader({
         aria-hidden
       />
 
-      <div className="relative z-10 flex flex-col md:flex-row items-center md:items-start w-full gap-6 md:gap-8">
+      <div className="relative z-10 flex flex-col md:flex-row items-center md:items-start w-full gap-5 md:gap-8">
         <div className="flex-shrink-0">
           <div
-            className="relative w-[124px] h-[124px] sm:w-[140px] sm:h-[140px] mx-auto md:mx-0 rounded-full overflow-hidden flex items-center justify-center text-4xl font-bold text-text-muted"
+            className="relative w-[118px] h-[118px] sm:w-[136px] sm:h-[136px] mx-auto md:mx-0 rounded-full overflow-hidden flex items-center justify-center text-4xl font-bold text-text-muted"
             style={{
               boxShadow: '0 0 0 2px rgba(255,255,255,0.06), 0 0 36px rgba(196,18,47,0.75)',
               background:
@@ -81,21 +81,21 @@ export default function ProfileHeader({
         </div>
 
         <div className="flex-1 min-w-0 text-center md:text-left max-w-[560px] overflow-hidden">
-          <div className="flex flex-col items-center md:items-start gap-1 mb-2 min-w-0">
+          <div className="flex flex-col items-center md:items-start gap-1 mb-2.5 min-w-0">
             <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 min-w-0">
-              <h1 className="font-display text-[26px] sm:text-[30px] laptop:text-[32px] font-semibold text-white flex items-center gap-2 min-w-0 max-w-full overflow-hidden">
+              <h1 className="font-display text-[25px] sm:text-[30px] laptop:text-[32px] font-semibold text-white flex items-center gap-2 min-w-0 max-w-full overflow-hidden">
                 <span className="truncate">{displayName}</span>
                 {flag && <span aria-hidden className="text-[26px] flex-shrink-0">{flag}</span>}
               </h1>
               <VerifiedBadge verified={!!isVerified} verificationLevel={verificationLevel ?? undefined} size="lg" />
             </div>
-            <p className="text-[13px] text-text-muted flex items-center gap-2">
+            <p className="text-[13px] text-text-muted flex items-center gap-2 justify-center md:justify-start w-full">
               <span className="font-mono text-text-secondary/90">{handle}</span>
             </p>
           </div>
 
           {subtitle ? (
-            <p className="text-[14px] mb-3 truncate" style={{ color: '#9ba7b8' }}>
+            <p className="text-[14px] mb-3 text-center md:text-left truncate" style={{ color: '#9ba7b8' }}>
               {subtitle}
             </p>
           ) : null}
@@ -132,12 +132,12 @@ export default function ProfileHeader({
           ) : null}
         </div>
 
-        <div className="flex flex-shrink-0 flex-wrap items-center justify-center gap-2 md:gap-3">
+        <div className="flex flex-shrink-0 flex-wrap items-center justify-center gap-2 md:gap-3 w-full md:w-auto">
           {isOwner ? (
             <>
               <Link
                 href="/settings"
-                className="h-10 px-4 rounded-[999px] font-semibold text-[14px] text-white flex items-center gap-2 transition-all hover:opacity-95 hover:shadow-[0_10px_30px_rgba(177,18,38,0.45)]"
+                className="h-10 min-w-[136px] px-4 rounded-[999px] font-semibold text-[14px] text-white flex items-center justify-center gap-2 transition-all hover:opacity-95 hover:shadow-[0_10px_30px_rgba(177,18,38,0.45)]"
                 style={{
                   background: 'linear-gradient(135deg,#c4122f,#e11d48)',
                   boxShadow: '0 10px 30px rgba(196,18,47,0.55)',
@@ -148,7 +148,7 @@ export default function ProfileHeader({
               </Link>
               <button
                 type="button"
-                className="h-10 px-4 rounded-[999px] font-medium text-[14px] text-white border border-[rgba(255,255,255,0.18)] opacity-70 cursor-not-allowed"
+                className="h-10 min-w-[136px] px-4 rounded-[999px] font-medium text-[14px] text-white border border-[rgba(255,255,255,0.18)] opacity-70 cursor-not-allowed"
                 style={{ background: 'rgba(255,255,255,0.04)' }}
               >
                 <span className="flex items-center gap-2">
@@ -179,7 +179,7 @@ export default function ProfileHeader({
                       avatarUrl: avatarUrl ?? null,
                     })
                   }
-                  className="h-10 px-4 rounded-[999px] font-medium text-[14px] text-white border border-[rgba(255,255,255,0.18)] transition-colors hover:bg-white/10"
+                  className="h-10 min-w-[120px] px-4 rounded-[999px] font-medium text-[14px] text-white border border-[rgba(255,255,255,0.18)] transition-colors hover:bg-white/10"
                   style={{ background: 'rgba(255,255,255,0.06)' }}
                 >
                   <span className="flex items-center gap-2">
@@ -191,7 +191,7 @@ export default function ProfileHeader({
                 <button
                   type="button"
                   disabled
-                  className="h-10 px-4 rounded-[999px] font-medium text-[14px] text-white border border-[rgba(255,255,255,0.18)] opacity-70 cursor-not-allowed"
+                  className="h-10 min-w-[120px] px-4 rounded-[999px] font-medium text-[14px] text-white border border-[rgba(255,255,255,0.18)] opacity-70 cursor-not-allowed"
                   style={{ background: 'rgba(255,255,255,0.04)' }}
                   title="Sign in to message creators."
                 >
