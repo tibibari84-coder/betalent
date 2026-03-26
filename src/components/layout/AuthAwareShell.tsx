@@ -27,12 +27,19 @@ function isAppShellPath(pathname: string | null): boolean {
   if (pathname === '/feed' || pathname.startsWith('/feed/')) return true;
   if (pathname === '/explore' || pathname.startsWith('/explore/')) return true;
   if (pathname === '/challenges' || pathname.startsWith('/challenges/')) return true;
+  if (pathname === '/leaderboard' || pathname.startsWith('/leaderboard/')) return true;
   if (pathname === '/upload' || pathname.startsWith('/upload/')) return true;
   if (pathname === '/inbox' || pathname.startsWith('/inbox/')) return true;
   if (pathname === '/messages' || pathname.startsWith('/messages/')) return true;
   if (pathname === '/profile' || pathname.startsWith('/profile/')) return true;
   if (pathname === '/settings' || pathname.startsWith('/settings/')) return true;
   if (pathname === '/wallet' || pathname.startsWith('/wallet/')) return true;
+  if (pathname === '/notifications' || pathname.startsWith('/notifications/')) return true;
+  if (pathname === '/following' || pathname.startsWith('/following/')) return true;
+  if (pathname === '/dashboard' || pathname.startsWith('/dashboard/')) return true;
+  if (pathname === '/my-videos' || pathname.startsWith('/my-videos/')) return true;
+  if (pathname === '/moderation' || pathname.startsWith('/moderation/')) return true;
+  if (pathname === '/admin' || pathname.startsWith('/admin/')) return true;
   if (pathname === '/creator' || pathname.startsWith('/creator/')) return true;
   return false;
 }
