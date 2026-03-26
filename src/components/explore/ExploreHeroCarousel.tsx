@@ -43,59 +43,9 @@ const SLIDES = [
 
 const AUTO_SLIDE_MS = 5500;
 
-/** Premium trophy logo — challenge variant */
-function TrophyLogo({ className = '' }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
-      <defs>
-        <linearGradient id="trophyGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#F2B6C0" stopOpacity="1" />
-          <stop offset="100%" stopColor="#c4122f" stopOpacity="0.9" />
-        </linearGradient>
-        <filter id="trophyGlow">
-          <feGaussianBlur stdDeviation="6" result="blur" />
-          <feMerge>
-            <feMergeNode in="blur" />
-            <feMergeNode in="SourceGraphic" />
-          </feMerge>
-        </filter>
-      </defs>
-      <g filter="url(#trophyGlow)">
-        <path d="M40 18v8M28 26h24M26 26v20c0 8 6 14 14 14s14-6 14-14V26M26 26h-4c-4 0-6-2-6-6v-2h36v2c0 4-2 6-6 6h-4" stroke="url(#trophyGrad)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none" strokeOpacity="0.95" />
-        <path d="M32 46h16M36 46v8M44 46v8M38 54h4" stroke="url(#trophyGrad)" strokeWidth="2" strokeLinecap="round" strokeOpacity="0.9" />
-        <ellipse cx="40" cy="62" rx="8" ry="2" stroke="url(#trophyGrad)" strokeWidth="2" strokeOpacity="0.8" fill="none" />
-      </g>
-    </svg>
-  );
-}
+const VINYL_LOGO_SRC = '/images/betalent-vinyl-logo.png';
 
-/** Premium waveform/trending logo */
-function TrendingLogo({ className = '' }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
-      <defs>
-        <linearGradient id="trendGrad" x1="0%" y1="100%" x2="100%" y2="0%">
-          <stop offset="0%" stopColor="#c4122f" stopOpacity="0.9" />
-          <stop offset="100%" stopColor="#F2B6C0" stopOpacity="1" />
-        </linearGradient>
-        <filter id="trendGlow">
-          <feGaussianBlur stdDeviation="6" result="blur" />
-          <feMerge>
-            <feMergeNode in="blur" />
-            <feMergeNode in="SourceGraphic" />
-          </feMerge>
-        </filter>
-      </defs>
-      <g filter="url(#trendGlow)">
-        {[12, 24, 36, 48, 60].map((x, i) => (
-          <rect key={i} x={x} y={40 - i * 6} width={8} height={20 + i * 8} rx={8} fill="url(#trendGrad)" fillOpacity={0.9 - i * 0.08} />
-        ))}
-      </g>
-    </svg>
-  );
-}
-
-/** Premium energy ring — 260–320px, cherry/magenta/violet glow, floating, cinematic */
+/** Premium energy ring — same branded vinyl on every slide */
 function EnergyRing({ variant, isActive }: { variant: 'mic' | 'trophy' | 'trending'; isActive: boolean }) {
   return (
     <div
@@ -126,27 +76,20 @@ function EnergyRing({ variant, isActive }: { variant: 'mic' | 'trophy' | 'trendi
         <div
           className="absolute inset-0 rounded-full overflow-hidden"
           style={{
-            background:
-              variant === 'mic'
-                ? 'rgba(0,0,0,0.25)'
-                : 'rgba(0,0,0,0.6)',
-            backdropFilter: variant === 'mic' ? 'blur(8px)' : 'blur(12px)',
-            WebkitBackdropFilter: variant === 'mic' ? 'blur(8px)' : 'blur(12px)',
+            background: 'rgba(0,0,0,0.25)',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
             border: '1px solid rgba(255,255,255,0.08)',
           }}
         >
-          {variant === 'mic' && (
-            <Image
-              src="/images/betalent-vinyl-logo.png"
-              alt=""
-              fill
-              className="object-cover rounded-full"
-              sizes="(max-width: 640px) 260px, (max-width: 1024px) 320px, 420px"
-              priority
-            />
-          )}
-          {variant === 'trophy' && <TrophyLogo className="w-20 h-20 md:w-24 md:h-24 laptop:w-28 laptop:h-28 desktop:w-32 desktop:h-32" />}
-          {variant === 'trending' && <TrendingLogo className="w-20 h-20 md:w-24 md:h-24 laptop:w-28 laptop:h-28 desktop:w-32 desktop:h-32" />}
+          <Image
+            src={VINYL_LOGO_SRC}
+            alt=""
+            fill
+            className="object-cover rounded-full"
+            sizes="(max-width: 640px) 260px, (max-width: 1024px) 320px, 420px"
+            priority={variant === 'mic'}
+          />
         </div>
       </div>
     </div>
