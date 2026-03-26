@@ -15,7 +15,6 @@ import {
   IconTrophy,
   IconMenu,
   IconUsers,
-  IconUpload,
   IconSettings,
   IconCoins,
 } from '@/components/ui/Icons';
@@ -25,15 +24,22 @@ import { APP_NAME } from '@/constants/app';
 import { BrandWordmark } from '@/components/brand/BrandWordmark';
 import { BrandMarkLockupNav } from '@/components/brand/BrandMarkLockup';
 import { useI18n } from '@/contexts/I18nContext';
+import { useChatPanel } from '@/contexts/ChatPanelContext';
 import { cn } from '@/lib/utils';
 
-type NavUser = { username: string; avatarUrl?: string | null };
+type NavUser = {
+  username: string;
+  displayName?: string | null;
+  email?: string | null;
+  avatarUrl?: string | null;
+};
 
 /** Closed vs open with anchor position (single setState — no frame where open but position is null). */
-type ProfileMenuState = { open: false } | { open: true; top: number; right: number };
+type ProfileMenuState = { open: false } | { open: true; top: number; left: number };
 
 /** Below modals (e.g. avatar crop z-400); above notifications popover (z-100). */
-const PROFILE_MENU_Z = 350;
+const PROFILE_MENU_Z = 600;
+const PROFILE_MENU_WIDTH = 272;
 
 const TOPBAR_TRANSITION = 'transition-all duration-150 ease-out';
 const ICON_BTN =
@@ -95,6 +101,7 @@ export default function Navbar({ onOpenDrawer }: { onOpenDrawer?: () => void }) 
   const router = useRouter();
   const pathname = usePathname();
   const { t } = useI18n();
+  const { openPanel: openMessagesPanel } = useChatPanel();
   const profileMenuButtonRef = useRef<HTMLButtonElement>(null);
   const profileMenuPanelRef = useRef<HTMLDivElement>(null);
   const [mounted, setMounted] = useState(false);
@@ -117,13 +124,25 @@ export default function Navbar({ onOpenDrawer }: { onOpenDrawer?: () => void }) 
       .then((r) => r.json())
       .then((data) => {
         if (data.ok && data.user?.username) {
-          setUser({ username: data.user.username, avatarUrl: data.user.avatarUrl ?? null });
+          setUser({
+            username: data.user.username,
+            displayName: data.user.displayName ?? null,
+            email: data.user.email ?? null,
+            avatarUrl: data.user.avatarUrl ?? null,
+          });
         } else {
           setUser(null);
         }
       })
       .catch(() => setUser(null));
   }, []);
+
+  function menuLeftFromButtonRect(r: DOMRect): number {
+    const preferred = r.right - PROFILE_MENU_WIDTH;
+    const min = 8;
+    const max = Math.max(min, window.innerWidth - PROFILE_MENU_WIDTH - 8);
+    return Math.max(min, Math.min(max, preferred));
+  }
 
   function updateProfileMenuAnchor() {
     const btn = profileMenuButtonRef.current;
@@ -132,7 +151,7 @@ export default function Navbar({ onOpenDrawer }: { onOpenDrawer?: () => void }) 
     setProfileMenu({
       open: true,
       top: r.bottom + 6,
-      right: Math.max(8, window.innerWidth - r.right),
+      left: menuLeftFromButtonRect(r),
     });
   }
 
@@ -179,6 +198,15 @@ export default function Navbar({ onOpenDrawer }: { onOpenDrawer?: () => void }) 
   }, [profileMenu.open]);
 
   useEffect(() => {
+    if (!profileMenu.open) return;
+    const frame = requestAnimationFrame(() => {
+      const items = profileMenuPanelRef.current?.querySelectorAll<HTMLElement>('[data-account-menu-item]');
+      items?.[0]?.focus();
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [profileMenu.open]);
+
+  useEffect(() => {
     setProfileMenu({ open: false });
   }, [pathname]);
 
@@ -203,11 +231,33 @@ export default function Navbar({ onOpenDrawer }: { onOpenDrawer?: () => void }) 
         return {
           open: true,
           top: r.bottom + 6,
-          right: Math.max(8, window.innerWidth - r.right),
+          left: menuLeftFromButtonRect(r),
         };
       }
-      return { open: true, top: 72, right: 16 };
+      return { open: true, top: 72, left: 8 };
     });
+  }
+
+  function onMenuKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
+    const items = Array.from(
+      profileMenuPanelRef.current?.querySelectorAll<HTMLElement>('[data-account-menu-item]') ?? []
+    );
+    if (items.length === 0) return;
+    const current = document.activeElement as HTMLElement | null;
+    const idx = current ? items.indexOf(current) : -1;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      items[(idx + 1 + items.length) % items.length]?.focus();
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      items[(idx - 1 + items.length) % items.length]?.focus();
+    } else if (e.key === 'Home') {
+      e.preventDefault();
+      items[0]?.focus();
+    } else if (e.key === 'End') {
+      e.preventDefault();
+      items[items.length - 1]?.focus();
+    }
   }
 
   async function handleSignOut() {
@@ -240,26 +290,46 @@ export default function Navbar({ onOpenDrawer }: { onOpenDrawer?: () => void }) 
           ref={profileMenuPanelRef}
           id="navbar-profile-menu"
           role="menu"
-          className="fixed py-2 min-w-[220px] max-w-[min(100vw-16px,280px)] rounded-xl overflow-hidden pointer-events-auto"
+          className="fixed py-2 w-[272px] max-w-[min(100vw-16px,272px)] rounded-xl overflow-hidden pointer-events-auto backdrop-blur-xl"
           style={{
             top: profileMenu.top,
-            right: profileMenu.right,
+            left: profileMenu.left,
             zIndex: PROFILE_MENU_Z,
             background: 'rgba(18,18,22,0.98)',
             border: '1px solid rgba(255,255,255,0.08)',
-            boxShadow: '0 8px 24px rgba(0,0,0,0.45)',
+            boxShadow: '0 16px 36px rgba(0,0,0,0.48)',
           }}
+          onKeyDown={onMenuKeyDown}
         >
-          <div className="px-3.5 pt-1 pb-2 border-b border-white/[0.06] min-w-0">
-            <p className="text-[11px] font-medium uppercase tracking-wide text-white/40 truncate">{t('nav.profile')}</p>
-            <p className="text-[13px] font-semibold text-white truncate" title={user && user !== 'loading' ? `@${user.username}` : undefined}>
-              {user && user !== 'loading' ? `@${user.username}` : ''}
-            </p>
+          <div className="px-3.5 py-3 border-b border-white/[0.08] min-w-0 flex items-center gap-3">
+            <span className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-white/10 ring-1 ring-white/15 shrink-0">
+              {user && user !== 'loading' && user.avatarUrl ? (
+                <img src={user.avatarUrl} alt="" className="avatar-image h-full w-full object-cover" />
+              ) : (
+                <IconUser className="w-[15px] h-[15px] text-white/75" />
+              )}
+            </span>
+            <div className="min-w-0">
+              <p
+                className="text-[13px] font-semibold text-white truncate"
+                title={user && user !== 'loading' ? (user.displayName?.trim() || user.username) : undefined}
+              >
+                {user && user !== 'loading' ? user.displayName?.trim() || user.username : ''}
+              </p>
+              <p
+                className="text-[12px] text-white/55 truncate"
+                title={user && user !== 'loading' ? (user.email || `@${user.username}`) : undefined}
+              >
+                {user && user !== 'loading' ? user.email || `@${user.username}` : ''}
+              </p>
+            </div>
           </div>
           <div className="py-1">
             <Link
               href="/profile/me"
               role="menuitem"
+              data-account-menu-item
+              tabIndex={0}
               className={cn('flex items-center gap-3 px-3.5 py-2.5 text-[13px] font-medium text-white hover:bg-white/[0.08]', TOPBAR_TRANSITION)}
               onClick={closeProfileMenu}
             >
@@ -267,37 +337,48 @@ export default function Navbar({ onOpenDrawer }: { onOpenDrawer?: () => void }) 
               {t('nav.profile')}
             </Link>
             <Link
-              href="/upload"
+              href="/settings"
               role="menuitem"
+              data-account-menu-item
+              tabIndex={0}
               className={cn('flex items-center gap-3 px-3.5 py-2.5 text-[13px] font-medium text-white hover:bg-white/[0.08]', TOPBAR_TRANSITION)}
               onClick={closeProfileMenu}
             >
-              <IconUpload className={MENU_ICON} aria-hidden />
-              {t('nav.upload')}
+              <IconSettings className={MENU_ICON} aria-hidden />
+              {t('nav.settings')}
             </Link>
+            <button
+              type="button"
+              role="menuitem"
+              data-account-menu-item
+              tabIndex={0}
+              className={cn('flex w-full items-center gap-3 px-3.5 py-2.5 text-left text-[13px] font-medium text-white hover:bg-white/[0.08]', TOPBAR_TRANSITION)}
+              onClick={() => {
+                closeProfileMenu();
+                openMessagesPanel();
+              }}
+            >
+              <IconUser className={MENU_ICON} aria-hidden />
+              {t('topbar.messages')}
+            </button>
             <Link
               href="/wallet"
               role="menuitem"
+              data-account-menu-item
+              tabIndex={0}
               className={cn('flex items-center gap-3 px-3.5 py-2.5 text-[13px] font-medium text-white hover:bg-white/[0.08]', TOPBAR_TRANSITION)}
               onClick={closeProfileMenu}
             >
               <IconCoins className={MENU_ICON} aria-hidden />
               {t('nav.wallet')}
             </Link>
-            <Link
-              href="/settings"
-              role="menuitem"
-              className={cn('flex items-center gap-3 px-3.5 py-2.5 text-[13px] font-medium text-white/90 hover:bg-white/[0.08]', TOPBAR_TRANSITION)}
-              onClick={closeProfileMenu}
-            >
-              <IconSettings className={MENU_ICON} aria-hidden />
-              {t('nav.settings')}
-            </Link>
           </div>
           <div className="border-t border-white/[0.06] py-1">
             <button
               type="button"
               role="menuitem"
+              data-account-menu-item
+              tabIndex={0}
               onClick={() => {
                 void handleSignOut();
               }}
