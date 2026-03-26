@@ -110,6 +110,7 @@ export default function Navbar({ onOpenDrawer }: { onOpenDrawer?: () => void }) 
   const [profileMenu, setProfileMenu] = useState<ProfileMenuState>({ open: false });
   const [mobileTopbarPanel, setMobileTopbarPanel] = useState<'profile' | 'notifications' | null>(null);
   const [scrolled, setScrolled] = useState(false);
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
 
   const isImmersiveFeedRoute = pathname === '/feed';
   const isSettingsRoute = pathname === '/settings' || (pathname?.startsWith('/settings/') ?? false);
@@ -195,6 +196,15 @@ export default function Navbar({ onOpenDrawer }: { onOpenDrawer?: () => void }) 
   }, [profileMenu.open]);
 
   useEffect(() => {
+    if (!mobileSearchOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMobileSearchOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [mobileSearchOpen]);
+
+  useEffect(() => {
     if (!profileMenu.open && mobileTopbarPanel === 'profile') {
       setMobileTopbarPanel(null);
     }
@@ -227,6 +237,7 @@ export default function Navbar({ onOpenDrawer }: { onOpenDrawer?: () => void }) 
   useEffect(() => {
     setProfileMenu({ open: false });
     setMobileTopbarPanel(null);
+    setMobileSearchOpen(false);
   }, [pathname]);
 
   useEffect(() => {
@@ -304,6 +315,11 @@ export default function Navbar({ onOpenDrawer }: { onOpenDrawer?: () => void }) 
     } else {
       router.push('/explore');
     }
+  }
+
+  function handleMobileSearchSubmit(e: React.FormEvent<HTMLFormElement>) {
+    handleSearchSubmit(e);
+    setMobileSearchOpen(false);
   }
 
   const MENU_ICON = 'w-[var(--utility-icon-size)] h-[var(--utility-icon-size)] shrink-0 text-white/50';
@@ -552,7 +568,7 @@ export default function Navbar({ onOpenDrawer }: { onOpenDrawer?: () => void }) 
           paddingRight: 'var(--topbar-pad-x)',
         }}
       >
-        {/* Mobile / tablet: row 1 brand+actions, row 2 search (sm+) */}
+        {/* Mobile / tablet: single compact row, search via overlay only */}
         <div className="w-full min-w-0 lg:hidden py-1.5">
           <div className="grid h-[var(--topbar-height)] w-full min-w-0 items-center gap-x-2 sm:gap-x-3 grid-cols-[minmax(0,1fr)_auto]">
             <div className="flex min-w-0 items-center gap-2">
@@ -575,14 +591,18 @@ export default function Navbar({ onOpenDrawer }: { onOpenDrawer?: () => void }) 
               </Link>
             </div>
             <div className={UTIL_ROW}>
-              <Link href="/explore" className={cn(ICON_BTN, 'sm:hidden')} aria-label={t('topbar.searchPlaceholder')}>
+              <button
+                type="button"
+                onClick={() => setMobileSearchOpen(true)}
+                className={cn(ICON_BTN)}
+                aria-label={t('topbar.searchPlaceholder')}
+                aria-haspopup="dialog"
+                aria-expanded={mobileSearchOpen}
+              >
                 <IconSearch className="w-[var(--utility-icon-size)] h-[var(--utility-icon-size)] shrink-0" />
-              </Link>
+              </button>
               {utilities}
             </div>
-          </div>
-          <div className="hidden sm:block pb-1">
-            <TopbarSearchForm maxClass="max-w-full" placeholder={t('topbar.searchPlaceholder')} onSubmit={handleSearchSubmit} />
           </div>
         </div>
 
@@ -641,6 +661,50 @@ export default function Navbar({ onOpenDrawer }: { onOpenDrawer?: () => void }) 
           )}
         </div>
       </div>
+      {mobileSearchOpen
+        ? createPortal(
+            <div
+              className="fixed inset-0 z-[620] bg-black/55 backdrop-blur-[2px]"
+              onClick={() => setMobileSearchOpen(false)}
+              role="presentation"
+            >
+              <div
+                role="dialog"
+                aria-modal="true"
+                aria-label={t('topbar.searchPlaceholder')}
+                className="mx-auto w-full max-w-[var(--shell-max-width)]"
+                style={{
+                  paddingTop: 'max(8px, env(safe-area-inset-top))',
+                  paddingLeft: 'var(--topbar-pad-x)',
+                  paddingRight: 'var(--topbar-pad-x)',
+                }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div
+                  className="rounded-[14px] border border-white/[0.08] p-2.5"
+                  style={{
+                    background: 'rgba(18,18,22,0.96)',
+                    boxShadow: '0 16px 36px rgba(0,0,0,0.45)',
+                  }}
+                >
+                  <TopbarSearchForm
+                    maxClass="max-w-full"
+                    placeholder={t('topbar.searchPlaceholder')}
+                    onSubmit={handleMobileSearchSubmit}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setMobileSearchOpen(false)}
+                    className="mt-2 w-full rounded-[10px] border border-white/[0.1] py-2 text-[13px] font-medium text-white/80 hover:bg-white/[0.06]"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            </div>,
+            document.body
+          )
+        : null}
     </header>
   );
 }
