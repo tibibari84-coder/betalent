@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { LiveWindowDisplay } from '@/components/challenge/LiveWindowDisplay';
+import { ChallengeHeroBackdrop } from '@/components/challenge/ChallengeHeroBackdrop';
 
 type ChallengeWindowItem = {
   id: string;
@@ -64,17 +65,24 @@ export default function ChallengesPage() {
 
   return (
     <div className="min-h-screen pb-24 md:pb-12 min-w-0 overflow-x-hidden" style={{ backgroundColor: '#0D0D0E' }}>
-      <div className="w-full max-w-[1200px] mx-auto px-4 md:px-6 laptop:px-8 pt-6 md:pt-8 laptop:pt-12 pb-8">
-        <p className="text-[11px] uppercase tracking-widest text-white/50 font-medium mb-1.5">
-          Weekly Live Cover Challenge
-        </p>
-        <h1 className="font-display text-[28px] md:text-[36px] laptop:text-[42px] font-bold text-white mb-2">
-          Artist Themes
-        </h1>
-        <p className="text-[15px] text-white/60 max-w-[560px] mb-8">
-          Each week features one world-famous artist. Perform covers in your chosen style. Max length is set per challenge (see challenge page; platform allows up to 150s where configured).
-        </p>
+      <ChallengeHeroBackdrop
+        imageUrl={null}
+        className="px-4 md:px-6 laptop:px-8 pt-6 md:pt-8 laptop:pt-12 pb-8 min-h-[200px] md:min-h-[240px] rounded-b-2xl md:rounded-b-3xl"
+      >
+        <div className="w-full max-w-[1200px] mx-auto min-w-0">
+          <p className="text-[11px] uppercase tracking-widest text-white/50 font-medium mb-1.5">
+            Weekly Live Cover Challenge
+          </p>
+          <h1 className="font-display text-[28px] md:text-[36px] laptop:text-[42px] font-bold text-white mb-2">
+            Artist Themes
+          </h1>
+          <p className="text-[15px] text-white/70 max-w-[560px] mb-0">
+            Each week features one world-famous artist. Perform covers in your chosen style. Max length is set per challenge (see challenge page; platform allows up to 150s where configured).
+          </p>
+        </div>
+      </ChallengeHeroBackdrop>
 
+      <div className="w-full max-w-[1200px] mx-auto px-4 md:px-6 laptop:px-8 pt-4 laptop:pt-6 pb-8">
         {loading ? (
           <p className="text-white/55 text-[15px]">Loading challenges…</p>
         ) : (

@@ -1,6 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
+import { useEffect, useState } from 'react';
 import { DEFAULT_CHALLENGE_HERO_IMAGE } from '@/constants/challenge-hero';
 
 type Props = {
@@ -12,23 +13,39 @@ type Props = {
 
 /**
  * Full-width challenge hero: concert photo + brand gradients + subtle color lights (matches `/trending` hero).
+ * Uses an <img> layer (not CSS url()) so signed / query-heavy thumbnail URLs cannot break the entire background.
  */
 export function ChallengeHeroBackdrop({ imageUrl, children, className = '' }: Props) {
   const raw = imageUrl?.trim();
-  const src = raw && raw.length > 0 ? raw : DEFAULT_CHALLENGE_HERO_IMAGE;
+  const preferred = raw && raw.length > 0 ? raw : DEFAULT_CHALLENGE_HERO_IMAGE;
+  const [photoSrc, setPhotoSrc] = useState(preferred);
+
+  useEffect(() => {
+    setPhotoSrc(preferred);
+  }, [preferred]);
 
   return (
     <div className={`relative overflow-hidden ${className}`}>
-      <div
+      <img
+        src={photoSrc}
+        alt=""
         aria-hidden
-        className="absolute inset-0 z-0"
-        style={{
-          backgroundImage: `linear-gradient(135deg, rgba(177,18,38,0.34) 0%, rgba(13,13,14,0.88) 52%), url(${JSON.stringify(src)})`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
+        className="absolute inset-0 z-0 h-full w-full object-cover pointer-events-none"
+        loading="eager"
+        decoding="async"
+        fetchPriority="high"
+        onError={() => {
+          setPhotoSrc((s) => (s === DEFAULT_CHALLENGE_HERO_IMAGE ? s : DEFAULT_CHALLENGE_HERO_IMAGE));
         }}
       />
-      <div className="absolute inset-0 z-0 bg-gradient-to-t from-[#0D0D0E] via-black/40 to-black/15" />
+      <div
+        aria-hidden
+        className="absolute inset-0 z-0 pointer-events-none"
+        style={{
+          background: 'linear-gradient(135deg, rgba(177,18,38,0.34) 0%, rgba(13,13,14,0.88) 52%)',
+        }}
+      />
+      <div className="absolute inset-0 z-0 bg-gradient-to-t from-[#0D0D0E] via-black/40 to-black/15 pointer-events-none" />
       <div
         className="absolute inset-0 z-0 pointer-events-none opacity-[0.92]"
         style={{
