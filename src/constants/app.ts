@@ -55,6 +55,7 @@ export const ROUTES = {
   ABOUT: '/about',
   TERMS: '/terms',
   PRIVACY: '/privacy',
+  REFUND: '/refund',
   FAIR_PLAY: '/fair-play',
   LEGAL_TERMS: '/legal/terms',
   LEGAL_CREATOR_RULES: '/legal/creator-rules',

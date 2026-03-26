@@ -36,7 +36,23 @@ export default function TermsPage() {
 
             <section>
               <h2 className="font-display text-[20px] font-semibold text-text-primary mb-4">
-                2. Eligibility
+                2. The Platform
+              </h2>
+              <p>
+                {APP_NAME} is an online talent platform for short-form video performances. Users can
+                upload content and interact with others through features such as browsing, following,
+                voting, commenting, and supporting creators.
+              </p>
+              <p className="mt-3">
+                We do not guarantee visibility, audience growth, earnings, ranking, or performance
+                outcomes. Your experience and results may vary based on many factors beyond our
+                control.
+              </p>
+            </section>
+
+            <section>
+              <h2 className="font-display text-[20px] font-semibold text-text-primary mb-4">
+                3. Eligibility
               </h2>
               <p>
                 You must be at least 13 years of age to use {APP_NAME}. If you are under 18, you
@@ -47,7 +63,7 @@ export default function TermsPage() {
 
             <section>
               <h2 className="font-display text-[20px] font-semibold text-text-primary mb-4">
-                3. User Content
+                4. User Content
               </h2>
               <p>
                 You retain ownership of content you upload. By posting, you grant {APP_NAME} a
@@ -59,18 +75,43 @@ export default function TermsPage() {
 
             <section>
               <h2 className="font-display text-[20px] font-semibold text-text-primary mb-4">
-                4. Conduct
+                5. Conduct and Enforcement
               </h2>
               <p>
                 You agree to use {APP_NAME} responsibly. Harassment, hate speech, spam, and
                 impersonation are prohibited. We may suspend or terminate accounts that violate these
                 standards.
               </p>
+              <p className="mt-3">
+                {APP_NAME} may remove content or suspend accounts for violations of these Terms,
+                applicable policies, or applicable law.
+              </p>
             </section>
 
             <section>
               <h2 className="font-display text-[20px] font-semibold text-text-primary mb-4">
-                5. Contact
+                6. Coins (Virtual Currency)
+              </h2>
+              <p>
+                Coins are virtual, in-platform currency used to support creators and access certain
+                in-app features. Coins have no cash value outside the platform and are not
+                exchangeable for real-world currency.
+              </p>
+            </section>
+
+            <section>
+              <h2 className="font-display text-[20px] font-semibold text-text-primary mb-4">
+                7. Lawful Use
+              </h2>
+              <p>
+                You are responsible for lawful use of the platform, including compliance with
+                applicable laws and respect for the rights of others.
+              </p>
+            </section>
+
+            <section>
+              <h2 className="font-display text-[20px] font-semibold text-text-primary mb-4">
+                8. Contact
               </h2>
               <p>
                 For questions about these terms, please visit our{' '}

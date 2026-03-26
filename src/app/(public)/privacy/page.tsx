@@ -42,8 +42,8 @@ export default function PrivacyPage() {
               </h2>
               <p>
                 We use your data to operate the service, personalize your experience, send relevant
-                notifications, and improve our platform. We may use anonymized or aggregated data for
-                analytics.
+                notifications, secure the platform, and improve our product. We may use anonymized or
+                aggregated data for analytics.
               </p>
             </section>
 
@@ -53,14 +53,24 @@ export default function PrivacyPage() {
               </h2>
               <p>
                 We do not sell your personal data. We may share data with service providers who help
-                us run the platform (hosting, analytics). We may also disclose data when required by
-                law.
+                us run the platform (hosting, analytics, customer support, and payment processing).
+                We may also disclose data when required by law.
               </p>
             </section>
 
             <section>
               <h2 className="font-display text-[20px] font-semibold text-text-primary mb-4">
-                4. Your Rights
+                4. Payments (Stripe)
+              </h2>
+              <p>
+                Payment processing is handled by Stripe. {APP_NAME} does not store full payment card
+                details on our servers.
+              </p>
+            </section>
+
+            <section>
+              <h2 className="font-display text-[20px] font-semibold text-text-primary mb-4">
+                5. Your Rights
               </h2>
               <p>
                 You can access, correct, or delete your account and data from the{' '}
@@ -73,7 +83,7 @@ export default function PrivacyPage() {
 
             <section>
               <h2 className="font-display text-[20px] font-semibold text-text-primary mb-4">
-                5. Contact
+                6. Contact
               </h2>
               <p>
                 For privacy-related inquiries, please visit our{' '}

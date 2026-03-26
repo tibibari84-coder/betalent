@@ -6,6 +6,7 @@ const FOOTER_LINKS = [
   { href: ROUTES.ABOUT, label: 'About', ariaLabel: 'Learn about BETALENT' },
   { href: ROUTES.TERMS, label: 'Terms', ariaLabel: 'Terms of Service' },
   { href: ROUTES.PRIVACY, label: 'Privacy', ariaLabel: 'Privacy Policy' },
+  { href: ROUTES.REFUND, label: 'Refund', ariaLabel: 'Refund Policy' },
   { href: ROUTES.CONTACT, label: 'Contact', ariaLabel: 'Contact us' },
 ] as const;
 
