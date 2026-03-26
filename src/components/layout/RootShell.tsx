@@ -40,7 +40,7 @@ function RootShellContent({ children }: { children: React.ReactNode }) {
       <div className="app-shell flex flex-col flex-1 min-h-0 w-full min-w-0">
           <Navbar onOpenDrawer={() => setDrawerOpen(true)} />
           <SidebarDrawer isOpen={drawerOpen} onClose={() => setDrawerOpen(false)} />
-          {/* lg+: flex row — Sidebar 260 | main flex-1 | Right 280 (except /feed & /settings). */}
+          {/* lg+: flex row — Sidebar | main | Right rail from shell tokens (except /feed & /settings). */}
           <div
             className={cn(
               'flex-1 w-full min-w-0 box-border min-h-0 mx-auto',
@@ -59,13 +59,19 @@ function RootShellContent({ children }: { children: React.ReactNode }) {
             */}
             <div
               className={cn(
-                'flex w-full min-w-0 min-h-0 flex-col gap-y-6 lg:flex-row lg:items-stretch lg:gap-y-0 h-full',
-                'lg:gap-x-6 desktop:gap-x-8'
+                'flex w-full min-w-0 min-h-0 flex-col gap-y-6 lg:flex-row lg:items-stretch lg:gap-y-0 h-full'
               )}
+              style={{ columnGap: 'var(--shell-gap)' }}
             >
               <aside
-                className="hidden lg:block w-[260px] min-w-[260px] shrink-0 sticky self-start overflow-y-auto overflow-x-hidden order-2 lg:order-1"
-                style={{ top: 'var(--topbar-height)', maxHeight: 'calc(100vh - var(--topbar-height))', background: 'rgba(8, 8, 10, 0.95)' }}
+                className="hidden lg:block shrink-0 sticky self-start overflow-y-auto overflow-x-hidden order-2 lg:order-1"
+                style={{
+                  width: 'var(--shell-sidebar)',
+                  minWidth: 'var(--shell-sidebar)',
+                  top: 'var(--topbar-height)',
+                  maxHeight: 'calc(100vh - var(--topbar-height))',
+                  background: 'rgba(8, 8, 10, 0.95)',
+                }}
                 aria-label="Main navigation"
               >
                 <Sidebar />
@@ -93,10 +99,17 @@ function RootShellContent({ children }: { children: React.ReactNode }) {
                 <aside
                   className={cn(
                     'flex flex-col w-full min-w-0 overflow-y-auto overflow-x-hidden order-3',
-                    'lg:w-[280px] lg:min-w-[280px] lg:max-w-[280px] lg:shrink-0',
+                    'lg:shrink-0',
                     'lg:sticky lg:self-start'
                   )}
-                  style={{ top: 'var(--topbar-height)', maxHeight: 'calc(100vh - var(--topbar-height))', background: 'rgba(8, 8, 10, 0.95)' }}
+                  style={{
+                    width: 'var(--shell-right)',
+                    minWidth: 'var(--shell-right)',
+                    maxWidth: 'var(--shell-right)',
+                    top: 'var(--topbar-height)',
+                    maxHeight: 'calc(100vh - var(--topbar-height))',
+                    background: 'rgba(8, 8, 10, 0.95)',
+                  }}
                   aria-label="Utility cards"
                 >
                   <RightPanel />

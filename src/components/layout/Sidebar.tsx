@@ -101,13 +101,14 @@ export default function Sidebar({ variant = 'sidebar' }: { variant?: 'sidebar' |
   return (
     <aside
       className={`
-        w-[260px] shrink-0 min-w-0
+        shrink-0 min-w-0
         ${isDrawer ? 'block' : 'hidden lg:block'}
       `}
+      style={{ width: isDrawer ? '100%' : 'var(--shell-sidebar)' }}
       role="navigation"
       aria-label="Main navigation"
     >
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-2.5">
         {NAV_ITEMS.map(({ href, labelKey, icon: Icon, desc }) => {
           const isActive =
             pathname === href || (pathname?.startsWith(href + '/') ?? false);

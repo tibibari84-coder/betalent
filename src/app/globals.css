@@ -88,24 +88,15 @@
 :root {
   --font-playfair: Georgia, 'Times New Roman', serif;
   --font-inter: system-ui, -apple-system, sans-serif;
-  --shell-pad: 16px;
-  --shell-sidebar: 200px;
-  --sidebar-width: 200px;
-  /* Unified layout grid */
-  --layout-sidebar: 260px;
-  /* Wider cap: main column was double-squeezed (shell rail + layout-content + right panel) */
-  --layout-content-max: min(100%, 1360px);
-  /* Whole app chrome (sidebar + gutters + main + right rail) — centers on ultrawide / 5K */
-  --shell-max-width: min(100%, 1950px);
-  --layout-right-panel: 280px;
-  --layout-gap: 24px;
-  --layout-pad: 16px;
-  --shell-right: 0;
-  --shell-gap: 16px;
-  /* Topbar: mobile 64px, tablet 68px, desktop 72px */
-  --topbar-height: 64px;
-  --topbar-pad-x: 16px;
-  --topbar-shell-max: 1280px;
+  /* Global app shell system */
+  --shell-max-width: min(100%, 1680px);
+  --topbar-height: 58px;
+  --topbar-pad-x: 14px;
+  --shell-sidebar: 248px;
+  --shell-right: 272px;
+  --shell-gap: 20px;
+  --layout-content-max: 1320px;
+  --layout-pad: 0px;
   --utility-btn-size: 36px;
   --utility-icon-size: 18px;
   --utility-gap: 10px;
@@ -150,71 +141,53 @@
 }
 @media (min-width: 768px) {
   :root {
-    --layout-pad: 20px;
-    --topbar-height: 68px;
+    --topbar-height: 60px;
     --topbar-pad-x: 20px;
     --avatar-topbar: 32px;
+    --shell-gap: 22px;
   }
 }
 @media (min-width: 1024px) {
   :root {
+    --topbar-height: 62px;
     --topbar-pad-x: 24px;
+    --shell-sidebar: 256px;
+    --shell-right: 272px;
   }
 }
 
-/* Laptop 1000px+ */
-@media (min-width: 1000px) {
-  :root {
-    --shell-pad: 20px;
-    --layout-pad: 24px;
-    --shell-sidebar: 208px;
-    --sidebar-width: 208px;
-    --shell-right: 240px;
-    --rail-width: 240px;
-    --shell-gap: 20px;
-  }
-}
-/* Desktop 1200px+ */
+/* Desktop */
 @media (min-width: 1200px) {
   :root {
-    --topbar-height: 72px;
-    --topbar-pad-x: 32px;
-    --shell-pad: 24px;
-    --layout-pad: 32px;
-    --shell-sidebar: 208px;
-    --sidebar-width: 208px;
-    --shell-right: 256px;
-    --rail-width: 256px;
+    --topbar-height: 64px;
+    --topbar-pad-x: 28px;
+    --shell-sidebar: 260px;
+    --shell-right: 280px;
     --shell-gap: 24px;
-  }
-}
-@media (min-width: 1280px) {
-  :root {
-    --avatar-topbar: 34px;
+    --avatar-topbar: 32px;
   }
 }
 
-/* Large desktop 1400px+ */
-@media (min-width: 1400px) {
+/* Large desktop */
+@media (min-width: 1440px) {
   :root {
-    --shell-pad: 24px;
-    --layout-pad: 32px;
-    --shell-sidebar: 224px;
-    --sidebar-width: 224px;
-    --shell-right: 280px;
-    --rail-width: 280px;
+    --topbar-pad-x: 32px;
+    --shell-max-width: min(100%, 1760px);
+    --shell-sidebar: 264px;
+    --shell-right: 288px;
     --shell-gap: 24px;
+    --avatar-topbar: 34px;
   }
 }
 
 /* Topbar search – tighter width on laptop (MacBook) viewport only */
 .topbar-search {
-  width: clamp(280px, 32vw, 460px);
+  width: clamp(280px, 30vw, 500px);
   max-width: 100%;
 }
-@media (min-width: 1000px) and (max-width: 1199.98px) {
+@media (min-width: 1024px) and (max-width: 1279.98px) {
   .topbar-search {
-    width: clamp(200px, 24vw, 320px);
+    width: clamp(220px, 26vw, 360px);
   }
 }
 

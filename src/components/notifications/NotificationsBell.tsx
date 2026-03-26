@@ -81,7 +81,7 @@ export default function NotificationsBell() {
         onClick={handleOpen}
         className="
           flex items-center justify-center shrink-0 relative
-          h-9 w-9 min-h-9 min-w-9
+          h-[var(--utility-btn-size)] w-[var(--utility-btn-size)] min-h-[var(--utility-btn-size)] min-w-[var(--utility-btn-size)]
           rounded-[10px]
           text-white/80 hover:text-white/95 hover:bg-white/[0.06]
           hover:scale-[1.02] active:scale-[0.98]
@@ -91,7 +91,7 @@ export default function NotificationsBell() {
         aria-label="Notifications"
         aria-expanded={isOpen}
       >
-        <IconBell className="w-[18px] h-[18px]" />
+        <IconBell className="w-[var(--utility-icon-size)] h-[var(--utility-icon-size)]" />
         {unreadCount > 0 && (
           <span
             className="absolute top-0 right-0 min-w-[14px] h-[14px] px-1 rounded-full bg-[#B11226] text-[9px] font-semibold text-white flex items-center justify-center leading-none"
