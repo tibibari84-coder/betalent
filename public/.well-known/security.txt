@@ -1,0 +1,3 @@
+Contact: https://github.com/tibibari84-coder/betalent/security/advisories/new
+Preferred-Languages: en, hu
+Expires: 2027-12-31T23:59:59.000Z

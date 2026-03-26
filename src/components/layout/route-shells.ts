@@ -1,6 +1,11 @@
 'use client';
 
-export type RouteShellClass = 'publicAuth' | 'publicMarketingLegal' | 'primaryApp' | 'detailSecondary';
+export type RouteShellClass =
+  | 'publicAuth'
+  | 'publicMarketingLegal'
+  | 'primaryApp'
+  | 'detailSecondary'
+  | 'unclassified';
 
 type Matcher = (pathname: string) => boolean;
 
@@ -81,7 +86,7 @@ export function classifyRouteShell(pathname: string | null): RouteShellClass {
   if (anyMatch(path, PUBLIC_MARKETING_LEGAL_MATCHERS)) return 'publicMarketingLegal';
   if (anyMatch(path, DETAIL_SECONDARY_MATCHERS)) return 'detailSecondary';
   if (anyMatch(path, PRIMARY_APP_MATCHERS)) return 'primaryApp';
-  return 'publicMarketingLegal';
+  return 'unclassified';
 }
 
 export function isAuthenticatedRouteClass(routeClass: RouteShellClass): boolean {

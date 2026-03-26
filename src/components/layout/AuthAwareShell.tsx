@@ -21,6 +21,13 @@ export function AuthAwareShell({
   const pathname = usePathname();
   const routeClass = classifyRouteShell(pathname);
 
+  if (routeClass === 'unclassified') {
+    if (process.env.NODE_ENV !== 'production') {
+      console.error(`[AuthAwareShell] Unclassified route: ${pathname ?? '(null)'}`);
+    }
+    return isAppMember ? <RootShell authUser={authUser} shellVariant="primary">{children}</RootShell> : <PublicShell>{children}</PublicShell>;
+  }
+
   if (routeClass === 'publicAuth') {
     return <>{children}</>;
   }

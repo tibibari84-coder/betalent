@@ -51,14 +51,14 @@ function SidebarMessagesButton({ isDrawer = false }: { isDrawer?: boolean }) {
       <div
         className={
           isDrawer
-            ? 'relative z-[1] grid grid-cols-[36px_minmax(0,1fr)_16px] items-center h-16 rounded-[16px] px-[14px] sm:px-4 w-full'
+            ? 'relative z-[1] grid grid-cols-[34px_minmax(0,1fr)_16px] items-center h-[58px] rounded-[16px] px-[14px] sm:px-4 w-full'
             : 'relative z-[1] flex items-center rounded-[16px] px-4 xl:px-[18px] py-3 w-full'
         }
       >
         <span
           className={
             isDrawer
-              ? 'shrink-0 flex items-center justify-center w-9 h-9 rounded-[11px]'
+              ? 'shrink-0 flex items-center justify-center w-[34px] h-[34px] rounded-[10px]'
               : 'mr-3 shrink-0 flex items-center justify-center w-10 h-10 rounded-[12px]'
           }
           style={{
@@ -66,11 +66,11 @@ function SidebarMessagesButton({ isDrawer = false }: { isDrawer?: boolean }) {
             border: '1px solid rgba(255,255,255,0.04)',
           }}
         >
-          <IconChat className={isDrawer ? 'w-[18px] h-[18px] text-white' : 'w-4 h-4 text-white'} aria-hidden />
+          <IconChat className={isDrawer ? 'w-[17px] h-[17px] text-white' : 'w-4 h-4 text-white'} aria-hidden />
         </span>
         <div className={isDrawer ? 'min-w-0 pl-3' : 'min-w-0 flex-1'}>
           <span className="flex items-center gap-2 min-w-0">
-            <span className={`block truncate font-semibold leading-[1.2] text-[#F3F4F6] ${isDrawer ? 'text-[15px]' : 'text-[14px]'}`}>
+            <span className={`block truncate font-semibold leading-[1.2] text-[#F3F4F6] ${isDrawer ? 'text-[14px]' : 'text-[14px]'}`}>
               {t('nav.messages')}
             </span>
             {dmUnread > 0 ? (
@@ -82,7 +82,7 @@ function SidebarMessagesButton({ isDrawer = false }: { isDrawer?: boolean }) {
               </span>
             ) : null}
           </span>
-          <span className={`block truncate leading-[1.2] text-[#87909c] ${isDrawer ? 'mt-[2px] text-[12px]' : 'mt-0.5 text-[11px]'}`}>
+          <span className={`block truncate leading-[1.2] text-[#87909c] ${isDrawer ? 'mt-[1px] text-[11.5px]' : 'mt-0.5 text-[11px]'}`}>
             {t('nav.messagesDesc')}
           </span>
         </div>
@@ -137,7 +137,7 @@ export default function Sidebar({ variant = 'sidebar' }: { variant?: 'sidebar' |
               <div
                 className={
                   isDrawer
-                    ? 'relative z-[1] grid grid-cols-[36px_minmax(0,1fr)_16px] items-center h-16 rounded-[16px] px-[14px] sm:px-4 w-full'
+                    ? 'relative z-[1] grid grid-cols-[34px_minmax(0,1fr)_16px] items-center h-[58px] rounded-[16px] px-[14px] sm:px-4 w-full'
                     : 'relative z-[1] flex items-center rounded-[16px] px-4 xl:px-[18px] py-3 w-full'
                 }
                 style={isActive ? SIDEBAR_ACTIVE_STYLE : SIDEBAR_BASE_STYLE}
@@ -145,7 +145,7 @@ export default function Sidebar({ variant = 'sidebar' }: { variant?: 'sidebar' |
                 <span
                   className={
                     isDrawer
-                      ? 'shrink-0 flex items-center justify-center w-9 h-9 rounded-[11px]'
+                      ? 'shrink-0 flex items-center justify-center w-[34px] h-[34px] rounded-[10px]'
                       : 'mr-3 shrink-0 flex items-center justify-center w-10 h-10 rounded-[12px]'
                   }
                   style={{
@@ -153,14 +153,14 @@ export default function Sidebar({ variant = 'sidebar' }: { variant?: 'sidebar' |
                     border: isActive ? '1px solid rgba(255,80,100,0.18)' : '1px solid rgba(255,255,255,0.04)',
                   }}
                 >
-                  <Icon className={isDrawer ? 'w-[18px] h-[18px] text-white' : 'w-4 h-4 text-white'} aria-hidden />
+                  <Icon className={isDrawer ? 'w-[17px] h-[17px] text-white' : 'w-4 h-4 text-white'} aria-hidden />
                 </span>
 
                 <div className={isDrawer ? 'min-w-0 pl-3' : 'min-w-0 flex-1'}>
                   <span
                     className={`
                       block truncate font-semibold leading-[1.2]
-                      ${isDrawer ? 'text-[15px]' : 'text-[14px]'}
+                      ${isDrawer ? 'text-[14px]' : 'text-[14px]'}
                       ${isActive ? 'text-white' : 'text-[#F3F4F6]'}
                     `}
                   >
@@ -170,7 +170,7 @@ export default function Sidebar({ variant = 'sidebar' }: { variant?: 'sidebar' |
                   <span
                     className={`
                       block truncate leading-[1.2]
-                      ${isDrawer ? 'mt-[2px] text-[12px]' : 'mt-0.5 text-[11px]'}
+                      ${isDrawer ? 'mt-[1px] text-[11.5px]' : 'mt-0.5 text-[11px]'}
                       ${isActive ? 'text-[#efc1ca]' : 'text-[#87909c]'}
                     `}
                   >
