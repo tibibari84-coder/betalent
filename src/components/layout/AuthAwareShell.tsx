@@ -24,6 +24,7 @@ function isPublicOnlyPath(pathname: string | null): boolean {
 
 function isAppShellPath(pathname: string | null): boolean {
   if (pathname == null) return false;
+  if (pathname === '/' || pathname === '/landing') return true;
   if (pathname === '/feed' || pathname.startsWith('/feed/')) return true;
   if (pathname === '/explore' || pathname.startsWith('/explore/')) return true;
   if (pathname === '/challenges' || pathname.startsWith('/challenges/')) return true;
@@ -61,11 +62,11 @@ export function AuthAwareShell({
   if (isAuthPath(pathname)) {
     return <>{children}</>;
   }
-  if (isPublicOnlyPath(pathname)) {
-    return <PublicShell>{children}</PublicShell>;
-  }
   if (isAppMember && isAppShellPath(pathname)) {
     return <RootShell>{children}</RootShell>;
+  }
+  if (isPublicOnlyPath(pathname)) {
+    return <PublicShell>{children}</PublicShell>;
   }
   return <PublicShell>{children}</PublicShell>;
 }
