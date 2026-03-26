@@ -65,25 +65,25 @@ export function SidebarDrawer({
         role="dialog"
         aria-modal="true"
         aria-label="Main navigation"
-        className="fixed left-0 top-0 z-[61] h-full w-[clamp(248px,78vw,360px)] max-w-[88vw] sm:max-w-[82vw] md:max-w-[68vw] flex flex-col transition-transform duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] lg:hidden"
+        className="fixed left-0 top-0 z-[61] h-full w-[90vw] max-w-[340px] max-[379px]:w-[88vw] min-[481px]:w-[86vw] min-[481px]:max-w-[380px] min-[640px]:w-[82vw] min-[640px]:max-w-[400px] min-[768px]:w-[76vw] min-[768px]:max-w-[440px] flex flex-col transition-transform duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] lg:hidden"
         style={{
           ...DRAWER_STYLE,
           transform: isOpen ? 'translateX(0)' : 'translateX(-100%)',
           borderRight: '1px solid rgba(255,255,255,0.06)',
         }}
       >
-        <div className="flex items-center justify-between shrink-0 px-3.5 sm:px-4 py-2.5 sm:py-3 border-b border-white/[0.06]">
+        <div className="flex h-14 items-center justify-between shrink-0 px-[14px] sm:px-4 border-b border-white/[0.06]">
           <span className="font-display text-[14px] sm:text-[15px] font-semibold text-white tracking-wide">Menu</span>
           <button
             type="button"
             onClick={onClose}
-            className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-[10px] text-white/80 hover:text-white hover:bg-white/10 transition-colors"
+            className="flex h-10 w-10 items-center justify-center rounded-[10px] text-white/80 hover:text-white hover:bg-white/10 transition-colors"
             aria-label="Close menu"
           >
-            <IconX className="w-4.5 h-4.5 sm:w-5 sm:h-5" />
+            <IconX className="w-[20px] h-[20px]" />
           </button>
         </div>
-        <div className="flex-1 overflow-y-auto overflow-x-hidden py-3 sm:py-3.5 px-2.5 sm:px-3">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden py-3 px-[14px] sm:px-4 pb-4">
           <Sidebar variant="drawer" />
         </div>
       </aside>
