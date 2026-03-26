@@ -3,6 +3,16 @@ import { DM_CONTENT_MAX } from '@/lib/chat-constants';
 
 const PREVIEW_MAX = 500;
 
+export type DmAccessState =
+  | { canMessage: true; state: 'OPEN'; reason: null; mutualFollow: boolean; priorConsent: boolean }
+  | {
+      canMessage: false;
+      state: 'FOLLOW_TO_MESSAGE' | 'REQUEST_REQUIRED';
+      reason: 'NOT_MUTUAL';
+      mutualFollow: false;
+      priorConsent: boolean;
+    };
+
 /** Stable pair: user1Id is always lexicographically less than user2Id. */
 export function orderedPairIds(a: string, b: string): [string, string] {
   return a < b ? [a, b] : [b, a];
@@ -79,6 +89,48 @@ export async function getConversationForPair(viewerId: string, peerId: string) {
   });
 }
 
+export async function getDmAccessState(viewerId: string, peerId: string): Promise<DmAccessState> {
+  const [fwd, rev, conv] = await Promise.all([
+    prisma.follow.findUnique({
+      where: { followerId_creatorId: { followerId: viewerId, creatorId: peerId } },
+      select: { id: true },
+    }),
+    prisma.follow.findUnique({
+      where: { followerId_creatorId: { followerId: peerId, creatorId: viewerId } },
+      select: { id: true },
+    }),
+    getConversationForPair(viewerId, peerId),
+  ]);
+
+  const mutualFollow = !!fwd && !!rev;
+  if (mutualFollow) {
+    return { canMessage: true, state: 'OPEN', reason: null, mutualFollow: true, priorConsent: false };
+  }
+
+  // “Existing conversations must remain accessible if already valid”:
+  // If the peer has previously messaged the viewer in this conversation, treat it as consent to reply.
+  let priorConsent = false;
+  if (conv) {
+    const peerMessagedMe = await prisma.dmMessage.findFirst({
+      where: { conversationId: conv.id, senderId: peerId, receiverId: viewerId },
+      select: { id: true },
+    });
+    priorConsent = !!peerMessagedMe;
+  }
+
+  if (priorConsent) {
+    return { canMessage: true, state: 'OPEN', reason: null, mutualFollow: false, priorConsent: true };
+  }
+
+  return {
+    canMessage: false,
+    state: 'FOLLOW_TO_MESSAGE',
+    reason: 'NOT_MUTUAL',
+    mutualFollow: false,
+    priorConsent: false,
+  };
+}
+
 export async function markMessagesRead(conversationId: string, viewerId: string) {
   const now = new Date();
   return prisma.dmMessage.updateMany({
@@ -141,6 +193,11 @@ export async function sendDmMessage(senderId: string, receiverId: string, conten
     select: { id: true },
   });
   if (!receiver) throw new Error('PEER_NOT_FOUND');
+
+  const access = await getDmAccessState(senderId, receiverId);
+  if (!access.canMessage) {
+    throw new Error('NOT_MUTUAL');
+  }
 
   const conv = await getOrCreateConversation(senderId, receiverId);
   const now = new Date();

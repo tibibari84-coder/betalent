@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
 import {
   getConversationForPair,
+  getDmAccessState,
   getMessageHistory,
   markMessagesRead,
 } from '@/services/chat.service';
@@ -32,6 +33,7 @@ export async function GET(
       return NextResponse.json({ ok: false, message: 'User not found' }, { status: 404 });
     }
 
+    const access = await getDmAccessState(sessionUser.id, peerUserId);
     const conv = await getConversationForPair(sessionUser.id, peerUserId);
     if (!conv) {
       return NextResponse.json({
@@ -40,6 +42,7 @@ export async function GET(
         messages: [],
         hasMore: false,
         peer,
+        access,
       });
     }
 
@@ -62,6 +65,7 @@ export async function GET(
       })),
       hasMore,
       peer,
+      access,
     });
   } catch (e) {
     if (isSchemaDriftError(e)) {

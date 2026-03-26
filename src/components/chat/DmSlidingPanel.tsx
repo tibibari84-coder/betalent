@@ -26,6 +26,16 @@ type ApiConversation = {
   unreadCount: number;
 };
 
+type ApiAccess =
+  | { canMessage: true; state: 'OPEN'; reason: null; mutualFollow: boolean; priorConsent: boolean }
+  | {
+      canMessage: false;
+      state: 'FOLLOW_TO_MESSAGE' | 'REQUEST_REQUIRED';
+      reason: 'NOT_MUTUAL';
+      mutualFollow: false;
+      priorConsent: boolean;
+    };
+
 export function DmSlidingPanel() {
   const { t } = useI18n();
   const {
@@ -47,6 +57,7 @@ export function DmSlidingPanel() {
   const [messages, setMessages] = useState<ApiMessage[]>([]);
   const [threadLoading, setThreadLoading] = useState(false);
   const [hasMore, setHasMore] = useState(false);
+  const [access, setAccess] = useState<ApiAccess | null>(null);
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
 
@@ -96,6 +107,11 @@ export function DmSlidingPanel() {
         if (d.peer) {
           setActivePeer(d.peer);
         }
+        if (d.access) {
+          setAccess(d.access as ApiAccess);
+        } else {
+          setAccess(null);
+        }
         const rows: ApiMessage[] = d.messages ?? [];
         if (before) {
           setMessages((prev) => [...rows, ...prev]);
@@ -123,6 +139,7 @@ export function DmSlidingPanel() {
       setScreen('list');
       setActivePeer(null);
       setMessages([]);
+      setAccess(null);
       setDraft('');
       lastHistorySigRef.current = '';
       if (listPollRef.current) {
@@ -202,6 +219,7 @@ export function DmSlidingPanel() {
     if (!activePeer?.id || sending) return;
     const text = draft.trim();
     if (!text) return;
+    if (access && !access.canMessage) return;
     setSending(true);
     const optimistic: ApiMessage = {
       id: `tmp-${Date.now()}`,
@@ -221,7 +239,19 @@ export function DmSlidingPanel() {
         body: JSON.stringify({ receiverId: activePeer.id, content: text }),
       });
       const d = await r.json();
-      if (!d.ok) throw new Error(d.message || 'send failed');
+      if (!d.ok) {
+        const code = typeof d.code === 'string' ? d.code : '';
+        if (code === 'NOT_MUTUAL') {
+          setAccess({
+            canMessage: false,
+            state: 'FOLLOW_TO_MESSAGE',
+            reason: 'NOT_MUTUAL',
+            mutualFollow: false,
+            priorConsent: false,
+          });
+        }
+        throw new Error(d.message || 'send failed');
+      }
       setMessages((prev) => [...prev.filter((m) => m.id !== optimistic.id), d.message]);
       fetchConversations();
       await refreshDmUnread();
@@ -238,6 +268,7 @@ export function DmSlidingPanel() {
     setActivePeer(peer);
     setScreen('thread');
     setMessages([]);
+    setAccess(null);
     loadHistory(peer.id);
   }
 
@@ -246,6 +277,7 @@ export function DmSlidingPanel() {
     setScreen('list');
     setActivePeer(null);
     setMessages([]);
+    setAccess(null);
     fetchConversations();
   }
 
@@ -421,7 +453,39 @@ export function DmSlidingPanel() {
               })}
               <div ref={bottomRef} />
             </div>
-            <div className="shrink-0 p-3 border-t border-white/[0.06] flex gap-2 items-end">
+            {access && !access.canMessage ? (
+              <div className="shrink-0 p-3 border-t border-white/[0.06]">
+                <div
+                  className="rounded-[14px] border px-4 py-3"
+                  style={{ background: 'rgba(255,255,255,0.04)', borderColor: 'rgba(255,255,255,0.10)' }}
+                >
+                  <p className="text-[13px] font-semibold text-white mb-1">Message locked</p>
+                  <p className="text-[12px] text-white/60 leading-[1.45]">
+                    Only mutual followers can message each other. Follow and get a follow back to unlock DMs.
+                  </p>
+                  {activePeer?.username ? (
+                    <div className="mt-3 flex gap-2">
+                      <Link
+                        href={`/profile/${encodeURIComponent(activePeer.username)}`}
+                        className="inline-flex items-center justify-center min-h-[40px] px-4 rounded-[12px] text-[13px] font-semibold text-white border border-white/10"
+                        style={{ background: 'linear-gradient(135deg,#c4122f,#e11d48)' }}
+                        onClick={closePanel}
+                      >
+                        View profile
+                      </Link>
+                      <button
+                        type="button"
+                        className="inline-flex items-center justify-center min-h-[40px] px-4 rounded-[12px] text-[13px] font-semibold text-white/90 border border-white/[0.16] bg-white/[0.04] hover:bg-white/[0.08] transition-colors"
+                        onClick={() => closePanel()}
+                      >
+                        Not now
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            ) : (
+              <div className="shrink-0 p-3 border-t border-white/[0.06] flex gap-2 items-end">
               <textarea
                 value={draft}
                 onChange={(e) => setDraft(e.target.value.slice(0, DM_CONTENT_MAX))}
@@ -444,7 +508,8 @@ export function DmSlidingPanel() {
               >
                 <IconPaperAirplane className="w-5 h-5" />
               </button>
-            </div>
+              </div>
+            )}
           </>
         )}
       </div>

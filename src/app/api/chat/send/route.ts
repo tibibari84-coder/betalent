@@ -56,6 +56,12 @@ export async function POST(req: Request) {
       if (code === 'PEER_NOT_FOUND') {
         return NextResponse.json({ ok: false, message: 'User not found' }, { status: 404 });
       }
+      if (code === 'NOT_MUTUAL') {
+        return NextResponse.json(
+          { ok: false, code: 'NOT_MUTUAL', message: 'Mutual follow required to message' },
+          { status: 403 }
+        );
+      }
       throw err;
     }
   } catch (e) {
