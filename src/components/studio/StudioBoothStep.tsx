@@ -104,10 +104,10 @@ export default function StudioBoothStep(props: StudioBoothStepProps) {
 
       <div
         className={`${studioPanel} animate-studio-enter ${showCurtain ? 'opacity-40 pointer-events-none' : ''} transition-opacity duration-300`}
-        style={{ minHeight: 'calc(100svh - 110px)' }}
+        style={{ minHeight: 'calc(100svh - 24px)' }}
       >
         <div
-          className="p-4 sm:p-6 md:p-8 space-y-4 sm:space-y-6"
+          className="p-3 sm:p-6 md:p-8 space-y-4 sm:space-y-6"
           style={{
             paddingTop: 'max(16px, env(safe-area-inset-top))',
             paddingBottom: 'max(20px, env(safe-area-inset-bottom))',
@@ -146,7 +146,10 @@ export default function StudioBoothStep(props: StudioBoothStepProps) {
           <ViewfinderFrame>
             <div
               className="relative rounded-[20px] sm:rounded-[22px] overflow-hidden ring-1 ring-white/10 bg-black aspect-[9/16] shadow-[0_0_0_1px_rgba(196,18,47,0.12),0_28px_90px_rgba(0,0,0,0.85),0_0_120px_rgba(196,18,47,0.08)]"
-              style={{ minHeight: 'min(56svh, 620px)', maxHeight: 'min(64svh, 700px)' }}
+              style={{
+                minHeight: 'min(64svh, 640px)',
+                maxHeight: 'min(72svh, 720px)',
+              }}
             >
               <video
                 ref={videoRef as LegacyRef<HTMLVideoElement>}
@@ -158,7 +161,7 @@ export default function StudioBoothStep(props: StudioBoothStepProps) {
                 className="pointer-events-none absolute inset-0 z-[12] bg-[radial-gradient(ellipse_at_center,transparent_0%,transparent_42%,rgba(0,0,0,0.45)_100%)]"
                 aria-hidden
               />
-              <div className="pointer-events-none absolute bottom-14 left-0 right-0 z-[14] flex justify-center">
+              <div className="pointer-events-none absolute bottom-10 sm:bottom-14 left-0 right-0 z-[14] flex justify-center">
                 <span className="text-[10px] uppercase tracking-[0.2em] text-white/35 font-medium px-3 py-1 rounded-full bg-black/35 backdrop-blur-sm border border-white/[0.08]">
                   Safe title · keep eyes upper third
                 </span>
@@ -172,7 +175,7 @@ export default function StudioBoothStep(props: StudioBoothStepProps) {
 
               {/* Preview: mic status */}
               {isPreview && !switchingLens && (
-                <div className="absolute top-3 right-3 sm:top-4 sm:right-4 z-[30] pointer-events-none flex flex-col items-end gap-2">
+                <div className="absolute top-2 right-2 sm:top-4 sm:right-4 z-[30] pointer-events-none flex flex-col items-end gap-2">
                   <div
                     className="flex items-center gap-2 rounded-full pl-2.5 pr-3 py-1.5 text-[10px] sm:text-[11px] font-semibold uppercase tracking-[0.1em]"
                     style={{
@@ -192,7 +195,7 @@ export default function StudioBoothStep(props: StudioBoothStepProps) {
 
             {/* Timer is always visible in booth; REC badge appears only while recording. */}
               {(isPreview || isRecording) && (
-                <div className="absolute top-3 left-3 right-3 sm:top-4 sm:left-4 sm:right-4 flex justify-between items-start z-[30] pointer-events-none gap-2">
+                <div className="absolute top-2 left-2 right-2 sm:top-4 sm:left-4 sm:right-4 flex justify-between items-start z-[30] pointer-events-none gap-2">
                   <div
                     className="rounded-full px-3 py-2 sm:px-3.5 sm:py-2 text-[12px] sm:text-[13px] font-mono font-medium tabular-nums tracking-wide text-white/95"
                     style={{
@@ -250,7 +253,7 @@ export default function StudioBoothStep(props: StudioBoothStepProps) {
           )}
 
           <div
-            className="mx-auto w-full max-w-xl rounded-[18px] border border-white/[0.1] p-3.5 sm:p-5 space-y-3 sm:space-y-4"
+            className="mx-auto w-full max-w-xl rounded-[18px] border border-white/[0.1] p-3 sm:p-5 space-y-3 sm:space-y-4"
             style={{
               background: 'linear-gradient(180deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 100%)',
               boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06)',
@@ -266,17 +269,17 @@ export default function StudioBoothStep(props: StudioBoothStepProps) {
                   <button
                     type="button"
                     onClick={onStartRecording}
-                    className={`${btnPrimary} min-h-[60px] px-8 sm:px-10 w-full sm:w-auto sm:min-w-[220px]`}
+                    className={`${btnPrimary} min-h-[54px] sm:min-h-[60px] px-7 sm:px-10 w-full sm:w-auto sm:min-w-[220px]`}
                   >
                     <span className="inline-flex items-center justify-center gap-2">
                       <span className="inline-flex h-2.5 w-2.5 rounded-full bg-white/95 shadow-[0_0_8px_rgba(255,255,255,0.7)]" aria-hidden />
                       Start recording
                     </span>
                   </button>
-                  <button type="button" onClick={onFlipCamera} className={`${btnGhost} min-h-[54px] w-full sm:w-auto sm:order-1`}>
+                  <button type="button" onClick={onFlipCamera} className={`${btnGhost} min-h-[48px] sm:min-h-[54px] w-full sm:w-auto sm:order-1`}>
                     Switch camera
                   </button>
-                  <button type="button" onClick={onCancelPreview} className={`${btnGhost} min-h-[54px] w-full sm:w-auto sm:order-3 text-white/50`}>
+                  <button type="button" onClick={onCancelPreview} className={`${btnGhost} min-h-[48px] sm:min-h-[54px] w-full sm:w-auto sm:order-3 text-white/50`}>
                     Cancel
                   </button>
                 </>

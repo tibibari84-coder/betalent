@@ -123,12 +123,13 @@ export function useStudioRecorder(maxDurationSec: number) {
 
   const startPreview = useCallback(
     async (facingOverride?: 'user' | 'environment'): Promise<StudioPreviewResult> => {
-      // Recording UX requirement: front camera (selfie) framing by default.
-      // Keep internal state for UI, but enforce user-facing constraints for consistent 9:16 capture.
-      const mode: 'user' = 'user';
-      if (facingOverride !== undefined) {
-        setFacingMode('user');
-      }
+      // Mobile-first: stabilize selfie capture by default (TikTok-style framing),
+      // while keeping desktop / larger screens able to switch lenses.
+      const isMobile =
+        typeof window !== 'undefined' &&
+        window.matchMedia?.('(max-width: 768px)')?.matches === true;
+      const mode: 'user' | 'environment' = isMobile ? 'user' : (facingOverride ?? facingMode);
+      if (facingOverride !== undefined) setFacingMode(mode);
 
       setError(null);
       resetRecorderOnly();
@@ -143,11 +144,13 @@ export function useStudioRecorder(maxDurationSec: number) {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
           video: {
-            facingMode: 'user',
+            facingMode: mode,
             width: { ideal: 1080 },
             height: { ideal: 1920 },
             aspectRatio: 9 / 16,
             frameRate: { ideal: 30, max: 60 },
+            // Best-effort hint to avoid odd device scaling paths.
+            ...(isMobile ? ({ resizeMode: 'crop-and-scale' } as unknown as MediaTrackConstraints) : {}),
           },
           audio: {
             echoCancellation: true,
@@ -162,6 +165,12 @@ export function useStudioRecorder(maxDurationSec: number) {
             const caps = (vt.getCapabilities?.() ?? {}) as { zoom?: { min: number; max: number } };
             if (caps.zoom) {
               await vt.applyConstraints({ advanced: [{ zoom: 1 }] } as unknown as MediaTrackConstraints);
+            }
+            // Re-assert portrait aspect if the browser partially ignored ideal constraints.
+            try {
+              await vt.applyConstraints({ aspectRatio: 9 / 16, width: { ideal: 1080 }, height: { ideal: 1920 } });
+            } catch {
+              /* ignore */
             }
           }
         } catch {

@@ -22,9 +22,9 @@ export default function StudioReviewStep(props: StudioReviewStepProps) {
   const copy = getStudioModeCopy(mode);
 
   return (
-    <div className={`${studioPanel} animate-studio-enter`} style={{ minHeight: 'calc(100svh - 110px)' }}>
+    <div className={`${studioPanel} animate-studio-enter`} style={{ minHeight: 'calc(100svh - 24px)' }}>
       <div
-        className="p-4 sm:p-8 md:p-9 space-y-5 sm:space-y-8"
+        className="p-3 sm:p-8 md:p-9 space-y-5 sm:space-y-8"
         style={{
           paddingTop: 'max(16px, env(safe-area-inset-top))',
           paddingBottom: 'max(20px, env(safe-area-inset-bottom))',
@@ -45,7 +45,7 @@ export default function StudioReviewStep(props: StudioReviewStepProps) {
         <ViewfinderFrame>
           <div
             className="relative rounded-[20px] sm:rounded-[22px] overflow-hidden ring-1 ring-white/10 bg-black aspect-[9/16] shadow-[0_24px_80px_rgba(0,0,0,0.75)]"
-            style={{ minHeight: 'min(52svh, 560px)', maxHeight: 'min(64svh, 700px)' }}
+            style={{ minHeight: 'min(64svh, 640px)', maxHeight: 'min(72svh, 720px)' }}
           >
             <div
               className="pointer-events-none absolute inset-0 z-[12] bg-[radial-gradient(ellipse_at_center,transparent_0%,transparent_50%,rgba(0,0,0,0.35)_100%)]"
@@ -55,7 +55,7 @@ export default function StudioReviewStep(props: StudioReviewStepProps) {
               <video
                 ref={reviewVideoRef as LegacyRef<HTMLVideoElement>}
                 src={reviewUrl}
-                className="relative z-[1] w-full h-full object-cover object-center"
+                className="relative z-[1] w-full h-full object-cover object-[50%_35%]"
                 controls
                 playsInline
               />
