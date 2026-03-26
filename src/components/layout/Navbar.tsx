@@ -9,7 +9,16 @@ import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { useState, useEffect, useRef, useLayoutEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { IconSearch, IconUser, IconTrophy, IconMenu } from '@/components/ui/Icons';
+import {
+  IconSearch,
+  IconUser,
+  IconTrophy,
+  IconMenu,
+  IconUsers,
+  IconUpload,
+  IconSettings,
+  IconCoins,
+} from '@/components/ui/Icons';
 import NotificationsBell from '@/components/notifications/NotificationsBell';
 import { ChatNavButton } from '@/components/chat/ChatNavButton';
 import { APP_NAME } from '@/constants/app';
@@ -19,6 +28,12 @@ import { useI18n } from '@/contexts/I18nContext';
 import { cn } from '@/lib/utils';
 
 type NavUser = { username: string; avatarUrl?: string | null };
+
+/** Closed vs open with anchor position (single setState — no frame where open but position is null). */
+type ProfileMenuState = { open: false } | { open: true; top: number; right: number };
+
+/** Below modals (e.g. avatar crop z-400); above notifications popover (z-100). */
+const PROFILE_MENU_Z = 350;
 
 const TOPBAR_TRANSITION = 'transition-all duration-150 ease-out';
 const ICON_BTN =
@@ -82,10 +97,9 @@ export default function Navbar({ onOpenDrawer }: { onOpenDrawer?: () => void }) 
   const { t } = useI18n();
   const profileMenuButtonRef = useRef<HTMLButtonElement>(null);
   const profileMenuPanelRef = useRef<HTMLDivElement>(null);
-  const [profileMenuFixed, setProfileMenuFixed] = useState<{ top: number; right: number } | null>(null);
   const [mounted, setMounted] = useState(false);
   const [user, setUser] = useState<NavUser | null | 'loading'>('loading');
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [profileMenu, setProfileMenu] = useState<ProfileMenuState>({ open: false });
   const [scrolled, setScrolled] = useState(false);
 
   const isImmersiveFeedRoute = pathname === '/feed';
@@ -111,38 +125,62 @@ export default function Navbar({ onOpenDrawer }: { onOpenDrawer?: () => void }) 
       .catch(() => setUser(null));
   }, []);
 
-  function updateProfileMenuPosition() {
+  function updateProfileMenuAnchor() {
     const btn = profileMenuButtonRef.current;
     if (!btn) return;
     const r = btn.getBoundingClientRect();
-    setProfileMenuFixed({ top: r.bottom + 6, right: Math.max(8, window.innerWidth - r.right) });
+    setProfileMenu({
+      open: true,
+      top: r.bottom + 6,
+      right: Math.max(8, window.innerWidth - r.right),
+    });
   }
 
   useLayoutEffect(() => {
-    if (!menuOpen) {
-      setProfileMenuFixed(null);
-      return;
-    }
-    updateProfileMenuPosition();
-    const onScrollOrResize = () => updateProfileMenuPosition();
+    if (!profileMenu.open) return;
+    const onScrollOrResize = () => updateProfileMenuAnchor();
+    onScrollOrResize();
     window.addEventListener('resize', onScrollOrResize);
     window.addEventListener('scroll', onScrollOrResize, true);
     return () => {
       window.removeEventListener('resize', onScrollOrResize);
       window.removeEventListener('scroll', onScrollOrResize, true);
     };
-  }, [menuOpen]);
+  }, [profileMenu.open]);
 
+  /** Defer outside listener so the same click that opens the menu does not close it (capture-phase pitfalls). */
   useEffect(() => {
-    if (!menuOpen) return;
-    function handlePointerDown(e: PointerEvent) {
+    if (!profileMenu.open) return;
+    const onPointerDown = (e: PointerEvent) => {
       const t = e.target as Node;
       if (profileMenuButtonRef.current?.contains(t) || profileMenuPanelRef.current?.contains(t)) return;
-      setMenuOpen(false);
-    }
-    document.addEventListener('pointerdown', handlePointerDown, true);
-    return () => document.removeEventListener('pointerdown', handlePointerDown, true);
-  }, [menuOpen]);
+      setProfileMenu({ open: false });
+    };
+    let frame = 0;
+    frame = requestAnimationFrame(() => {
+      document.addEventListener('pointerdown', onPointerDown);
+    });
+    return () => {
+      cancelAnimationFrame(frame);
+      document.removeEventListener('pointerdown', onPointerDown);
+    };
+  }, [profileMenu.open]);
+
+  useEffect(() => {
+    if (!profileMenu.open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setProfileMenu({ open: false });
+        profileMenuButtonRef.current?.focus();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [profileMenu.open]);
+
+  useEffect(() => {
+    setProfileMenu({ open: false });
+  }, [pathname]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -152,8 +190,28 @@ export default function Navbar({ onOpenDrawer }: { onOpenDrawer?: () => void }) 
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
+  function closeProfileMenu() {
+    setProfileMenu({ open: false });
+  }
+
+  function toggleProfileMenu() {
+    setProfileMenu((m) => {
+      if (m.open) return { open: false };
+      const btn = profileMenuButtonRef.current;
+      if (btn) {
+        const r = btn.getBoundingClientRect();
+        return {
+          open: true,
+          top: r.bottom + 6,
+          right: Math.max(8, window.innerWidth - r.right),
+        };
+      }
+      return { open: true, top: 72, right: 16 };
+    });
+  }
+
   async function handleSignOut() {
-    setMenuOpen(false);
+    closeProfileMenu();
     setUser(null);
     try {
       await fetch('/api/auth/logout', { method: 'POST' });
@@ -174,61 +232,100 @@ export default function Navbar({ onOpenDrawer }: { onOpenDrawer?: () => void }) 
     }
   }
 
+  const MENU_ICON = 'w-[18px] h-[18px] shrink-0 text-white/50';
   const profileMenuDropdown =
-    menuOpen && mounted && profileMenuFixed
-      ? createPortal(
-          <div
-            ref={profileMenuPanelRef}
-            role="menu"
-            className="fixed py-1.5 min-w-[172px] rounded-xl overflow-hidden z-[300] pointer-events-auto"
-            style={{
-              top: profileMenuFixed.top,
-              right: profileMenuFixed.right,
-              background: 'rgba(18,18,22,0.98)',
-              border: '1px solid rgba(255,255,255,0.08)',
-              boxShadow: '0 8px 24px rgba(0,0,0,0.45)',
-            }}
-          >
+    profileMenu.open && mounted ? (
+      createPortal(
+        <div
+          ref={profileMenuPanelRef}
+          id="navbar-profile-menu"
+          role="menu"
+          className="fixed py-2 min-w-[220px] max-w-[min(100vw-16px,280px)] rounded-xl overflow-hidden pointer-events-auto"
+          style={{
+            top: profileMenu.top,
+            right: profileMenu.right,
+            zIndex: PROFILE_MENU_Z,
+            background: 'rgba(18,18,22,0.98)',
+            border: '1px solid rgba(255,255,255,0.08)',
+            boxShadow: '0 8px 24px rgba(0,0,0,0.45)',
+          }}
+        >
+          <div className="px-3.5 pt-1 pb-2 border-b border-white/[0.06] min-w-0">
+            <p className="text-[11px] font-medium uppercase tracking-wide text-white/40 truncate">{t('nav.profile')}</p>
+            <p className="text-[13px] font-semibold text-white truncate" title={user && user !== 'loading' ? `@${user.username}` : undefined}>
+              {user && user !== 'loading' ? `@${user.username}` : ''}
+            </p>
+          </div>
+          <div className="py-1">
             <Link
               href="/profile/me"
               role="menuitem"
-              className={cn('block px-3.5 py-2.5 text-[13px] font-medium text-white hover:bg-white/[0.08]', TOPBAR_TRANSITION)}
-              onClick={() => setMenuOpen(false)}
+              className={cn('flex items-center gap-3 px-3.5 py-2.5 text-[13px] font-medium text-white hover:bg-white/[0.08]', TOPBAR_TRANSITION)}
+              onClick={closeProfileMenu}
             >
-              {t('topbar.profile')}
+              <IconUsers className={MENU_ICON} aria-hidden />
+              {t('nav.profile')}
+            </Link>
+            <Link
+              href="/upload"
+              role="menuitem"
+              className={cn('flex items-center gap-3 px-3.5 py-2.5 text-[13px] font-medium text-white hover:bg-white/[0.08]', TOPBAR_TRANSITION)}
+              onClick={closeProfileMenu}
+            >
+              <IconUpload className={MENU_ICON} aria-hidden />
+              {t('nav.upload')}
+            </Link>
+            <Link
+              href="/wallet"
+              role="menuitem"
+              className={cn('flex items-center gap-3 px-3.5 py-2.5 text-[13px] font-medium text-white hover:bg-white/[0.08]', TOPBAR_TRANSITION)}
+              onClick={closeProfileMenu}
+            >
+              <IconCoins className={MENU_ICON} aria-hidden />
+              {t('nav.wallet')}
             </Link>
             <Link
               href="/settings"
               role="menuitem"
-              className={cn('block px-3.5 py-2.5 text-[13px] font-medium text-white/80 hover:bg-white/[0.08]', TOPBAR_TRANSITION)}
-              onClick={() => setMenuOpen(false)}
+              className={cn('flex items-center gap-3 px-3.5 py-2.5 text-[13px] font-medium text-white/90 hover:bg-white/[0.08]', TOPBAR_TRANSITION)}
+              onClick={closeProfileMenu}
             >
-              Settings
+              <IconSettings className={MENU_ICON} aria-hidden />
+              {t('nav.settings')}
             </Link>
+          </div>
+          <div className="border-t border-white/[0.06] py-1">
             <button
               type="button"
               role="menuitem"
-              onClick={handleSignOut}
-              className={cn('w-full text-left px-3.5 py-2.5 text-[13px] font-medium text-white/80 hover:bg-white/[0.08] border-t border-white/5', TOPBAR_TRANSITION)}
+              onClick={() => {
+                void handleSignOut();
+              }}
+              className={cn(
+                'w-full px-3.5 py-2.5 text-left text-[13px] font-medium text-red-400/95 hover:bg-red-500/10',
+                TOPBAR_TRANSITION
+              )}
             >
-              Sign out
+              {t('auth.signOut')}
             </button>
-          </div>,
-          document.body
-        )
-      : null;
+          </div>
+        </div>,
+        document.body
+      )
+    ) : null;
 
-  const profileMenu =
+  const accountMenuTrigger =
     user && user !== 'loading' ? (
       <div className="relative flex shrink-0 items-center">
         <button
           ref={profileMenuButtonRef}
           type="button"
-          onClick={() => setMenuOpen((o) => !o)}
+          onClick={toggleProfileMenu}
           className={cn(ICON_BTN, 'group')}
           aria-label={t('topbar.profile')}
-          aria-expanded={menuOpen}
+          aria-expanded={profileMenu.open}
           aria-haspopup="menu"
+          aria-controls={profileMenu.open ? 'navbar-profile-menu' : undefined}
         >
           <span
             className={cn(
@@ -286,7 +383,7 @@ export default function Navbar({ onOpenDrawer }: { onOpenDrawer?: () => void }) 
         <NotificationsBell />
       </div>
       {user && user !== 'loading' ? <ChatNavButton /> : null}
-      {profileMenu}
+      {accountMenuTrigger}
       {loginOrLoading}
     </>
   );
