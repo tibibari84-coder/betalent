@@ -557,7 +557,7 @@ export default function Navbar({
     </>
   );
 
-  const utilities = (scope: 'mobile' | 'desktop') => (
+  const utilities = () => (
     <>
       <Link
         href="/challenges"
@@ -573,11 +573,7 @@ export default function Navbar({
       </Link>
       <div className="flex shrink-0 items-center justify-center [&_*]:min-w-0">
         <NotificationsBell
-          isOpen={
-            scope === 'mobile'
-              ? !isDesktopTopbar && mobileTopbarPanel === 'notifications'
-              : isDesktopTopbar && mobileTopbarPanel === 'notifications'
-          }
+          isOpen={mobileTopbarPanel === 'notifications'}
           onOpenChange={(open) => {
             setMobileTopbarPanel(open ? 'notifications' : null);
             if (open) setProfileMenu({ open: false });
@@ -642,7 +638,7 @@ export default function Navbar({
                 >
                   <IconSearch className="w-[var(--utility-icon-size)] h-[var(--utility-icon-size)] shrink-0" />
                 </button>
-                {utilities('mobile')}
+                {utilities()}
               </div>
             </div>
           </div>
@@ -668,7 +664,7 @@ export default function Navbar({
                   <div className="flex min-w-0 flex-1 justify-center px-2">
                     <TopbarSearchForm maxClass="max-w-[min(100%,520px)]" placeholder={t('topbar.searchPlaceholder')} onSubmit={handleSearchSubmit} />
                   </div>
-                  <div className={UTIL_ROW}>{utilities('desktop')}</div>
+                  <div className={UTIL_ROW}>{utilities()}</div>
                 </div>
               </div>
             ) : (
@@ -696,7 +692,7 @@ export default function Navbar({
                 <div className="flex min-w-0 justify-center px-2">
                   <TopbarSearchForm maxClass="max-w-[min(100%,520px)]" placeholder={t('topbar.searchPlaceholder')} onSubmit={handleSearchSubmit} />
                 </div>
-                <div className={UTIL_ROW}>{utilities('desktop')}</div>
+                <div className={UTIL_ROW}>{utilities()}</div>
               </div>
             )}
           </div>

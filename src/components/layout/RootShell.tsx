@@ -20,9 +20,11 @@ import { isMobileOrTabletDevice } from '@/lib/device';
 function RootShellContent({
   children,
   authUser,
+  shellVariant = 'primary',
 }: {
   children: React.ReactNode;
   authUser: { username: string; email?: string | null } | null;
+  shellVariant?: 'primary' | 'detail';
 }) {
   const { videoId, onClose } = usePerformanceModal();
   const [hasMobileNav, setHasMobileNav] = useState(false);
@@ -31,7 +33,8 @@ function RootShellContent({
   const isImmersiveFeedRoute = pathname === '/feed';
   /** Settings uses its own 3-column grid inside main; global RightPanel would crush the layout */
   const isSettingsRoute = pathname === '/settings' || (pathname?.startsWith('/settings/') ?? false);
-  const hideGlobalRightPanel = isImmersiveFeedRoute || isSettingsRoute;
+  const isDetailShell = shellVariant === 'detail';
+  const hideGlobalRightPanel = isDetailShell || isImmersiveFeedRoute || isSettingsRoute;
 
   useEffect(() => {
     setHasMobileNav(isMobileOrTabletDevice());
@@ -44,8 +47,12 @@ function RootShellContent({
   return (
     <>
       <div className="app-shell flex flex-col flex-1 min-h-0 w-full min-w-0">
-          <Navbar onOpenDrawer={() => setDrawerOpen(true)} initialAuthUser={authUser} isAuthenticatedShell />
-          <SidebarDrawer isOpen={drawerOpen} onClose={() => setDrawerOpen(false)} />
+          <Navbar
+            onOpenDrawer={!isDetailShell ? () => setDrawerOpen(true) : undefined}
+            initialAuthUser={authUser}
+            isAuthenticatedShell
+          />
+          {!isDetailShell ? <SidebarDrawer isOpen={drawerOpen} onClose={() => setDrawerOpen(false)} /> : null}
           {/* lg+: flex row — Sidebar | main | Right rail from shell tokens (except /feed & /settings). */}
           <div
             className={cn(
@@ -70,7 +77,10 @@ function RootShellContent({
               style={{ columnGap: 'var(--shell-gap)' }}
             >
               <aside
-                className="hidden lg:block shrink-0 sticky self-start overflow-y-auto overflow-x-hidden order-2 lg:order-1"
+                className={cn(
+                  'hidden lg:block shrink-0 sticky self-start overflow-y-auto overflow-x-hidden order-2 lg:order-1',
+                  isDetailShell && 'lg:hidden'
+                )}
                 style={{
                   width: 'var(--shell-sidebar)',
                   minWidth: 'var(--shell-sidebar)',
@@ -123,8 +133,8 @@ function RootShellContent({
               ) : null}
             </div>
           </div>
-          {!isImmersiveFeedRoute && !isSettingsRoute ? <Footer /> : null}
-          <MobileNav />
+          {!isDetailShell && !isImmersiveFeedRoute && !isSettingsRoute ? <Footer /> : null}
+          {!isDetailShell ? <MobileNav /> : null}
         </div>
       <PerformanceModal
         videoId={videoId}
@@ -138,14 +148,18 @@ function RootShellContent({
 export function RootShell({
   children,
   authUser,
+  shellVariant = 'primary',
 }: {
   children: React.ReactNode;
   authUser: { username: string; email?: string | null } | null;
+  shellVariant?: 'primary' | 'detail';
 }) {
   return (
     <ShellProviders>
       <ChatPanelProvider>
-        <RootShellContent authUser={authUser}>{children}</RootShellContent>
+        <RootShellContent authUser={authUser} shellVariant={shellVariant}>
+          {children}
+        </RootShellContent>
         <DmSlidingPanel />
         <GlobalGiftCelebrationHost />
       </ChatPanelProvider>
