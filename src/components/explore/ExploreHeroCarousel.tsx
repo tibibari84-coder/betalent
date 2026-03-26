@@ -43,35 +43,6 @@ const SLIDES = [
 
 const AUTO_SLIDE_MS = 5500;
 
-/** Premium microphone logo — branded hero visual, not plain icon */
-function MicLogo({ className = '' }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
-      <defs>
-        <linearGradient id="micGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#F2B6C0" stopOpacity="1" />
-          <stop offset="50%" stopColor="#F2B6C0" stopOpacity="0.9" />
-          <stop offset="100%" stopColor="#c4122f" stopOpacity="0.9" />
-        </linearGradient>
-        <filter id="micGlow">
-          <feGaussianBlur stdDeviation="8" result="blur" />
-          <feMerge>
-            <feMergeNode in="blur" />
-            <feMergeNode in="SourceGraphic" />
-          </feMerge>
-        </filter>
-      </defs>
-      <g filter="url(#micGlow)">
-        {/* Mic head */}
-        <path d="M40 18c-6.6 0-12 5.4-12 12v14c0 6.6 5.4 12 12 12s12-5.4 12-12V30c0-6.6-5.4-12-12-12z" fill="url(#micGrad)" stroke="rgba(255,255,255,0.15)" strokeWidth="1.5" />
-        {/* Mic stand */}
-        <path d="M40 56v4M36 60h8M34 62h12" stroke="url(#micGrad)" strokeWidth="2.5" strokeLinecap="round" strokeOpacity="0.9" />
-        <path d="M32 62c0 4.4 3.6 8 8 8s8-3.6 8-8" stroke="url(#micGrad)" strokeWidth="2" strokeLinecap="round" fill="none" strokeOpacity="0.85" />
-      </g>
-    </svg>
-  );
-}
-
 /** Premium trophy logo — challenge variant */
 function TrophyLogo({ className = '' }: { className?: string }) {
   return (
@@ -153,16 +124,27 @@ function EnergyRing({ variant, isActive }: { variant: 'mic' | 'trophy' | 'trendi
       >
         {/* Inner dark glass circle */}
         <div
-          className="absolute rounded-full flex items-center justify-center"
+          className="absolute inset-0 rounded-full overflow-hidden"
           style={{
-            inset: 0,
-            background: 'rgba(0,0,0,0.6)',
-            backdropFilter: 'blur(12px)',
-            WebkitBackdropFilter: 'blur(12px)',
+            background:
+              variant === 'mic'
+                ? 'rgba(0,0,0,0.25)'
+                : 'rgba(0,0,0,0.6)',
+            backdropFilter: variant === 'mic' ? 'blur(8px)' : 'blur(12px)',
+            WebkitBackdropFilter: variant === 'mic' ? 'blur(8px)' : 'blur(12px)',
             border: '1px solid rgba(255,255,255,0.08)',
           }}
         >
-          {variant === 'mic' && <MicLogo className="w-20 h-20 md:w-24 md:h-24 laptop:w-28 laptop:h-28 desktop:w-32 desktop:h-32" />}
+          {variant === 'mic' && (
+            <Image
+              src="/images/betalent-vinyl-logo.png"
+              alt=""
+              fill
+              className="object-cover rounded-full"
+              sizes="(max-width: 640px) 260px, (max-width: 1024px) 320px, 420px"
+              priority
+            />
+          )}
           {variant === 'trophy' && <TrophyLogo className="w-20 h-20 md:w-24 md:h-24 laptop:w-28 laptop:h-28 desktop:w-32 desktop:h-32" />}
           {variant === 'trending' && <TrendingLogo className="w-20 h-20 md:w-24 md:h-24 laptop:w-28 laptop:h-28 desktop:w-32 desktop:h-32" />}
         </div>
