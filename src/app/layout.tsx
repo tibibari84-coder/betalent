@@ -38,9 +38,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   } catch (err) {
     console.error('[RootLayout] getSession failed:', err instanceof Error ? err.message : err);
   }
-  /** Full app chrome: signed in + email verified + not mid–2FA. Unverified users keep public shell until they confirm email. */
+  /** Full app chrome: signed in and not mid–2FA. */
   const isAppMember = Boolean(
-    session?.user && !session.pending2FAUserId && session.user.emailVerified
+    session?.user && !session.pending2FAUserId
   );
   const headersList = await headers();
   const cookieStore = await cookies();
