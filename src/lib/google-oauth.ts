@@ -75,12 +75,52 @@ function getTrustedProductionRequestOrigin(request: Request): string | null {
 }
 
 /**
- * Production OAuth base URL: prefer trusted request origin so redirect_uri matches the URL in the address bar.
- * Falls back to env-based URL when the Host header is not trusted.
+ * Vercel’s stable production hostname (no `git-…` deployment slug). Set automatically on Vercel builds.
+ * @see https://vercel.com/docs/projects/environment-variables/system-environment-variables
+ */
+function getVercelProductionCanonicalOrigin(): string | null {
+  if (process.env.VERCEL !== '1') return null;
+  const raw = process.env.VERCEL_PROJECT_PRODUCTION_URL?.trim()
+    .replace(/^https?:\/\//, '')
+    .split('/')[0]
+    ?.split(':')[0];
+  if (!raw) return null;
+  const h = raw.toLowerCase();
+  if (h === 'localhost' || h.startsWith('127.')) return null;
+  return `https://${h}`;
+}
+
+/**
+ * Production OAuth base URL (must match a row in Google Cloud → Authorized redirect URIs exactly).
+ *
+ * Order:
+ * 1. `NEXT_PUBLIC_APP_URL` when set — your explicit canonical domain.
+ * 2. On Vercel **production** only: `VERCEL_PROJECT_PRODUCTION_URL` (e.g. `betalent-v1.vercel.app`), so OAuth
+ *    does not use the long `*-git-main-*.vercel.app` deployment host (which is almost never added in Google).
+ * 3. Trusted request Host (previews, or fallback).
+ * 4. Env fallback (`VERCEL_URL`, etc.).
+ *
+ * If Google still shows redirect_uri_mismatch: add **this project’s** production URL in Console (not an old
+ * project like `…-ooe6…` when you now deploy `…-v1…`).
  */
 function getProductionOAuthOrigin(request: Request): string {
+  const np = process.env.NEXT_PUBLIC_APP_URL?.trim();
+  if (np) {
+    try {
+      return getProductionPublicAppBaseUrl();
+    } catch {
+      /* misconfigured NEXT_PUBLIC_APP_URL — fall through */
+    }
+  }
+
+  if (process.env.VERCEL_ENV === 'production') {
+    const canonical = getVercelProductionCanonicalOrigin();
+    if (canonical) return canonical;
+  }
+
   const trusted = getTrustedProductionRequestOrigin(request);
   if (trusted) return trusted;
+
   return getProductionOAuthBaseUrl();
 }
 
