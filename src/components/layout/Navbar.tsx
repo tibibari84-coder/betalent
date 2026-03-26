@@ -35,11 +35,12 @@ type NavUser = {
 };
 
 /** Closed vs open with anchor position (single setState — no frame where open but position is null). */
-type ProfileMenuState = { open: false } | { open: true; top: number; left: number };
+type ProfileMenuState = { open: false } | { open: true; top: number; left: number; width: number };
 
 /** Below modals (e.g. avatar crop z-400); above notifications popover (z-100). */
 const PROFILE_MENU_Z = 600;
-const PROFILE_MENU_WIDTH = 272;
+const PROFILE_MENU_WIDTH_DESKTOP = 272;
+const PROFILE_MENU_WIDTH_MOBILE = 236;
 
 const TOPBAR_TRANSITION = 'transition-all duration-150 ease-out';
 const ICON_BTN =
@@ -137,10 +138,15 @@ export default function Navbar({ onOpenDrawer }: { onOpenDrawer?: () => void }) 
       .catch(() => setUser(null));
   }, []);
 
-  function menuLeftFromButtonRect(r: DOMRect): number {
-    const preferred = r.right - PROFILE_MENU_WIDTH;
+  function getProfileMenuWidth(): number {
+    if (typeof window === 'undefined') return PROFILE_MENU_WIDTH_DESKTOP;
+    return window.innerWidth < 640 ? PROFILE_MENU_WIDTH_MOBILE : PROFILE_MENU_WIDTH_DESKTOP;
+  }
+
+  function menuLeftFromButtonRect(r: DOMRect, width: number): number {
+    const preferred = r.right - width;
     const min = 8;
-    const max = Math.max(min, window.innerWidth - PROFILE_MENU_WIDTH - 8);
+    const max = Math.max(min, window.innerWidth - width - 8);
     return Math.max(min, Math.min(max, preferred));
   }
 
@@ -148,10 +154,12 @@ export default function Navbar({ onOpenDrawer }: { onOpenDrawer?: () => void }) 
     const btn = profileMenuButtonRef.current;
     if (!btn) return;
     const r = btn.getBoundingClientRect();
+    const width = getProfileMenuWidth();
     setProfileMenu({
       open: true,
       top: r.bottom + 6,
-      left: menuLeftFromButtonRect(r),
+      left: menuLeftFromButtonRect(r, width),
+      width,
     });
   }
 
@@ -228,13 +236,15 @@ export default function Navbar({ onOpenDrawer }: { onOpenDrawer?: () => void }) 
       const btn = profileMenuButtonRef.current;
       if (btn) {
         const r = btn.getBoundingClientRect();
+        const width = getProfileMenuWidth();
         return {
           open: true,
           top: r.bottom + 6,
-          left: menuLeftFromButtonRect(r),
+          left: menuLeftFromButtonRect(r, width),
+          width,
         };
       }
-      return { open: true, top: 72, left: 8 };
+      return { open: true, top: 72, left: 8, width: PROFILE_MENU_WIDTH_DESKTOP };
     });
   }
 
@@ -290,10 +300,12 @@ export default function Navbar({ onOpenDrawer }: { onOpenDrawer?: () => void }) 
           ref={profileMenuPanelRef}
           id="navbar-profile-menu"
           role="menu"
-          className="fixed py-2 w-[272px] max-w-[min(100vw-16px,272px)] rounded-xl overflow-hidden pointer-events-auto backdrop-blur-xl"
+          className="fixed rounded-xl overflow-hidden pointer-events-auto backdrop-blur-xl"
           style={{
             top: profileMenu.top,
             left: profileMenu.left,
+            width: profileMenu.width,
+            maxWidth: 'min(calc(100vw - 16px), 272px)',
             zIndex: PROFILE_MENU_Z,
             background: 'rgba(18,18,22,0.98)',
             border: '1px solid rgba(255,255,255,0.08)',
@@ -301,8 +313,8 @@ export default function Navbar({ onOpenDrawer }: { onOpenDrawer?: () => void }) 
           }}
           onKeyDown={onMenuKeyDown}
         >
-          <div className="px-3.5 py-3 border-b border-white/[0.08] min-w-0 flex items-center gap-3">
-            <span className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-white/10 ring-1 ring-white/15 shrink-0">
+          <div className="px-3 py-2.5 sm:px-3.5 sm:py-3 border-b border-white/[0.08] min-w-0 flex items-center gap-2.5 sm:gap-3">
+            <span className="flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center overflow-hidden rounded-full bg-white/10 ring-1 ring-white/15 shrink-0">
               {user && user !== 'loading' && user.avatarUrl ? (
                 <img src={user.avatarUrl} alt="" className="avatar-image h-full w-full object-cover" />
               ) : (
@@ -330,7 +342,11 @@ export default function Navbar({ onOpenDrawer }: { onOpenDrawer?: () => void }) 
               role="menuitem"
               data-account-menu-item
               tabIndex={0}
-              className={cn('flex items-center gap-3 px-3.5 py-2.5 text-[13px] font-medium text-white hover:bg-white/[0.08]', TOPBAR_TRANSITION)}
+              className={cn(
+                'flex items-center gap-3 px-3 py-2 text-[13px] font-medium text-white hover:bg-white/[0.08]',
+                'sm:px-3.5 sm:py-2.5',
+                TOPBAR_TRANSITION
+              )}
               onClick={closeProfileMenu}
             >
               <IconUsers className={MENU_ICON} aria-hidden />
@@ -341,7 +357,11 @@ export default function Navbar({ onOpenDrawer }: { onOpenDrawer?: () => void }) 
               role="menuitem"
               data-account-menu-item
               tabIndex={0}
-              className={cn('flex items-center gap-3 px-3.5 py-2.5 text-[13px] font-medium text-white hover:bg-white/[0.08]', TOPBAR_TRANSITION)}
+              className={cn(
+                'flex items-center gap-3 px-3 py-2 text-[13px] font-medium text-white hover:bg-white/[0.08]',
+                'sm:px-3.5 sm:py-2.5',
+                TOPBAR_TRANSITION
+              )}
               onClick={closeProfileMenu}
             >
               <IconSettings className={MENU_ICON} aria-hidden />
@@ -352,7 +372,11 @@ export default function Navbar({ onOpenDrawer }: { onOpenDrawer?: () => void }) 
               role="menuitem"
               data-account-menu-item
               tabIndex={0}
-              className={cn('flex w-full items-center gap-3 px-3.5 py-2.5 text-left text-[13px] font-medium text-white hover:bg-white/[0.08]', TOPBAR_TRANSITION)}
+              className={cn(
+                'flex w-full items-center gap-3 px-3 py-2 text-left text-[13px] font-medium text-white hover:bg-white/[0.08]',
+                'sm:px-3.5 sm:py-2.5',
+                TOPBAR_TRANSITION
+              )}
               onClick={() => {
                 closeProfileMenu();
                 openMessagesPanel();
@@ -366,7 +390,11 @@ export default function Navbar({ onOpenDrawer }: { onOpenDrawer?: () => void }) 
               role="menuitem"
               data-account-menu-item
               tabIndex={0}
-              className={cn('flex items-center gap-3 px-3.5 py-2.5 text-[13px] font-medium text-white hover:bg-white/[0.08]', TOPBAR_TRANSITION)}
+              className={cn(
+                'flex items-center gap-3 px-3 py-2 text-[13px] font-medium text-white hover:bg-white/[0.08]',
+                'sm:px-3.5 sm:py-2.5',
+                TOPBAR_TRANSITION
+              )}
               onClick={closeProfileMenu}
             >
               <IconCoins className={MENU_ICON} aria-hidden />
@@ -383,7 +411,7 @@ export default function Navbar({ onOpenDrawer }: { onOpenDrawer?: () => void }) 
                 void handleSignOut();
               }}
               className={cn(
-                'w-full px-3.5 py-2.5 text-left text-[13px] font-medium text-red-400/95 hover:bg-red-500/10',
+                'w-full px-3 py-2 text-left text-[13px] font-medium text-red-400/95 hover:bg-red-500/10 sm:px-3.5 sm:py-2.5',
                 TOPBAR_TRANSITION
               )}
             >
