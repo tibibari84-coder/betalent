@@ -123,9 +123,11 @@ export function useStudioRecorder(maxDurationSec: number) {
 
   const startPreview = useCallback(
     async (facingOverride?: 'user' | 'environment'): Promise<StudioPreviewResult> => {
-      const mode = facingOverride ?? facingMode;
+      // Recording UX requirement: front camera (selfie) framing by default.
+      // Keep internal state for UI, but enforce user-facing constraints for consistent 9:16 capture.
+      const mode: 'user' = 'user';
       if (facingOverride !== undefined) {
-        setFacingMode(facingOverride);
+        setFacingMode('user');
       }
 
       setError(null);
@@ -141,15 +143,30 @@ export function useStudioRecorder(maxDurationSec: number) {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
           video: {
-            facingMode: mode,
-            width: { ideal: 720 },
-            height: { ideal: 1280 },
+            facingMode: 'user',
+            width: { ideal: 1080 },
+            height: { ideal: 1920 },
+            aspectRatio: 9 / 16,
+            frameRate: { ideal: 30, max: 60 },
           },
           audio: {
             echoCancellation: true,
             noiseSuppression: true,
           },
         });
+
+        // Avoid device/browser default zoom if supported (Android zoom caps / iOS quirks).
+        try {
+          const vt = stream.getVideoTracks()[0];
+          if (vt) {
+            const caps = (vt.getCapabilities?.() ?? {}) as { zoom?: { min: number; max: number } };
+            if (caps.zoom) {
+              await vt.applyConstraints({ advanced: [{ zoom: 1 }] } as unknown as MediaTrackConstraints);
+            }
+          }
+        } catch {
+          /* non-fatal */
+        }
 
         const audioTracks = stream.getAudioTracks().filter((t) => t.readyState === 'live');
         const videoTracks = stream.getVideoTracks().filter((t) => t.readyState === 'live');

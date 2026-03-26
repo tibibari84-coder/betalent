@@ -150,7 +150,7 @@ export default function StudioBoothStep(props: StudioBoothStepProps) {
             >
               <video
                 ref={videoRef as LegacyRef<HTMLVideoElement>}
-                className="absolute inset-0 w-full h-full object-cover object-center scale-[1.01]"
+                className="absolute inset-0 w-full h-full object-cover object-[50%_35%]"
                 playsInline
                 muted
               />
