@@ -111,6 +111,7 @@ export default function Navbar({ onOpenDrawer }: { onOpenDrawer?: () => void }) 
   const [mobileTopbarPanel, setMobileTopbarPanel] = useState<'profile' | 'notifications' | null>(null);
   const [scrolled, setScrolled] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+  const [isDesktopTopbar, setIsDesktopTopbar] = useState(false);
 
   const isImmersiveFeedRoute = pathname === '/feed';
   const isSettingsRoute = pathname === '/settings' || (pathname?.startsWith('/settings/') ?? false);
@@ -246,6 +247,15 @@ export default function Navbar({ onOpenDrawer }: { onOpenDrawer?: () => void }) 
     window.addEventListener('scroll', onScroll, { passive: true });
     onScroll();
     return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const media = window.matchMedia('(min-width: 1024px)');
+    const sync = () => setIsDesktopTopbar(media.matches);
+    sync();
+    media.addEventListener('change', sync);
+    return () => media.removeEventListener('change', sync);
   }, []);
 
   function closeProfileMenu() {
@@ -520,7 +530,7 @@ export default function Navbar({ onOpenDrawer }: { onOpenDrawer?: () => void }) 
     </>
   );
 
-  const utilities = (
+  const utilities = (scope: 'mobile' | 'desktop') => (
     <>
       <Link
         href="/challenges"
@@ -536,7 +546,11 @@ export default function Navbar({ onOpenDrawer }: { onOpenDrawer?: () => void }) 
       </Link>
       <div className="flex shrink-0 items-center justify-center [&_*]:min-w-0">
         <NotificationsBell
-          isOpen={mobileTopbarPanel === 'notifications'}
+          isOpen={
+            scope === 'mobile'
+              ? !isDesktopTopbar && mobileTopbarPanel === 'notifications'
+              : isDesktopTopbar && mobileTopbarPanel === 'notifications'
+          }
           onOpenChange={(open) => {
             setMobileTopbarPanel(open ? 'notifications' : null);
             if (open) setProfileMenu({ open: false });
@@ -601,7 +615,7 @@ export default function Navbar({ onOpenDrawer }: { onOpenDrawer?: () => void }) 
               >
                 <IconSearch className="w-[var(--utility-icon-size)] h-[var(--utility-icon-size)] shrink-0" />
               </button>
-              {utilities}
+              {utilities('mobile')}
             </div>
           </div>
         </div>
@@ -628,7 +642,7 @@ export default function Navbar({ onOpenDrawer }: { onOpenDrawer?: () => void }) 
                 <div className="flex min-w-0 flex-1 justify-center px-2">
                   <TopbarSearchForm maxClass="max-w-[min(100%,520px)]" placeholder={t('topbar.searchPlaceholder')} onSubmit={handleSearchSubmit} />
                 </div>
-                <div className={UTIL_ROW}>{utilities}</div>
+                <div className={UTIL_ROW}>{utilities('desktop')}</div>
               </div>
             </div>
           ) : (
@@ -656,7 +670,7 @@ export default function Navbar({ onOpenDrawer }: { onOpenDrawer?: () => void }) 
               <div className="flex min-w-0 justify-center px-2">
                 <TopbarSearchForm maxClass="max-w-[min(100%,520px)]" placeholder={t('topbar.searchPlaceholder')} onSubmit={handleSearchSubmit} />
               </div>
-              <div className={UTIL_ROW}>{utilities}</div>
+              <div className={UTIL_ROW}>{utilities('desktop')}</div>
             </div>
           )}
         </div>
