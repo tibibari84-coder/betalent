@@ -582,98 +582,98 @@ export default function Navbar({ onOpenDrawer }: { onOpenDrawer?: () => void }) 
           paddingRight: 'var(--topbar-pad-x)',
         }}
       >
-        {/* Mobile / tablet: single compact row, search via overlay only */}
-        <div className="w-full min-w-0 lg:hidden py-1.5">
-          <div className="grid h-[var(--topbar-height)] w-full min-w-0 items-center gap-x-2 sm:gap-x-3 grid-cols-[minmax(0,1fr)_auto]">
-            <div className="flex min-w-0 items-center gap-2">
-              {onOpenDrawer && (
-                <button type="button" onClick={onOpenDrawer} className={HAMBURGER_BTN} aria-label="Open menu">
-                  <IconMenu className="w-5 h-5 shrink-0" />
-                </button>
-              )}
-              <Link
-                href="/"
-                aria-label={APP_NAME}
-                className={cn(
-                  'group min-w-0 max-w-[min(64vw,240px)] rounded-lg py-0.5 hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/10 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent',
-                  TOPBAR_TRANSITION
+        {!isDesktopTopbar ? (
+          <div className="w-full min-w-0 py-1.5">
+            <div className="grid h-[var(--topbar-height)] w-full min-w-0 items-center gap-x-2 sm:gap-x-3 grid-cols-[minmax(0,1fr)_auto]">
+              <div className="flex min-w-0 items-center gap-2">
+                {onOpenDrawer && (
+                  <button type="button" onClick={onOpenDrawer} className={HAMBURGER_BTN} aria-label="Open menu">
+                    <IconMenu className="w-5 h-5 shrink-0" />
+                  </button>
                 )}
-              >
-                <BrandMarkLockupNav>
-                  <BrandWordmark variant="nav" className="truncate" />
-                </BrandMarkLockupNav>
-              </Link>
-            </div>
-            <div className={UTIL_ROW}>
-              <button
-                type="button"
-                onClick={() => setMobileSearchOpen(true)}
-                className={cn(ICON_BTN)}
-                aria-label={t('topbar.searchPlaceholder')}
-                aria-haspopup="dialog"
-                aria-expanded={mobileSearchOpen}
-              >
-                <IconSearch className="w-[var(--utility-icon-size)] h-[var(--utility-icon-size)] shrink-0" />
-              </button>
-              {utilities('mobile')}
-            </div>
-          </div>
-        </div>
-
-        {/* Desktop */}
-        <div className="hidden h-[var(--topbar-height)] w-full min-w-0 lg:block">
-          {hideGlobalRightPanel ? (
-            <div className="flex h-full w-full min-w-0 items-center gap-[var(--shell-gap)]">
-              <div className="flex shrink-0 items-center" style={{ width: 'var(--shell-sidebar)', minWidth: 'var(--shell-sidebar)' }}>
                 <Link
                   href="/"
                   aria-label={APP_NAME}
                   className={cn(
-                    'group min-w-0 rounded-lg py-0.5 hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/10 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent',
+                    'group min-w-0 max-w-[min(64vw,240px)] rounded-lg py-0.5 hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/10 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent',
                     TOPBAR_TRANSITION
                   )}
                 >
                   <BrandMarkLockupNav>
-                    <BrandWordmark variant="nav" />
+                    <BrandWordmark variant="nav" className="truncate" />
                   </BrandMarkLockupNav>
                 </Link>
               </div>
-              <div className="flex min-w-0 flex-1 items-center gap-[var(--shell-gap)]">
-                <div className="flex min-w-0 flex-1 justify-center px-2">
+              <div className={UTIL_ROW}>
+                <button
+                  type="button"
+                  onClick={() => setMobileSearchOpen(true)}
+                  className={cn(ICON_BTN)}
+                  aria-label={t('topbar.searchPlaceholder')}
+                  aria-haspopup="dialog"
+                  aria-expanded={mobileSearchOpen}
+                >
+                  <IconSearch className="w-[var(--utility-icon-size)] h-[var(--utility-icon-size)] shrink-0" />
+                </button>
+                {utilities('mobile')}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="h-[var(--topbar-height)] w-full min-w-0">
+            {hideGlobalRightPanel ? (
+              <div className="flex h-full w-full min-w-0 items-center gap-[var(--shell-gap)]">
+                <div className="flex shrink-0 items-center" style={{ width: 'var(--shell-sidebar)', minWidth: 'var(--shell-sidebar)' }}>
+                  <Link
+                    href="/"
+                    aria-label={APP_NAME}
+                    className={cn(
+                      'group min-w-0 rounded-lg py-0.5 hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/10 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent',
+                      TOPBAR_TRANSITION
+                    )}
+                  >
+                    <BrandMarkLockupNav>
+                      <BrandWordmark variant="nav" />
+                    </BrandMarkLockupNav>
+                  </Link>
+                </div>
+                <div className="flex min-w-0 flex-1 items-center gap-[var(--shell-gap)]">
+                  <div className="flex min-w-0 flex-1 justify-center px-2">
+                    <TopbarSearchForm maxClass="max-w-[min(100%,520px)]" placeholder={t('topbar.searchPlaceholder')} onSubmit={handleSearchSubmit} />
+                  </div>
+                  <div className={UTIL_ROW}>{utilities('desktop')}</div>
+                </div>
+              </div>
+            ) : (
+              <div
+                className="grid h-full w-full min-w-0 items-center"
+                style={{
+                  gridTemplateColumns: 'var(--shell-sidebar) minmax(0,1fr) var(--shell-right)',
+                  columnGap: 'var(--shell-gap)',
+                }}
+              >
+                <div className="flex min-w-0 items-center">
+                  <Link
+                    href="/"
+                    aria-label={APP_NAME}
+                    className={cn(
+                      'group min-w-0 rounded-lg py-0.5 hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/10 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent',
+                      TOPBAR_TRANSITION
+                    )}
+                  >
+                    <BrandMarkLockupNav>
+                      <BrandWordmark variant="nav" />
+                    </BrandMarkLockupNav>
+                  </Link>
+                </div>
+                <div className="flex min-w-0 justify-center px-2">
                   <TopbarSearchForm maxClass="max-w-[min(100%,520px)]" placeholder={t('topbar.searchPlaceholder')} onSubmit={handleSearchSubmit} />
                 </div>
                 <div className={UTIL_ROW}>{utilities('desktop')}</div>
               </div>
-            </div>
-          ) : (
-            <div
-              className="grid h-full w-full min-w-0 items-center"
-              style={{
-                gridTemplateColumns: 'var(--shell-sidebar) minmax(0,1fr) var(--shell-right)',
-                columnGap: 'var(--shell-gap)',
-              }}
-            >
-              <div className="flex min-w-0 items-center">
-                <Link
-                  href="/"
-                  aria-label={APP_NAME}
-                  className={cn(
-                    'group min-w-0 rounded-lg py-0.5 hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/10 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent',
-                    TOPBAR_TRANSITION
-                  )}
-                >
-                  <BrandMarkLockupNav>
-                    <BrandWordmark variant="nav" />
-                  </BrandMarkLockupNav>
-                </Link>
-              </div>
-              <div className="flex min-w-0 justify-center px-2">
-                <TopbarSearchForm maxClass="max-w-[min(100%,520px)]" placeholder={t('topbar.searchPlaceholder')} onSubmit={handleSearchSubmit} />
-              </div>
-              <div className={UTIL_ROW}>{utilities('desktop')}</div>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        )}
       </div>
       {mobileSearchOpen
         ? createPortal(

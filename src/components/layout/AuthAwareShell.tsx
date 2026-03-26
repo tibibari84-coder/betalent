@@ -62,11 +62,9 @@ export function AuthAwareShell({
   if (isAuthPath(pathname)) {
     return <>{children}</>;
   }
-  if (isAppMember && isAppShellPath(pathname)) {
-    return <RootShell>{children}</RootShell>;
-  }
-  if (isPublicOnlyPath(pathname)) {
-    return <PublicShell>{children}</PublicShell>;
-  }
+  // Single source of truth: authenticated users get app chrome on all non-auth pages.
+  // This removes mixed public/auth chrome regressions on routes that might be omitted from route lists.
+  if (isAppMember) return <RootShell>{children}</RootShell>;
+  if (isPublicOnlyPath(pathname) || isAppShellPath(pathname)) return <PublicShell>{children}</PublicShell>;
   return <PublicShell>{children}</PublicShell>;
 }
