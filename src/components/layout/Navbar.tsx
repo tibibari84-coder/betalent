@@ -93,6 +93,11 @@ export default function Navbar({ onOpenDrawer }: { onOpenDrawer?: () => void }) 
   const hideGlobalRightPanel = isImmersiveFeedRoute || isSettingsRoute;
   const isChallengesRoute = pathname === '/challenges' || (pathname?.startsWith('/challenges/') ?? false);
 
+  /** Required before createPortal(document.body) — keeps SSR safe and unlocks the profile menu on the client. */
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   useEffect(() => {
     fetch('/api/auth/me')
       .then((r) => r.json())
