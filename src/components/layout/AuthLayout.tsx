@@ -1,5 +1,3 @@
-import { BrandMarkLockupAuth } from '@/components/brand/BrandMarkLockup';
-
 /**
  * Standalone layout for auth pages only. No app shell (no navbar, sidebar, right panel, bottom nav).
  * Used by (auth) route group for /login and /register.
@@ -27,14 +25,7 @@ export function AuthLayout({ children }: { children: React.ReactNode }) {
 
       {/* Page content — above decorative layers for reliable link/button hits */}
       <div className="relative z-[1] flex-1 flex flex-col">
-        <header
-          className="mx-auto flex w-full max-w-6xl items-center pt-6 sm:pt-8"
-          style={{ paddingLeft: 'var(--topbar-pad-x)', paddingRight: 'var(--topbar-pad-x)' }}
-        >
-          <BrandMarkLockupAuth subtitle="GLOBAL TALENT PLATFORM" />
-        </header>
-
-        <main className="flex-1 flex items-stretch justify-center px-4 sm:px-6 lg:px-10 py-6 sm:py-10">
+        <main className="flex-1 flex items-stretch justify-center px-4 sm:px-6 lg:px-10 py-10 sm:py-12">
           <div className="w-full max-w-6xl mx-auto flex flex-col lg:flex-row gap-8 lg:gap-12 items-stretch">
             {children}
           </div>
