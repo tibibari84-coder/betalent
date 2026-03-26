@@ -68,7 +68,7 @@ export default function NotificationsDropdown({
 }: NotificationsDropdownProps) {
   return (
     <div
-      className="w-[380px] max-h-[520px] overflow-hidden flex flex-col rounded-[20px] p-3"
+      className="w-full max-h-[min(62svh,460px)] sm:max-h-[520px] overflow-hidden flex flex-col rounded-[16px] sm:rounded-[20px] p-2.5 sm:p-3"
       style={{
         background: 'rgba(26,26,28,0.98)',
         backdropFilter: 'blur(20px)',
@@ -77,11 +77,11 @@ export default function NotificationsDropdown({
         boxShadow: '0 24px 64px rgba(0,0,0,0.35)',
       }}
     >
-      <div className="flex items-center justify-between px-2 py-2 mb-1">
-        <h3 className="font-display text-[16px] font-semibold text-text-primary">Notifications</h3>
+      <div className="flex items-center justify-between px-2 py-1.5 sm:py-2 mb-1">
+        <h3 className="font-display text-[15px] sm:text-[16px] font-semibold text-text-primary">Notifications</h3>
         <Link
           href="/notifications"
-          className="text-[13px] font-medium text-accent hover:text-accent-hover"
+          className="text-[12px] sm:text-[13px] font-medium text-accent hover:text-accent-hover"
           onClick={onClose}
         >
           See all

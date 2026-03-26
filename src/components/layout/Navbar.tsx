@@ -108,6 +108,7 @@ export default function Navbar({ onOpenDrawer }: { onOpenDrawer?: () => void }) 
   const [mounted, setMounted] = useState(false);
   const [user, setUser] = useState<NavUser | null | 'loading'>('loading');
   const [profileMenu, setProfileMenu] = useState<ProfileMenuState>({ open: false });
+  const [mobileTopbarPanel, setMobileTopbarPanel] = useState<'profile' | 'notifications' | null>(null);
   const [scrolled, setScrolled] = useState(false);
 
   const isImmersiveFeedRoute = pathname === '/feed';
@@ -194,6 +195,15 @@ export default function Navbar({ onOpenDrawer }: { onOpenDrawer?: () => void }) 
   }, [profileMenu.open]);
 
   useEffect(() => {
+    if (!profileMenu.open && mobileTopbarPanel === 'profile') {
+      setMobileTopbarPanel(null);
+    }
+    if (mobileTopbarPanel !== 'profile' && profileMenu.open) {
+      setProfileMenu({ open: false });
+    }
+  }, [mobileTopbarPanel, profileMenu.open]);
+
+  useEffect(() => {
     if (!profileMenu.open) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -216,6 +226,7 @@ export default function Navbar({ onOpenDrawer }: { onOpenDrawer?: () => void }) 
 
   useEffect(() => {
     setProfileMenu({ open: false });
+    setMobileTopbarPanel(null);
   }, [pathname]);
 
   useEffect(() => {
@@ -228,11 +239,14 @@ export default function Navbar({ onOpenDrawer }: { onOpenDrawer?: () => void }) 
 
   function closeProfileMenu() {
     setProfileMenu({ open: false });
+    setMobileTopbarPanel((p) => (p === 'profile' ? null : p));
   }
 
   function toggleProfileMenu() {
+    const nextPanel = mobileTopbarPanel === 'profile' ? null : 'profile';
+    setMobileTopbarPanel(nextPanel);
     setProfileMenu((m) => {
-      if (m.open) return { open: false };
+      if (m.open || nextPanel !== 'profile') return { open: false };
       const btn = profileMenuButtonRef.current;
       if (btn) {
         const r = btn.getBoundingClientRect();
@@ -489,7 +503,13 @@ export default function Navbar({ onOpenDrawer }: { onOpenDrawer?: () => void }) 
         <IconTrophy className="w-[var(--utility-icon-size)] h-[var(--utility-icon-size)] shrink-0" />
       </Link>
       <div className="flex shrink-0 items-center justify-center [&_*]:min-w-0">
-        <NotificationsBell />
+        <NotificationsBell
+          isOpen={mobileTopbarPanel === 'notifications'}
+          onOpenChange={(open) => {
+            setMobileTopbarPanel(open ? 'notifications' : null);
+            if (open) setProfileMenu({ open: false });
+          }}
+        />
       </div>
       {user && user !== 'loading' ? <ChatNavButton /> : null}
       {accountMenuTrigger}

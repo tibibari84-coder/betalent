@@ -1,14 +1,56 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useLayoutEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { IconBell } from '@/components/ui/Icons';
 import NotificationsDropdown, { type NotificationItem } from './NotificationsDropdown';
 
-export default function NotificationsBell() {
-  const [isOpen, setIsOpen] = useState(false);
+type NotificationsBellProps = {
+  isOpen?: boolean;
+  onOpenChange?: (open: boolean) => void;
+};
+
+type BellPanelState = { open: false } | { open: true; top: number; left: number; width: number };
+
+const PANEL_Z = 560;
+const PANEL_WIDTH_MOBILE = 304;
+const PANEL_WIDTH_DESKTOP = 380;
+
+export default function NotificationsBell({ isOpen: controlledOpen, onOpenChange }: NotificationsBellProps) {
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const [panel, setPanel] = useState<BellPanelState>({ open: false });
   const containerRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const isOpen = controlledOpen ?? uncontrolledOpen;
+
+  const setOpen = (open: boolean) => {
+    if (onOpenChange) onOpenChange(open);
+    if (controlledOpen === undefined) setUncontrolledOpen(open);
+  };
+
+  function getPanelWidth() {
+    if (typeof window === 'undefined') return PANEL_WIDTH_DESKTOP;
+    return window.innerWidth < 640 ? PANEL_WIDTH_MOBILE : PANEL_WIDTH_DESKTOP;
+  }
+
+  function getRightAnchoredLeft(r: DOMRect, width: number) {
+    const preferred = r.right - width;
+    const min = 8;
+    const max = Math.max(min, window.innerWidth - width - 8);
+    return Math.max(min, Math.min(max, preferred));
+  }
+
+  function updateAnchor() {
+    const btn = triggerRef.current;
+    if (!btn) return;
+    const r = btn.getBoundingClientRect();
+    const width = getPanelWidth();
+    setPanel({ open: true, top: r.bottom + 6, left: getRightAnchoredLeft(r, width), width });
+  }
 
   const fetchNotifications = async (): Promise<NotificationItem[]> => {
     setLoading(true);
@@ -32,12 +74,17 @@ export default function NotificationsBell() {
     fetchNotifications();
   }, []);
 
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const unreadCount = notifications.filter((n) => !n.isRead).length;
 
   const handleOpen = () => {
     const next = !isOpen;
-    setIsOpen(next);
+    setOpen(next);
     if (next) {
+      updateAnchor();
       fetchNotifications().then(async (rows) => {
         const unreadIds = rows.filter((n) => !n.isRead).map((n) => n.id);
         if (unreadIds.length > 0) {
@@ -64,19 +111,47 @@ export default function NotificationsBell() {
     }).catch(() => {});
   };
 
+  useLayoutEffect(() => {
+    if (!isOpen) return;
+    updateAnchor();
+    const onScrollOrResize = () => updateAnchor();
+    window.addEventListener('resize', onScrollOrResize);
+    window.addEventListener('scroll', onScrollOrResize, true);
+    return () => {
+      window.removeEventListener('resize', onScrollOrResize);
+      window.removeEventListener('scroll', onScrollOrResize, true);
+    };
+  }, [isOpen]);
+
   useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setIsOpen(false);
+    if (!isOpen) return;
+    const onPointerDown = (e: PointerEvent) => {
+      const t = e.target as Node;
+      if (triggerRef.current?.contains(t) || panelRef.current?.contains(t)) return;
+      setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setOpen(false);
+        triggerRef.current?.focus();
       }
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+    };
+    let frame = 0;
+    frame = requestAnimationFrame(() => {
+      document.addEventListener('pointerdown', onPointerDown);
+    });
+    window.addEventListener('keydown', onKey);
+    return () => {
+      cancelAnimationFrame(frame);
+      document.removeEventListener('pointerdown', onPointerDown);
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [isOpen]);
 
   return (
     <div className="relative shrink-0 min-w-0" ref={containerRef}>
       <button
+        ref={triggerRef}
         type="button"
         onClick={handleOpen}
         className="
@@ -90,6 +165,7 @@ export default function NotificationsBell() {
         "
         aria-label="Notifications"
         aria-expanded={isOpen}
+        aria-haspopup="menu"
       >
         <IconBell className="w-[var(--utility-icon-size)] h-[var(--utility-icon-size)]" />
         {unreadCount > 0 && (
@@ -101,15 +177,32 @@ export default function NotificationsBell() {
           </span>
         )}
       </button>
-      {isOpen && (
-        <div className="absolute right-0 top-full mt-2 z-[100]">
-          <NotificationsDropdown
-            notifications={loading ? [] : notifications}
-            onClose={() => setIsOpen(false)}
-            onNotificationOpen={handleNotificationOpen}
-          />
-        </div>
-      )}
+      {isOpen && panel.open && mounted
+        ? createPortal(
+            <div
+              ref={panelRef}
+              role="menu"
+              className="fixed overflow-hidden pointer-events-auto"
+              style={{
+                top: panel.top,
+                left: panel.left,
+                width: panel.width,
+                maxWidth: 'min(calc(100vw - 16px), 380px)',
+                zIndex: PANEL_Z,
+              }}
+            >
+              <NotificationsDropdown
+                notifications={loading ? [] : notifications}
+                onClose={() => setOpen(false)}
+                onNotificationOpen={(item) => {
+                  void handleNotificationOpen(item);
+                  setOpen(false);
+                }}
+              />
+            </div>,
+            document.body
+          )
+        : null}
     </div>
   );
 }
