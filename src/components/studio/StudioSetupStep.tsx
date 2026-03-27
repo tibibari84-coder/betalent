@@ -81,7 +81,7 @@ export default function StudioSetupStep(props: StudioSetupStepProps) {
   const primaryLabel = postRecordMode ? 'Continue to submit' : 'Enter live room';
 
   return (
-    <div className={`${studioPanel} animate-studio-enter`}>
+    <div className={`${studioPanel} animate-studio-enter relative pb-[4.5rem] md:pb-0`}>
       <div className={`px-5 py-5 md:px-9 md:py-7 ${studioHeaderBg}`}>
         <div className="flex flex-wrap items-center gap-2 mb-3">
           {mode === 'live' && copy.liveChallengeBadge && (
@@ -182,7 +182,7 @@ export default function StudioSetupStep(props: StudioSetupStepProps) {
             Cancel
           </button>
         </div>
-        <p className="text-[12px] sm:text-[13px] text-white/50 leading-relaxed max-w-lg">
+        <p className="hidden max-w-lg text-[12px] leading-relaxed text-white/50 md:block md:text-[13px]">
           {!recordingSupported ? (
             <>This environment doesn&apos;t support in-browser capture. </>
           ) : null}
@@ -196,6 +196,33 @@ export default function StudioSetupStep(props: StudioSetupStepProps) {
           </button>
         </p>
       </div>
+
+      <nav
+        className="fixed bottom-0 left-0 right-0 z-[130] grid grid-cols-3 border-t border-white/[0.08] bg-black/80 backdrop-blur-xl md:hidden"
+        style={{ paddingBottom: 'max(8px, env(safe-area-inset-bottom))' }}
+        aria-label="Studio mode"
+      >
+        <button
+          type="button"
+          onClick={onSwitchToDeviceUpload}
+          disabled={loading}
+          className="flex min-h-[48px] flex-col items-center justify-center gap-0.5 border-r border-white/[0.06] text-[10px] font-semibold uppercase tracking-[0.14em] text-white/55 active:bg-white/[0.06] disabled:opacity-40"
+        >
+          Post
+        </button>
+        <div className="flex min-h-[48px] flex-col items-center justify-center gap-0.5 border-r border-white/[0.06] text-[10px] font-semibold uppercase tracking-[0.14em] text-accent">
+          <span className="h-0.5 w-6 rounded-full bg-accent/80" aria-hidden />
+          Create
+        </div>
+        <div
+          className="flex min-h-[48px] flex-col items-center justify-center gap-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/25"
+          aria-disabled="true"
+          title="Coming soon"
+        >
+          Live
+          <span className="text-[8px] font-medium normal-case tracking-normal text-white/20">soon</span>
+        </div>
+      </nav>
     </div>
   );
 }

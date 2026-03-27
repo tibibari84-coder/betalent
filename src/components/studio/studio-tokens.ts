@@ -16,3 +16,7 @@ export const btnPrimary =
 
 export const btnSecondary =
   'min-h-[52px] px-6 sm:px-8 rounded-[16px] text-[15px] font-semibold bg-white text-neutral-950 hover:bg-white/92 shadow-[inset_0_-1px_0_rgba(0,0,0,0.08)] transition-colors duration-150 ease-out';
+
+/** Floating circular control (TikTok-style rail) — glass, no heavy box */
+export const studioIconBtn =
+  'flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-white/[0.14] bg-black/35 text-white/88 backdrop-blur-md transition-transform active:scale-[0.92] disabled:pointer-events-none disabled:opacity-35 [@media(hover:hover)]:hover:bg-white/[0.08]';

@@ -382,3 +382,19 @@ export function IconFlag({ className = '', ...props }: SVGProps<SVGSVGElement>) 
     </svg>
   );
 }
+
+export function IconBolt({ className = '', ...props }: SVGProps<SVGSVGElement>) {
+  return (
+    <svg className={iconClassName(className)} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5} {...props}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
+    </svg>
+  );
+}
+
+export function IconClock({ className = '', ...props }: SVGProps<SVGSVGElement>) {
+  return (
+    <svg className={iconClassName(className)} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5} {...props}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+  );
+}
