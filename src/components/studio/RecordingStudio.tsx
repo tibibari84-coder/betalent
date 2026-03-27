@@ -130,11 +130,11 @@ export default function RecordingStudio(props: RecordingStudioProps) {
     return () => URL.revokeObjectURL(u);
   }, [reviewBlob]);
 
-  const setupValid =
+  const baseSetupValid =
     title.trim() &&
     styleSlug &&
-    rulesAcknowledged &&
     (!challengeSlug || !challengeContext || challengeContext.status === 'ENTRY_OPEN');
+  const setupValid = baseSetupValid && rulesAcknowledged;
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -162,9 +162,11 @@ export default function RecordingStudio(props: RecordingStudioProps) {
     setLocalError('');
   }, [studioLeaveBooth]);
 
-  const enterLiveRoom = useCallback(async () => {
+  const enterLiveRoom = useCallback(async (opts?: { fromRulesAccept?: boolean }) => {
     setLocalError('');
-    if (!isMobileStudio && !setupValid) {
+    const isRulesAcceptFlow = opts?.fromRulesAccept === true;
+    const desktopReady = isRulesAcceptFlow ? baseSetupValid : setupValid;
+    if (!isMobileStudio && !desktopReady) {
       setLocalError('Complete your session details and confirm platform rules before entering the live room.');
       return;
     }
@@ -193,7 +195,7 @@ export default function RecordingStudio(props: RecordingStudioProps) {
     setBoothReady(true);
     setShowCurtain(false);
     setLocalError('');
-  }, [isMobileStudio, setupValid, studioEnterBooth, studioLeaveBooth]);
+  }, [isMobileStudio, baseSetupValid, setupValid, studioEnterBooth, studioLeaveBooth]);
 
   const handleFlipCamera = useCallback(async () => {
     setSwitchingLens(true);
@@ -302,7 +304,7 @@ export default function RecordingStudio(props: RecordingStudioProps) {
     if (step !== 'setup') return;
     if (pendingMobileTake) return;
     if (!title.trim() || !styleSlug) return;
-    void enterLiveRoom();
+    void enterLiveRoom({ fromRulesAccept: true });
   }, [isMobileStudio, step, pendingMobileTake, title, styleSlug, enterLiveRoom]);
 
   const handleClose = useCallback(() => {
