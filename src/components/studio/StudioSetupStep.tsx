@@ -7,6 +7,7 @@ import { IconChevronRight } from '@/components/ui/Icons';
 import type { RecordingMode } from '@/constants/recording-modes';
 import { MAX_PLATFORM_UPLOAD_DURATION_SEC } from '@/constants/upload';
 import { isStudioRecordingSupported } from '@/hooks/useStudioRecorder';
+import { cn } from '@/lib/utils';
 import { btnGhost, btnPrimary, studioHeaderBg, studioPanel } from './studio-tokens';
 import { getStudioModeCopy } from './studio-mode-copy';
 
@@ -30,9 +31,7 @@ export type StudioSetupStepProps = {
   localError: string;
   maxDurationSec: number;
   mode: RecordingMode;
-  postRecordMode?: boolean;
   onEnterBooth: () => void;
-  onUseRecordedTake?: () => void;
   onClose: () => void;
   onSwitchToDeviceUpload: () => void;
 };
@@ -58,9 +57,7 @@ export default function StudioSetupStep(props: StudioSetupStepProps) {
     localError,
     maxDurationSec,
     mode,
-    postRecordMode = false,
     onEnterBooth,
-    onUseRecordedTake,
     onClose,
     onSwitchToDeviceUpload,
   } = props;
@@ -77,12 +74,15 @@ export default function StudioSetupStep(props: StudioSetupStepProps) {
   const [recordingSupported, setRecordingSupported] = useState(false);
   useEffect(() => setRecordingSupported(isStudioRecordingSupported()), []);
 
-  const primaryAction = postRecordMode && onUseRecordedTake ? onUseRecordedTake : onEnterBooth;
-  const primaryLabel = postRecordMode ? 'Continue to submit' : 'Enter live room';
-
   return (
-    <div className={`${studioPanel} animate-studio-enter relative pb-[4.5rem] md:pb-0`}>
-      <div className={`px-5 py-5 md:px-9 md:py-7 ${studioHeaderBg}`}>
+    <div
+      className={cn(
+        studioPanel,
+        'animate-studio-enter relative min-h-[100dvh] pb-6 md:min-h-0 md:pb-0',
+        'max-md:mb-0 max-md:rounded-none max-md:border-0 max-md:shadow-none max-md:bg-black'
+      )}
+    >
+      <div className={cn('px-4 py-4 md:px-9 md:py-7', studioHeaderBg)}>
         <div className="flex flex-wrap items-center gap-2 mb-3">
           {mode === 'live' && copy.liveChallengeBadge && (
             <span className="text-[10px] sm:text-[11px] uppercase tracking-[0.2em] font-bold px-2.5 py-1 rounded-full border border-accent/45 bg-accent/15 text-accent">
@@ -103,7 +103,7 @@ export default function StudioSetupStep(props: StudioSetupStepProps) {
         </p>
       </div>
 
-      <div className="p-5 md:p-9 space-y-7 md:space-y-8">
+      <div className="space-y-6 px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-2 md:space-y-8 md:p-9 md:pb-9 md:pt-0">
         {mode === 'live' && copy.liveRulesHelper && (
           <div
             className="rounded-[16px] border border-white/[0.08] bg-white/[0.03] px-4 py-3.5 sm:px-5 sm:py-4"
@@ -115,7 +115,7 @@ export default function StudioSetupStep(props: StudioSetupStepProps) {
         )}
 
         <div
-          className="relative rounded-[18px] sm:rounded-[20px] border border-accent/20 overflow-hidden"
+          className="relative hidden rounded-[18px] border border-accent/20 overflow-hidden sm:rounded-[20px] md:block"
           style={{
             background: 'linear-gradient(135deg, rgba(196,18,47,0.1) 0%, rgba(12,10,14,0.92) 55%)',
             boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06), 0 0 40px rgba(196,18,47,0.06)',
@@ -136,7 +136,7 @@ export default function StudioSetupStep(props: StudioSetupStepProps) {
           </div>
         </div>
 
-        <div className="rounded-[18px] border border-white/[0.06] bg-white/[0.02] p-1 sm:p-1.5">
+        <div className="rounded-[18px] border border-white/[0.06] bg-white/[0.02] p-1 sm:p-1.5 max-md:rounded-none max-md:border-0 max-md:bg-transparent max-md:p-0">
           <UploadMetadataFields
             disabled={loading}
             title={title}
@@ -171,18 +171,18 @@ export default function StudioSetupStep(props: StudioSetupStepProps) {
         <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 pt-1">
           <button
             type="button"
-            onClick={primaryAction}
+            onClick={onEnterBooth}
             disabled={loading || !recordingSupported}
             className={`${btnPrimary} inline-flex items-center justify-center gap-2 w-full sm:w-auto`}
           >
-            {primaryLabel}
+            Open camera
             <IconChevronRight className="w-5 h-5 opacity-90 group-hover:translate-x-0.5 transition-transform" aria-hidden />
           </button>
           <button type="button" onClick={onClose} disabled={loading} className={`${btnGhost} w-full sm:w-auto justify-center`}>
             Cancel
           </button>
         </div>
-        <p className="hidden max-w-lg text-[12px] leading-relaxed text-white/50 md:block md:text-[13px]">
+        <p className="max-w-lg text-[12px] leading-relaxed text-white/50 md:text-[13px]">
           {!recordingSupported ? (
             <>This environment doesn&apos;t support in-browser capture. </>
           ) : null}
@@ -197,32 +197,6 @@ export default function StudioSetupStep(props: StudioSetupStepProps) {
         </p>
       </div>
 
-      <nav
-        className="fixed bottom-0 left-0 right-0 z-[130] grid grid-cols-3 border-t border-white/[0.08] bg-black/80 backdrop-blur-xl md:hidden"
-        style={{ paddingBottom: 'max(8px, env(safe-area-inset-bottom))' }}
-        aria-label="Studio mode"
-      >
-        <button
-          type="button"
-          onClick={onSwitchToDeviceUpload}
-          disabled={loading}
-          className="flex min-h-[48px] flex-col items-center justify-center gap-0.5 border-r border-white/[0.06] text-[10px] font-semibold uppercase tracking-[0.14em] text-white/55 active:bg-white/[0.06] disabled:opacity-40"
-        >
-          Post
-        </button>
-        <div className="flex min-h-[48px] flex-col items-center justify-center gap-0.5 border-r border-white/[0.06] text-[10px] font-semibold uppercase tracking-[0.14em] text-accent">
-          <span className="h-0.5 w-6 rounded-full bg-accent/80" aria-hidden />
-          Create
-        </div>
-        <div
-          className="flex min-h-[48px] flex-col items-center justify-center gap-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/25"
-          aria-disabled="true"
-          title="Coming soon"
-        >
-          Live
-          <span className="text-[8px] font-medium normal-case tracking-normal text-white/20">soon</span>
-        </div>
-      </nav>
     </div>
   );
 }

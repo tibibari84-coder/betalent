@@ -188,7 +188,9 @@ export default function StudioReviewStep(props: StudioReviewStepProps) {
                 Edit session
               </button>
             </div>
-            <p className="pb-1 text-center text-[10px] text-white/30">Swipe down from top to re-record · swipe up from bottom for Continue</p>
+            <p className="pb-1 text-center text-[10px] text-white/30">
+              Swipe down to re-record · swipe up to continue to publish
+            </p>
           </div>
         </div>
       ) : (

@@ -302,15 +302,19 @@ export default function StudioBoothStep(props: StudioBoothStepProps) {
                     ) : (
                       <span className="h-11 w-11 shrink-0" aria-hidden />
                     )}
-                    <button
-                      type="button"
-                      disabled
-                      className={cn(studioIconBtn, 'h-11 w-11 opacity-40')}
-                      aria-label="Settings (soon)"
-                      title="Soon"
-                    >
-                      <IconSettings className="!h-5 !w-5" />
-                    </button>
+                    {!narrow ? (
+                      <button
+                        type="button"
+                        disabled
+                        className={cn(studioIconBtn, 'h-11 w-11 opacity-40')}
+                        aria-label="Settings (soon)"
+                        title="Soon"
+                      >
+                        <IconSettings className="!h-5 !w-5" />
+                      </button>
+                    ) : (
+                      <span className="h-11 w-11 shrink-0" aria-hidden />
+                    )}
                   </div>
                 </header>
 
@@ -361,35 +365,49 @@ export default function StudioBoothStep(props: StudioBoothStepProps) {
                   </div>
                 ) : null}
 
-                <div className="absolute bottom-[28%] right-3 z-40 flex flex-col gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setEffectsOpen((o) => !o)}
-                    className={cn(studioRailBtn, effectsOpen && 'border-accent/45 text-accent')}
-                    aria-label="Effects"
-                    aria-pressed={effectsOpen}
-                  >
-                    <IconSparkles className="!h-6 !w-6" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowGrid((v) => !v)}
-                    className={cn(studioRailBtn, showGrid && 'border-accent/45 text-accent')}
-                    aria-label="Filters and grid"
-                    aria-pressed={showGrid}
-                  >
-                    <IconLayoutGrid className="!h-6 !w-6" />
-                  </button>
-                  <button type="button" disabled className={studioRailBtn} aria-label="Timer" title="Coming soon">
-                    <IconClock className="!h-6 !w-6 opacity-45" />
-                  </button>
-                  <button type="button" disabled className={studioRailBtn} aria-label="Flash" title="Coming soon">
-                    <IconBolt className="!h-6 !w-6 opacity-45" />
-                  </button>
-                  <button type="button" disabled className={studioRailBtn} aria-label="Speed" title="Coming soon">
-                    <span className="text-[12px] font-bold tabular-nums text-white/50">1×</span>
-                  </button>
-                </div>
+                {!narrow ? (
+                  <div className="absolute bottom-[28%] right-3 z-40 flex flex-col gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setEffectsOpen((o) => !o)}
+                      className={cn(studioRailBtn, effectsOpen && 'border-accent/45 text-accent')}
+                      aria-label="Effects"
+                      aria-pressed={effectsOpen}
+                    >
+                      <IconSparkles className="!h-6 !w-6" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowGrid((v) => !v)}
+                      className={cn(studioRailBtn, showGrid && 'border-accent/45 text-accent')}
+                      aria-label="Filters and grid"
+                      aria-pressed={showGrid}
+                    >
+                      <IconLayoutGrid className="!h-6 !w-6" />
+                    </button>
+                    <button type="button" disabled className={studioRailBtn} aria-label="Timer" title="Coming soon">
+                      <IconClock className="!h-6 !w-6 opacity-45" />
+                    </button>
+                    <button type="button" disabled className={studioRailBtn} aria-label="Flash" title="Coming soon">
+                      <IconBolt className="!h-6 !w-6 opacity-45" />
+                    </button>
+                    <button type="button" disabled className={studioRailBtn} aria-label="Speed" title="Coming soon">
+                      <span className="text-[12px] font-bold tabular-nums text-white/50">1×</span>
+                    </button>
+                  </div>
+                ) : (
+                  <div className="absolute bottom-[26%] right-3 z-40 flex flex-col gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowGrid((v) => !v)}
+                      className={cn(studioRailBtn, 'h-11 w-11', showGrid && 'border-accent/45 text-accent')}
+                      aria-label="Grid"
+                      aria-pressed={showGrid}
+                    >
+                      <IconLayoutGrid className="!h-5 !w-5" />
+                    </button>
+                  </div>
+                )}
 
                 {switchingLens && boothReady ? (
                   <div className="absolute inset-0 z-[60] flex items-center justify-center bg-black/75 backdrop-blur-sm">
@@ -415,7 +433,7 @@ export default function StudioBoothStep(props: StudioBoothStepProps) {
                       </div>
                     </div>
                   ) : null}
-                  {effectsOpen ? (
+                  {!narrow && effectsOpen ? (
                     <div className="mb-2 flex snap-x snap-mandatory gap-2 overflow-x-auto px-3 pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                       {EFFECT_STRIP.map((e, i) => (
                         <button
@@ -442,23 +460,25 @@ export default function StudioBoothStep(props: StudioBoothStepProps) {
                       ))}
                     </div>
                   ) : null}
-                  <div className="mb-3 flex snap-x snap-mandatory justify-start gap-3 overflow-x-auto px-4 py-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                    {durationChips.map((sec) => {
-                      const active = sec === maxDurationSec;
-                      const label = sec >= 600 ? `${Math.round(sec / 60)}m` : `${sec}s`;
-                      return (
-                        <span
-                          key={sec}
-                          className={cn(
-                            'snap-center shrink-0 rounded-full px-3 py-2 text-[13px] font-semibold tabular-nums',
-                            active ? 'bg-white/[0.14] text-white' : 'text-white/35'
-                          )}
-                        >
-                          {label}
-                        </span>
-                      );
-                    })}
-                  </div>
+                  {!narrow ? (
+                    <div className="mb-3 flex snap-x snap-mandatory justify-start gap-3 overflow-x-auto px-4 py-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                      {durationChips.map((sec) => {
+                        const active = sec === maxDurationSec;
+                        const label = sec >= 600 ? `${Math.round(sec / 60)}m` : `${sec}s`;
+                        return (
+                          <span
+                            key={sec}
+                            className={cn(
+                              'snap-center shrink-0 rounded-full px-3 py-2 text-[13px] font-semibold tabular-nums',
+                              active ? 'bg-white/[0.14] text-white' : 'text-white/35'
+                            )}
+                          >
+                            {label}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  ) : null}
                   <div className="flex items-center justify-center gap-6 px-4">
                     {recPhase === 'preview' ? (
                       <button
@@ -496,9 +516,11 @@ export default function StudioBoothStep(props: StudioBoothStepProps) {
                     <div className="flex shrink-0 justify-center">{recordPrimary}</div>
                     <div className="h-12 w-12 shrink-0" aria-hidden />
                   </div>
-                  <p className="mt-1 px-2 text-center text-[9px] font-medium uppercase tracking-[0.18em] text-white/25">
-                    Looks are preview-only · max {maxDurationSec}s
-                  </p>
+                  {!narrow ? (
+                    <p className="mt-1 px-2 text-center text-[9px] font-medium uppercase tracking-[0.18em] text-white/25">
+                      Looks are preview-only · max {maxDurationSec}s
+                    </p>
+                  ) : null}
                 </div>
               </div>
             ) : (

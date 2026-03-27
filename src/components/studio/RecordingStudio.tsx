@@ -78,8 +78,6 @@ export default function RecordingStudio(props: RecordingStudioProps) {
   const [reviewExt, setReviewExt] = useState<'mp4' | 'webm'>('webm');
   const [reviewDurationSec, setReviewDurationSec] = useState(1);
   const [localError, setLocalError] = useState('');
-  const [pendingMobileTake, setPendingMobileTake] = useState<{ file: File; durationSec: number } | null>(null);
-  const autoEnterTriedRef = useRef(false);
   const prepCancelledRef = useRef(false);
 
   const {
@@ -167,9 +165,9 @@ export default function RecordingStudio(props: RecordingStudioProps) {
   const enterLiveRoom = useCallback(async (opts?: { fromRulesAccept?: boolean }) => {
     setLocalError('');
     const isRulesAcceptFlow = opts?.fromRulesAccept === true;
-    const desktopReady = isRulesAcceptFlow ? baseSetupValid : setupValid;
-    if (!isMobileStudio && !desktopReady) {
-      setLocalError('Complete your session details and confirm platform rules before entering the live room.');
+    const ready = isRulesAcceptFlow ? baseSetupValid : setupValid;
+    if (!ready) {
+      setLocalError('Complete your session details and confirm platform rules before opening the camera.');
       return;
     }
     if (!isStudioRecordingSupported()) {
@@ -287,33 +285,16 @@ export default function RecordingStudio(props: RecordingStudioProps) {
     const file = createFileForUpload(reviewBlob, name, mime);
     const dur = Math.max(1, Math.min(maxDurationSec, reviewDurationSec));
     studioLeaveBooth();
-    if (isMobileStudio) {
-      setPendingMobileTake({ file, durationSec: dur });
-      setStep('setup');
-      return;
-    }
     onAcceptTake(file, dur);
-  }, [reviewBlob, reviewExt, maxDurationSec, reviewDurationSec, studioLeaveBooth, onAcceptTake, isMobileStudio]);
-
-  const handleUseRecordedTakeFromSetup = useCallback(() => {
-    if (!pendingMobileTake) return;
-    if (!setupValid) {
-      setLocalError('Add title, vocal style, and accept rules before continuing.');
-      return;
-    }
-    const take = pendingMobileTake;
-    setPendingMobileTake(null);
-    onAcceptTake(take.file, take.durationSec);
-  }, [pendingMobileTake, setupValid, onAcceptTake]);
+  }, [reviewBlob, reviewExt, maxDurationSec, reviewDurationSec, studioLeaveBooth, onAcceptTake]);
 
   const handleRulesAccepted = useCallback(() => {
     // Desktop only: trigger camera entry directly from the checkbox user gesture.
     if (isMobileStudio) return;
     if (step !== 'setup') return;
-    if (pendingMobileTake) return;
     if (!title.trim() || !styleSlug) return;
     void enterLiveRoom({ fromRulesAccept: true });
-  }, [isMobileStudio, step, pendingMobileTake, title, styleSlug, enterLiveRoom]);
+  }, [isMobileStudio, step, title, styleSlug, enterLiveRoom]);
 
   const handleClose = useCallback(() => {
     prepCancelledRef.current = true;
@@ -323,7 +304,6 @@ export default function RecordingStudio(props: RecordingStudioProps) {
     setBoothReady(false);
     setShowCurtain(false);
     setLocalError('');
-    setPendingMobileTake(null);
     onClose();
   }, [studioLeaveBooth, onClose]);
 
@@ -335,15 +315,6 @@ export default function RecordingStudio(props: RecordingStudioProps) {
     setBoothReady(false);
     setShowCurtain(false);
   }, [studioLeaveBooth]);
-
-  useEffect(() => {
-    if (!isMobileStudio) return;
-    if (step !== 'setup') return;
-    if (pendingMobileTake) return;
-    if (autoEnterTriedRef.current) return;
-    autoEnterTriedRef.current = true;
-    void enterLiveRoom();
-  }, [isMobileStudio, step, pendingMobileTake, enterLiveRoom]);
 
   if (step === 'setup') {
     return (
@@ -367,9 +338,7 @@ export default function RecordingStudio(props: RecordingStudioProps) {
         localError={localError}
         maxDurationSec={maxDurationSec}
         mode={mode}
-        postRecordMode={!!pendingMobileTake}
         onEnterBooth={enterLiveRoom}
-        onUseRecordedTake={handleUseRecordedTakeFromSetup}
         onClose={handleClose}
         onSwitchToDeviceUpload={onSwitchToDeviceUpload}
       />
@@ -412,7 +381,7 @@ export default function RecordingStudio(props: RecordingStudioProps) {
       reviewDurationSec={reviewDurationSec}
       mode={mode}
       previewFraming={previewFraming}
-      primaryActionLabel={isMobileStudio ? 'Continue' : 'Publish performance'}
+      primaryActionLabel="Continue to publish"
       onRetake={() => void handleRetake()}
       onEditSession={goSetupFromReview}
       onUseTake={handleUseTake}

@@ -147,7 +147,7 @@ export default function UploadFormContent(props: Props) {
 
   if (!showSuccess && uploadEntryMode === 'studio') {
     return (
-      <div className="mobile-page-column w-full max-w-[960px] py-4 md:py-5 laptop:py-7 min-w-0 pb-36 md:pb-24">
+      <div className="fixed inset-0 z-[100] min-h-[100dvh] w-full overflow-hidden bg-black">
         <RecordingStudio
           maxDurationSec={maxStudioDurationSec}
           mode={studioRecordingMode}
