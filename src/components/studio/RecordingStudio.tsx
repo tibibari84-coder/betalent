@@ -79,6 +79,7 @@ export default function RecordingStudio(props: RecordingStudioProps) {
   const [localError, setLocalError] = useState('');
   const [pendingMobileTake, setPendingMobileTake] = useState<{ file: File; durationSec: number } | null>(null);
   const autoEnterTriedRef = useRef(false);
+  const prevRulesAcknowledgedRef = useRef(rulesAcknowledged);
   const prepCancelledRef = useRef(false);
 
   const {
@@ -325,6 +326,21 @@ export default function RecordingStudio(props: RecordingStudioProps) {
     autoEnterTriedRef.current = true;
     void enterLiveRoom();
   }, [isMobileStudio, step, pendingMobileTake, enterLiveRoom]);
+
+  useEffect(() => {
+    // Desktop creator flow: once rules are accepted (and required fields are valid),
+    // jump directly into camera without requiring a second "Enter" click.
+    const justAcknowledged = !prevRulesAcknowledgedRef.current && rulesAcknowledged;
+    prevRulesAcknowledgedRef.current = rulesAcknowledged;
+
+    if (isMobileStudio) return;
+    if (step !== 'setup') return;
+    if (pendingMobileTake) return;
+    if (!justAcknowledged) return;
+    if (!setupValid) return;
+
+    void enterLiveRoom();
+  }, [isMobileStudio, step, pendingMobileTake, rulesAcknowledged, setupValid, enterLiveRoom]);
 
   if (step === 'setup') {
     return (
