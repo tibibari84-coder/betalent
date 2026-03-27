@@ -125,11 +125,18 @@ export default function InboxPageClient() {
   }, [items, query, activeFilter, accessByPeer]);
 
   return (
-    <div className="w-full min-h-[100dvh] bg-[#09090b]">
-      <div className="mx-auto w-full max-w-[760px] px-4 pb-[max(14px,env(safe-area-inset-bottom))] pt-[max(14px,env(safe-area-inset-top))]">
-        <header className="sticky top-0 z-20 bg-[#09090b]/95 backdrop-blur-xl border-b border-white/[0.06]">
-          <div className="flex items-center justify-between py-3">
-            <h1 className="font-display text-[26px] font-semibold tracking-tight text-white">Inbox</h1>
+    <div className="w-full min-h-[100dvh] flex flex-col bg-[#050505] relative overflow-x-hidden">
+      <div
+        className="pointer-events-none absolute inset-0 z-0"
+        style={{
+          background:
+            'radial-gradient(ellipse 90% 55% at 50% -15%, rgba(196,18,47,0.14), transparent 55%), radial-gradient(ellipse 70% 45% at 100% 100%, rgba(130,30,52,0.1), transparent 60%)',
+        }}
+      />
+      <div className="relative z-10 mx-auto flex w-full min-h-0 flex-1 flex-col max-w-[760px] px-4 pb-[max(14px,env(safe-area-inset-bottom))] pt-[max(12px,env(safe-area-inset-top))]">
+        <header className="sticky top-0 z-20 bg-[#050505]/90 backdrop-blur-xl border-b border-white/[0.06]">
+          <div className="flex items-center justify-between py-2.5">
+            <h1 className="font-display text-[22px] sm:text-[24px] font-semibold tracking-tight text-white">Inbox</h1>
             <button
               type="button"
               onClick={() => setSearchOpen((v) => !v)}
@@ -168,7 +175,7 @@ export default function InboxPageClient() {
           </div>
         </header>
 
-        <section className="pt-2">
+        <section className="flex flex-1 flex-col pt-2 min-h-0">
           {loading ? (
             <ul className="space-y-2.5">
               {Array.from({ length: 7 }).map((_, i) => (
@@ -176,17 +183,17 @@ export default function InboxPageClient() {
               ))}
             </ul>
           ) : filtered.length === 0 ? (
-            <div className="py-16 text-center">
-              <div className="mx-auto h-14 w-14 rounded-full bg-white/[0.06] flex items-center justify-center mb-4">
-                <IconChat className="h-7 w-7 text-white/30" />
+            <div className="flex flex-1 flex-col items-center justify-center min-h-[min(58dvh,480px)] px-4 py-12 text-center rounded-[16px] border border-white/[0.06] bg-gradient-to-b from-white/[0.03] to-transparent">
+              <div className="mx-auto h-12 w-12 rounded-full bg-white/[0.06] flex items-center justify-center mb-3 ring-1 ring-white/[0.08]">
+                <IconChat className="h-6 w-6 text-white/35" />
               </div>
-              <p className="text-[16px] font-medium text-white/85">
+              <p className="text-[15px] font-semibold text-white/90">
                 {activeFilter === 'requests' ? 'No message requests' : 'No conversations yet'}
               </p>
-              <p className="mt-2 text-[14px] text-white/45">
+              <p className="mt-2 max-w-sm text-[13px] leading-relaxed text-white/45">
                 {activeFilter === 'requests'
                   ? 'Requests from non-mutual connections appear here.'
-                  : 'When people message you, conversations appear here.'}
+                  : 'Your DMs will show here — same place as a native messaging app.'}
               </p>
             </div>
           ) : (

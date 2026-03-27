@@ -82,18 +82,18 @@ export default function ProfileContent({
   const [activeTab, setActiveTab] = useState<TabId>('videos');
 
   return (
-    <div className="mt-6 md:mt-8 mobile-centered-card">
-      {/* Tab bar - 52px height, active underline #ff2a4d */}
+    <div className="mt-5 md:mt-7 w-full min-w-0">
+      {/* Tab bar — compact rail, video-first hierarchy */}
       <div
-        className="mobile-centered-card flex items-center justify-start md:justify-center gap-5 md:gap-8 border-b border-[rgba(255,255,255,0.08)] mb-6 overflow-x-auto no-scrollbar"
-        style={{ height: 52 }}
+        className="flex w-full items-center justify-start md:justify-center gap-4 md:gap-8 border-b border-[rgba(255,255,255,0.08)] mb-5 overflow-x-auto no-scrollbar px-0.5"
+        style={{ height: 48 }}
       >
         {TABS.map((tab) => (
           <button
             key={tab.id}
             type="button"
             onClick={() => setActiveTab(tab.id)}
-            className="relative h-full flex items-center text-[14px] font-medium transition-colors pb-0.5"
+            className="relative h-full flex items-center text-[13px] md:text-[14px] font-medium transition-colors pb-0.5 shrink-0"
             style={{
               color: activeTab === tab.id ? '#ffffff' : '#9ba7b8',
             }}
@@ -113,34 +113,28 @@ export default function ProfileContent({
       {activeTab === 'videos' && (
         <>
           {videos.length === 0 ? (
-            <div
-              className="mobile-centered-card rounded-[20px] border border-[rgba(255,255,255,0.08)] px-5 py-8 text-center max-w-xl mx-auto"
-              style={{
-                background: 'rgba(10,12,18,0.9)',
-                backdropFilter: 'blur(20px)',
-              }}
-            >
-              <p className="text-[15px] font-medium text-white mb-2">
-                No performances yet
-              </p>
-              <p className="text-[13px] text-text-muted mb-5">
-                When {isOwner ? 'you upload' : 'this creator uploads'} a performance, it will appear here with views, votes and reactions.
+            <div className="w-full min-h-[min(52dvh,420px)] flex flex-col items-center justify-center text-center px-4 py-10 rounded-[16px] border border-white/[0.06] bg-gradient-to-b from-white/[0.04] to-transparent">
+              <p className="text-[15px] font-semibold text-white tracking-tight">No performances yet</p>
+              <p className="text-[13px] text-text-muted mt-2 max-w-sm leading-relaxed">
+                {isOwner
+                  ? 'Upload a take — your grid appears here with views and reactions.'
+                  : 'Performances show here when this creator posts.'}
               </p>
               {isOwner && (
                 <a
                   href="/upload"
-                  className="inline-flex min-h-[40px] items-center justify-center px-5 py-2.5 rounded-[999px] text-[13px] font-semibold text-white transition-all hover:opacity-95 hover:shadow-[0_10px_30px_rgba(177,18,38,0.45)]"
+                  className="mt-6 inline-flex min-h-[44px] items-center justify-center px-6 py-2.5 rounded-full text-[13px] font-semibold text-white transition-all hover:opacity-95 hover:shadow-[0_10px_30px_rgba(177,18,38,0.45)]"
                   style={{
                     background: 'linear-gradient(135deg,#c4122f,#e11d48)',
                     boxShadow: '0 10px 30px rgba(196,18,47,0.55)',
                   }}
                 >
-                  Upload your first performance
+                  Upload performance
                 </a>
               )}
             </div>
           ) : (
-            <div className="mobile-centered-card grid grid-cols-3 gap-2 md:grid-cols-[repeat(auto-fill,minmax(140px,1fr))] md:gap-4">
+            <div className="grid grid-cols-3 gap-2 sm:gap-2.5 md:grid-cols-[repeat(auto-fill,minmax(140px,1fr))] md:gap-4 w-full">
               {videos.map((v) => (
                 <ProfileVideoThumbnail
                   key={v.id}
@@ -167,7 +161,7 @@ export default function ProfileContent({
               {isOwner ? 'Videos you like will appear here.' : 'No liked videos to show.'}
             </p>
           ) : (
-            <div className="mobile-centered-card grid grid-cols-3 gap-2 md:grid-cols-[repeat(auto-fill,minmax(140px,1fr))] md:gap-4">
+            <div className="grid grid-cols-3 gap-2 sm:gap-2.5 md:grid-cols-[repeat(auto-fill,minmax(140px,1fr))] md:gap-4 w-full">
               {likedVideos.map((v) => (
                 <ProfileVideoThumbnail
                   key={v.id}
@@ -183,7 +177,7 @@ export default function ProfileContent({
       )}
 
       {activeTab === 'challenges' && (
-        <div className="mobile-centered-card space-y-3 max-w-2xl w-full mx-auto">
+        <div className="w-full max-w-2xl mx-auto space-y-3">
           {challenges.length === 0 ? (
             <p className="text-[14px] text-text-muted py-6">No challenge entries yet.</p>
           ) : null}

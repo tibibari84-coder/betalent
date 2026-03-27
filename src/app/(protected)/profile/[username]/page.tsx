@@ -133,7 +133,7 @@ export default async function ProfilePage({ params }: Props) {
         isOwner={isOwner}
         showBack={!isOwner}
       />
-      <div className="mobile-page-column py-4 md:py-6 min-w-0 max-w-[1040px]">
+      <div className="w-full min-w-0 max-w-[1040px] mx-auto px-3 sm:px-4 py-4 md:py-6">
         <ProfileHeader
           displayName={profile.displayName ?? profile.username}
           username={profile.username}
@@ -149,7 +149,7 @@ export default async function ProfilePage({ params }: Props) {
           isOwner={isOwner}
         />
 
-        <div className="mt-5 md:mt-6 mobile-centered-card">
+        <div className="mt-4 md:mt-5 w-full">
           <ProfileStatsBar
             followers={truthfulStats.followersCount}
             following={truthfulStats.followingCount}

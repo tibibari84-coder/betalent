@@ -506,7 +506,7 @@ export default function FeedPage() {
       {/* Top overlay rail: tabs + optional welcome — full width, no nested page card */}
       <div className="relative z-20 w-full flex-shrink-0 border-b border-white/[0.06] bg-black/45 backdrop-blur-xl">
         <div className="w-full max-w-none px-2 pt-2 pb-0 md:px-3">
-          <FirstSessionBanner />
+          <FirstSessionBanner compact />
         </div>
         <div className="w-full px-1.5 pb-1.5 pt-0 md:px-2 md:pb-2">
           <FeedTabBar activeTab={activeTab} onTabChange={setActiveTab} />

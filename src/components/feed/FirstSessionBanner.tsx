@@ -2,10 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { cn } from '@/lib/utils';
 
 const STORAGE_KEY = 'betalent_first_session_seen';
 
-export function FirstSessionBanner() {
+export function FirstSessionBanner({ compact = false }: { compact?: boolean }) {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
@@ -32,37 +33,54 @@ export function FirstSessionBanner() {
 
   return (
     <div
-      className="flex flex-wrap items-center justify-between gap-3 rounded-xl px-4 py-3"
+      className={cn(
+        'flex flex-wrap items-center justify-between rounded-xl',
+        compact ? 'gap-2 px-3 py-2' : 'gap-3 px-4 py-3'
+      )}
       style={{
         background: 'linear-gradient(135deg, rgba(196,18,47,0.12) 0%, rgba(196,18,47,0.04) 100%)',
         border: '1px solid rgba(196,18,47,0.25)',
       }}
       role="status"
     >
-      <div>
-        <p className="text-[14px] font-medium text-white">
+      <div className="min-w-0">
+        <p className={cn('font-medium text-white', compact ? 'text-[13px]' : 'text-[14px]')}>
           Get started
         </p>
-        <p className="text-[13px] text-white/70 mt-0.5">
-          Upload a performance · Explore talent · Join a challenge
+        <p
+          className={cn(
+            'text-white/70',
+            compact ? 'text-[12px] mt-0.5 leading-snug' : 'text-[13px] mt-0.5'
+          )}
+        >
+          {compact ? 'Upload · Explore · Challenges' : 'Upload a performance · Explore talent · Join a challenge'}
         </p>
       </div>
-      <div className="flex items-center gap-2">
+      <div className={cn('flex items-center flex-wrap', compact ? 'gap-1.5' : 'gap-2')}>
         <Link
           href="/upload"
-          className="px-3 py-1.5 rounded-lg text-[13px] font-semibold text-white bg-accent hover:bg-accent-hover transition-colors"
+          className={cn(
+            'rounded-lg font-semibold text-white bg-accent hover:bg-accent-hover transition-colors',
+            compact ? 'px-2.5 py-1 text-[12px]' : 'px-3 py-1.5 text-[13px]'
+          )}
         >
           Upload
         </Link>
         <Link
           href="/explore"
-          className="px-3 py-1.5 rounded-lg text-[13px] font-medium text-white/90 hover:text-white hover:bg-white/10 transition-colors"
+          className={cn(
+            'rounded-lg font-medium text-white/90 hover:text-white hover:bg-white/10 transition-colors',
+            compact ? 'px-2.5 py-1 text-[12px]' : 'px-3 py-1.5 text-[13px]'
+          )}
         >
           Explore
         </Link>
         <Link
           href="/challenges"
-          className="px-3 py-1.5 rounded-lg text-[13px] font-medium text-white/90 hover:text-white hover:bg-white/10 transition-colors"
+          className={cn(
+            'rounded-lg font-medium text-white/90 hover:text-white hover:bg-white/10 transition-colors',
+            compact ? 'px-2.5 py-1 text-[12px]' : 'px-3 py-1.5 text-[13px]'
+          )}
         >
           Challenges
         </Link>
