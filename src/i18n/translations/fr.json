@@ -80,6 +80,7 @@
   "upload.titlePlaceholder": "Donnez un titre à votre performance",
   "upload.description": "Description",
   "upload.descriptionPlaceholder": "Parlez de votre performance aux spectateurs...",
+  "upload.captionPlaceholder": "Décrivez votre performance...",
   "upload.vocalStyle": "Style vocal",
   "upload.chooseVideo": "Choisir un fichier vidéo",
   "upload.uploading": "Envoi en cours…",

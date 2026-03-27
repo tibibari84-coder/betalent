@@ -1,12 +1,12 @@
 'use client';
 
-import { useEffect } from 'react';
-import Link from 'next/link';
+import { useEffect, useState } from 'react';
 import UploadDropzone from '@/components/upload/UploadDropzone';
 import RecordingStudio from '@/components/studio/RecordingStudio';
 import PublishSuccessCard from '@/components/upload/PublishSuccessCard';
 import type { ChallengeContextLite } from '@/components/upload/UploadMetadataFields';
 import { IconArrowLeft, IconUpload } from '@/components/ui/Icons';
+import { cn } from '@/lib/utils';
 import { VOCAL_STYLES_UPLOAD } from '@/constants/categories';
 import { getMimeTypeForUpload, MAX_VIDEO_FILE_SIZE, UPLOAD_SOURCE_FILE } from '@/constants/upload';
 import { CONTENT_TYPE_LABELS, CONTENT_TYPE_DESCRIPTIONS, PLATFORM_RULES_ACKNOWLEDGMENT } from '@/constants/platform-rules';
@@ -17,6 +17,9 @@ const inputClass =
   'w-full h-12 px-4 rounded-[12px] bg-canvas-tertiary border border-[rgba(255,255,255,0.08)] text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent/40 text-[15px] min-h-[48px]';
 
 const labelClass = 'block text-[14px] font-medium text-text-primary mb-2';
+
+const captionInputClass =
+  'w-full min-h-[120px] resize-none rounded-2xl border border-white/[0.1] bg-white/[0.04] px-4 py-3.5 text-[16px] leading-relaxed text-white placeholder:text-white/35 focus:border-accent/35 focus:outline-none focus:ring-1 focus:ring-accent/30';
 
 export type UploadFormPhase = 'idle' | 'uploading' | 'success' | 'failed';
 type ChallengeContext = {
@@ -131,6 +134,17 @@ export default function UploadFormContent(props: Props) {
     }
   }, [challengeContext, setChallengeId]);
 
+  const [moreOpen, setMoreOpen] = useState(false);
+
+  const dropzoneError =
+    file && durationSec > maxStudioDurationSec
+      ? `Video is ${durationSec}s — maximum allowed is ${maxStudioDurationSec}s.`
+      : file && !getMimeTypeForUpload(file)
+        ? 'Use MP4, MOV, M4V, or WebM'
+        : file && file.size > MAX_VIDEO_FILE_SIZE
+          ? `Max ${Math.round(MAX_VIDEO_FILE_SIZE / 1024 / 1024)} MB`
+          : null;
+
   if (!showSuccess && uploadEntryMode === 'studio') {
     return (
       <div className="mobile-page-column w-full max-w-[960px] py-4 md:py-5 laptop:py-7 min-w-0 pb-36 md:pb-24">
@@ -163,8 +177,8 @@ export default function UploadFormContent(props: Props) {
 
   return (
     <>
-      <div className="mobile-page-column w-full max-w-[960px] py-4 md:py-5 laptop:py-7 min-w-0">
-        {showSuccess ? (
+      {showSuccess ? (
+        <div className="w-full min-w-0 px-4 py-6 md:mx-auto md:max-w-lg md:px-6 md:py-10">
           <PublishSuccessCard
             successReady={successReady}
             successVideoId={successVideoId}
@@ -174,262 +188,231 @@ export default function UploadFormContent(props: Props) {
             durationSec={durationSec}
             onUploadAnother={handleUploadAnother}
           />
-        ) : (
-          <>
-        <header className="mb-5 laptop:mb-6">
-          <button
-            type="button"
-            onClick={onBackToStudio}
-            className="mb-4 inline-flex items-center gap-2 text-[13px] font-medium text-text-secondary hover:text-text-primary touch-manipulation min-h-[44px] px-1 -ml-1 rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
-          >
-            <IconArrowLeft className="w-4 h-4" aria-hidden />
-            Record instead
-          </button>
-          <h1 className="font-display text-[26px] md:text-[32px] laptop:text-[36px] font-bold text-text-primary leading-tight mb-2">
-            {t('upload.title')}
-          </h1>
-          <p className="text-[14px] laptop:text-[15px] text-text-secondary max-w-[560px]">
-            Share your talent with the world. Add your video, fill in the details, and publish.
-          </p>
-        </header>
+        </div>
+      ) : (
+        <div className="flex min-h-[calc(100dvh-4rem)] w-full flex-col">
+          <header className="shrink-0 px-4 pb-2 pt-[max(8px,env(safe-area-inset-top))]">
+            <button
+              type="button"
+              onClick={onBackToStudio}
+              className="inline-flex min-h-[44px] items-center gap-2 rounded-lg px-1 text-[14px] font-medium text-white/55 transition-colors [@media(hover:hover)]:hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+            >
+              <IconArrowLeft className="h-4 w-4 shrink-0" aria-hidden />
+              Back
+            </button>
+          </header>
 
-        <div className="space-y-6 laptop:space-y-8">
-          {uploadSource === UPLOAD_SOURCE_FILE && (
-            <UploadDropzone
-              file={file}
-              previewUrl={previewUrlStable}
-              durationSec={durationSec}
-              onFileSelect={handleFileSelect}
-              onClear={handleClearFile}
-              onDurationLoaded={setDurationSec}
-              disabled={loading}
-              error={
-                file && durationSec > maxStudioDurationSec
-                  ? `Video is ${durationSec}s — maximum allowed is ${maxStudioDurationSec}s.`
-                  : file && !getMimeTypeForUpload(file)
-                    ? 'Use MP4, MOV, M4V, or WebM'
-                    : file && file.size > MAX_VIDEO_FILE_SIZE
-                      ? `Max ${Math.round(MAX_VIDEO_FILE_SIZE / 1024 / 1024)} MB`
-                      : null
-              }
-            />
-          )}
-
-          {phase === 'uploading' && (
-            <div className="rounded-[12px] overflow-hidden bg-canvas-tertiary border border-white/10" role="region" aria-label="Upload progress">
-              <div
-                className="h-2 bg-white/10 rounded-full overflow-hidden"
-                role="progressbar"
-                aria-valuenow={uploadStep === 'uploading' ? uploadProgress : uploadStep === 'processing' ? 100 : 10}
-                aria-valuemin={0}
-                aria-valuemax={100}
-                aria-label={progressLabel}
-              >
-                <div
-                  className="h-full bg-accent transition-all duration-300 rounded-full"
-                  style={{ width: uploadStep === 'uploading' ? (uploadProgress + '%') : uploadStep === 'processing' ? '100%' : '10%' }}
+          <div className="flex min-h-0 flex-1 flex-col items-center px-4 pb-[calc(8.5rem+env(safe-area-inset-bottom))] md:pb-[calc(9rem+env(safe-area-inset-bottom))]">
+            <div className="flex w-full max-w-md flex-1 flex-col items-center justify-center">
+              {uploadSource === UPLOAD_SOURCE_FILE && (
+                <UploadDropzone
+                  composer
+                  file={file}
+                  previewUrl={previewUrlStable}
+                  durationSec={durationSec}
+                  onFileSelect={handleFileSelect}
+                  onClear={handleClearFile}
+                  onDurationLoaded={setDurationSec}
+                  disabled={loading}
+                  error={dropzoneError}
                 />
-              </div>
-              <p className="text-[13px] font-medium text-text-primary px-4 py-2" aria-live="polite">
-                {progressLabel}
-              </p>
+              )}
             </div>
-          )}
 
-          <div className="grid md:grid-cols-2 gap-6">
-            <div className="space-y-4">
+            <div className="w-full max-w-md shrink-0 space-y-4">
               {challengeContext ? (
-                <div>
-                  <label htmlFor="challenge-context" className={labelClass}>
-                    Challenge
-                  </label>
-                  <div
-                    id="challenge-context"
-                    className="rounded-[12px] border border-accent/30 bg-accent/10 px-4 py-3"
-                  >
-                    <p className="text-[14px] font-semibold text-white">{challengeContext.title}</p>
-                    <p className="mt-1 text-[12px] text-white/70">
-                      This upload will be submitted to this challenge automatically.
-                    </p>
-                  </div>
+                <div className="rounded-xl border border-accent/25 bg-accent/[0.08] px-3.5 py-2.5">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-accent/80">Challenge</p>
+                  <p className="mt-0.5 text-[14px] font-medium text-white">{challengeContext.title}</p>
                 </div>
               ) : null}
+
               <div>
-                <label htmlFor="contentType" className={labelClass}>Content type</label>
-                <select
-                  id="contentType"
-                  value={contentType}
-                  onChange={(e) => setContentType(e.target.value as 'ORIGINAL' | 'COVER' | 'REMIX')}
-                  className={inputClass}
-                  disabled={loading}
-                >
-                  {(['ORIGINAL', 'COVER', 'REMIX'] as const).map((k) => (
-                    <option key={k} value={k}>{CONTENT_TYPE_LABELS[k]}</option>
-                  ))}
-                </select>
-                <p className="text-[12px] text-text-muted mt-1">{CONTENT_TYPE_DESCRIPTIONS[contentType]}</p>
-              </div>
-              <div>
-                <label htmlFor="commentPermission" className={labelClass}>Comment permission</label>
-                <select
-                  id="commentPermission"
-                  value={commentPermission}
-                  onChange={(e) => setCommentPermission(e.target.value as 'EVERYONE' | 'FOLLOWERS' | 'FOLLOWING' | 'OFF')}
-                  className={inputClass}
-                  disabled={loading}
-                >
-                  <option value="EVERYONE">Everyone</option>
-                  <option value="FOLLOWERS">Followers only</option>
-                  <option value="FOLLOWING">Only people I follow</option>
-                  <option value="OFF">Turn comments off</option>
-                </select>
-                <p className="text-[12px] text-text-muted mt-1">Server-enforced per video.</p>
-              </div>
-              <div>
-                <label htmlFor="style" className={labelClass}>{t('upload.vocalStyle')}</label>
-                <select
-                  id="style"
-                  value={styleSlug}
-                  onChange={(e) => setStyleSlug(e.target.value)}
-                  className={inputClass}
-                  required
-                  aria-required
-                  disabled={loading}
-                >
-                  <option value="">Select vocal style</option>
+                <p className="mb-2 text-[11px] font-medium uppercase tracking-[0.16em] text-white/35">{t('upload.vocalStyle')}</p>
+                <div className="flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                   {VOCAL_STYLES_UPLOAD.map((s) => (
-                    <option key={s.slug} value={s.slug}>{s.name}</option>
+                    <button
+                      key={s.slug}
+                      type="button"
+                      disabled={loading}
+                      onClick={() => setStyleSlug(s.slug)}
+                      className={cn(
+                        'shrink-0 rounded-full border px-3.5 py-2 text-[13px] font-medium transition-colors min-h-[44px]',
+                        styleSlug === s.slug
+                          ? 'border-accent/45 bg-accent/15 text-white'
+                          : 'border-white/[0.1] bg-white/[0.04] text-white/55 [@media(hover:hover)]:hover:border-white/20'
+                      )}
+                    >
+                      {s.name}
+                    </button>
                   ))}
-                </select>
-                <p className="text-[12px] text-text-muted mt-1">Style of your vocal performance</p>
+                </div>
               </div>
-              <div>
-                <label htmlFor="title" className={labelClass}>{t('upload.titleLabel')}</label>
-                <input
-                  id="title"
-                  type="text"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder={t('upload.titlePlaceholder')}
-                  className={inputClass}
-                  required
-                  disabled={loading}
-                />
-              </div>
-            </div>
-            <div className="space-y-4">
-              <div>
-                <label htmlFor="description" className={labelClass}>{t('upload.description')}</label>
-                <textarea
-                  id="description"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder={t('upload.descriptionPlaceholder')}
-                  className={`${inputClass} min-h-[140px] py-3 resize-none`}
-                  rows={5}
-                  disabled={loading}
-                />
-              </div>
-              <div className="glass-panel glass-panel-card p-4 space-y-2">
-                <p className="text-[13px] font-medium text-text-secondary">Preview</p>
-                <p className="text-[13px] text-text-muted">
-                  {title || '—'} · {styleSlug ? VOCAL_STYLES_UPLOAD.find((s) => s.slug === styleSlug)?.name ?? styleSlug : '—'}
-                  {durationSec > 0 && ` · ${durationSec}s`}
-                </p>
-              </div>
-            </div>
-          </div>
 
-          <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 space-y-3">
-            <p className="text-[12px] font-medium text-text-secondary">Platform rules</p>
-            <p className="text-[13px] font-medium text-accent/90">No playback. Real performance required.</p>
-            <ul className="text-[12px] text-text-muted space-y-1 list-disc list-inside">
-              <li>No playback — real performance only</li>
-              <li>No lip-sync — your voice must be live</li>
-              <li>Real performance required</li>
-            </ul>
-            <p className="text-[12px] text-text-muted">
-              By uploading, you confirm you have rights to this content.
-            </p>
-            <label className="flex items-start gap-3 cursor-pointer group">
-              <input
-                type="checkbox"
-                checked={rulesAcknowledged}
-                onChange={(e) => setRulesAcknowledged(e.target.checked)}
+              <textarea
+                id="description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder={t('upload.captionPlaceholder')}
+                className={captionInputClass}
+                rows={4}
                 disabled={loading}
-                className="mt-1 rounded border-white/20 bg-white/5 text-accent focus:ring-accent/50"
+                autoComplete="off"
+                aria-label={t('upload.captionPlaceholder')}
               />
-              <span className="text-[13px] text-text-secondary group-hover:text-text-primary transition-colors">
-                {PLATFORM_RULES_ACKNOWLEDGMENT}
-              </span>
-            </label>
+              <p className="text-[11px] leading-relaxed text-white/30">
+                First line can be your performance title. Hashtags and @mentions are OK in the caption when supported.
+              </p>
+
+              <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-white/[0.08] bg-white/[0.03] p-3.5">
+                <input
+                  type="checkbox"
+                  checked={rulesAcknowledged}
+                  onChange={(e) => setRulesAcknowledged(e.target.checked)}
+                  disabled={loading}
+                  className="mt-0.5 rounded border-white/20 bg-white/5 text-accent focus:ring-accent/50"
+                />
+                <span className="text-[12px] leading-snug text-white/55">{PLATFORM_RULES_ACKNOWLEDGMENT}</span>
+              </label>
+
+              <div className="border-t border-white/[0.06] pt-3">
+                <button
+                  type="button"
+                  onClick={() => setMoreOpen((v) => !v)}
+                  className="flex w-full min-h-[44px] items-center justify-between rounded-xl px-1 py-2 text-left text-[13px] font-medium text-white/45 transition-colors [@media(hover:hover)]:hover:text-white/70"
+                  aria-expanded={moreOpen}
+                >
+                  More options
+                  <span className="text-white/35" aria-hidden>
+                    {moreOpen ? '−' : '+'}
+                  </span>
+                </button>
+                {moreOpen ? (
+                  <div className="mt-3 space-y-4 border-t border-white/[0.05] pt-4">
+                    <div>
+                      <label htmlFor="title-optional" className="mb-1.5 block text-[12px] text-white/45">
+                        {t('upload.titleLabel')} <span className="text-white/25">(optional)</span>
+                      </label>
+                      <input
+                        id="title-optional"
+                        type="text"
+                        value={title}
+                        onChange={(e) => setTitle(e.target.value)}
+                        placeholder={t('upload.titlePlaceholder')}
+                        className={inputClass}
+                        disabled={loading}
+                        autoComplete="off"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="contentType" className="mb-1.5 block text-[12px] text-white/45">
+                        Content type
+                      </label>
+                      <select
+                        id="contentType"
+                        value={contentType}
+                        onChange={(e) => setContentType(e.target.value as 'ORIGINAL' | 'COVER' | 'REMIX')}
+                        className={inputClass}
+                        disabled={loading}
+                      >
+                        {(['ORIGINAL', 'COVER', 'REMIX'] as const).map((k) => (
+                          <option key={k} value={k}>
+                            {CONTENT_TYPE_LABELS[k]}
+                          </option>
+                        ))}
+                      </select>
+                      <p className="mt-1 text-[11px] text-white/35">{CONTENT_TYPE_DESCRIPTIONS[contentType]}</p>
+                    </div>
+                    <div>
+                      <label htmlFor="commentPermission" className="mb-1.5 block text-[12px] text-white/45">
+                        Comments
+                      </label>
+                      <select
+                        id="commentPermission"
+                        value={commentPermission}
+                        onChange={(e) =>
+                          setCommentPermission(e.target.value as 'EVERYONE' | 'FOLLOWERS' | 'FOLLOWING' | 'OFF')
+                        }
+                        className={inputClass}
+                        disabled={loading}
+                      >
+                        <option value="EVERYONE">Everyone</option>
+                        <option value="FOLLOWERS">Followers only</option>
+                        <option value="FOLLOWING">People I follow</option>
+                        <option value="OFF">Off</option>
+                      </select>
+                    </div>
+                    <p className="text-[11px] leading-relaxed text-white/35">
+                      Visibility is public by default for new performances. Votes and gifts follow platform rules for your account tier.
+                    </p>
+                  </div>
+                ) : null}
+              </div>
+
+              {error ? (
+                <div className="rounded-xl border border-red-500/25 bg-red-500/[0.07] px-3 py-2.5" role="alert">
+                  <p className="text-[13px] leading-relaxed text-red-200/95">{error}</p>
+                  {phase === 'failed' ? (
+                    <button
+                      type="button"
+                      onClick={handleTryAgain}
+                      className="mt-2 min-h-[40px] text-[13px] font-semibold text-accent"
+                    >
+                      {t('upload.tryAgain')}
+                    </button>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
           </div>
 
-          {error && <p className="text-accent text-[14px]">{error}</p>}
-
-          {phase === 'failed' && (
-            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-              <p className="text-[13px] text-text-secondary">
-                {t('upload.tryAgainHint')}
-              </p>
+          <div
+            className="fixed bottom-0 left-0 right-0 z-40 border-t border-white/[0.08] px-4 pt-3"
+            style={{
+              paddingBottom: 'max(12px, env(safe-area-inset-bottom))',
+              background: 'rgba(6,6,8,0.92)',
+              backdropFilter: 'blur(20px)',
+            }}
+          >
+            <div className="mx-auto w-full max-w-md">
+              {phase === 'uploading' ? (
+                <div className="mb-3" role="region" aria-label="Upload progress">
+                  <div
+                    className="h-1.5 overflow-hidden rounded-full bg-white/10"
+                    role="progressbar"
+                    aria-valuenow={uploadStep === 'uploading' ? uploadProgress : uploadStep === 'processing' ? 100 : 10}
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-label={progressLabel}
+                  >
+                    <div
+                      className="h-full rounded-full bg-accent transition-all duration-300"
+                      style={{
+                        width:
+                          uploadStep === 'uploading'
+                            ? `${uploadProgress}%`
+                            : uploadStep === 'processing'
+                              ? '100%'
+                              : '12%',
+                      }}
+                    />
+                  </div>
+                  <p className="mt-2 text-center text-[12px] font-medium text-white/65" aria-live="polite">
+                    {progressLabel}
+                  </p>
+                </div>
+              ) : null}
               <button
-                type="button"
-                onClick={handleTryAgain}
-                className="text-[14px] font-medium text-accent shrink-0 min-h-[44px] min-w-[44px] inline-flex items-center justify-center touch-manipulation px-4 [@media(hover:hover)]:hover:underline"
+                type="submit"
+                disabled={!canSubmit || loading}
+                className="btn-primary flex h-[52px] w-full items-center justify-center gap-2 rounded-2xl text-[15px] font-semibold disabled:pointer-events-none disabled:opacity-45"
               >
-                {t('upload.tryAgain')}
+                <IconUpload className="h-5 w-5 shrink-0" aria-hidden />
+                {loading ? progressLabel || t('upload.uploading') : t('upload.publish')}
               </button>
             </div>
-          )}
-
-          {(title || styleSlug) && file && (
-            <div className="glass-panel glass-panel-card p-4 flex flex-wrap gap-4 min-w-0 overflow-hidden">
-              <span className="text-[13px] text-text-secondary truncate min-w-0 max-w-full">
-                <strong className="text-text-primary">Ready to publish:</strong>{' '}
-                {title || '—'} · {styleSlug ? VOCAL_STYLES_UPLOAD.find((s) => s.slug === styleSlug)?.name ?? styleSlug : '—'}
-                {durationSec > 0 && ` · ${durationSec}s`}
-              </span>
-            </div>
-          )}
-        </div>
-          </>
-        )}
-      </div>
-
-      {!showSuccess && uploadEntryMode === 'device' && (
-      <>
-        <div
-          className="hidden md:block fixed bottom-0 left-0 right-0 z-40 border-t border-[rgba(255,255,255,0.08)] pt-6 pb-8"
-          style={{
-            background: 'rgba(26,26,28,0.95)',
-            backdropFilter: 'blur(20px)',
-          }}
-        >
-          <div className="w-full max-w-[960px] mx-auto px-4 md:px-6 laptop:px-8 flex flex-col sm:flex-row gap-3 min-w-0">
-            <button
-              type="submit"
-              disabled={!canSubmit}
-              className="btn-primary flex items-center justify-center gap-2 disabled:opacity-50 min-h-[44px] touch-manipulation px-6 py-3 rounded-[12px] focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:ring-offset-2 focus-visible:ring-offset-[rgba(26,26,28,0.95)]"
-            >
-              <IconUpload className="w-5 h-5" />
-              {loading ? progressLabel || t('upload.uploading') : t('upload.publish')}
-            </button>
           </div>
         </div>
-
-        <div className="md:hidden fixed bottom-[68px] left-0 right-0 z-40 p-4 border-t border-[rgba(255,255,255,0.08)]" style={{ background: 'rgba(26,26,28,0.95)', backdropFilter: 'blur(20px)' }}>
-          <div className="flex gap-3">
-            <button
-              type="submit"
-              disabled={!canSubmit}
-              className="btn-primary flex-1 flex items-center justify-center gap-2 disabled:opacity-50 min-h-[44px] touch-manipulation py-3 rounded-[12px] focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:ring-offset-2"
-            >
-              <IconUpload className="w-5 h-5" />
-              {loading ? (progressLabel || t('upload.uploading')) : t('upload.publishShort')}
-            </button>
-          </div>
-        </div>
-      </>
       )}
     </>
   );

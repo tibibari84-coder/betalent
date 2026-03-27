@@ -161,7 +161,16 @@ export default function UploadPage() {
       setError(t('upload.errorChooseFile'));
       return;
     }
-    if (!title.trim()) {
+    const effectiveTitle =
+      title.trim() ||
+      description
+        .split('\n')
+        .map((line) => line.trim())
+        .find(Boolean)
+        ?.slice(0, 150)
+        .trim() ||
+      '';
+    if (!effectiveTitle) {
       setError(t('upload.errorTitleRequired'));
       return;
     }
@@ -205,7 +214,7 @@ export default function UploadPage() {
       const result = await performDirectUpload(
         file,
         {
-          title: title.trim(),
+          title: effectiveTitle,
           description: description.trim() || undefined,
           categorySlug: styleSlug,
           durationSec: sec,
@@ -244,6 +253,7 @@ export default function UploadPage() {
         }
       }
 
+      setTitle(effectiveTitle);
       setPhase('success');
       setSuccessVideoId(result.videoId);
       setSuccessReady(result.ready);
@@ -298,11 +308,20 @@ export default function UploadPage() {
   }, []);
 
   const loading = phase === 'uploading';
+  const derivedTitleForGate =
+    title.trim() ||
+    description
+      .split('\n')
+      .map((line) => line.trim())
+      .find(Boolean)
+      ?.slice(0, 150)
+      .trim() ||
+    '';
   const canSubmit =
     uploadEntryMode === 'device' &&
     !loading &&
     file &&
-    title.trim() &&
+    Boolean(derivedTitleForGate) &&
     styleSlug &&
     durationSec >= 1 &&
     durationSec <= maxStudioDurationSec &&

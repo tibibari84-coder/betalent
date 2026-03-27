@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useId, useState, useCallback } from 'react';
+import { useRef, useId, useState, useCallback, useEffect } from 'react';
 import { IconUpload } from '@/components/ui/Icons';
 import { FILE_INPUT_ACCEPT, getMimeTypeForUpload, MAX_VIDEO_FILE_SIZE } from '@/constants/upload';
 
@@ -46,6 +46,8 @@ export type UploadDropzoneProps = {
   onDurationLoaded?: (durationSec: number) => void;
   disabled?: boolean;
   error?: string | null;
+  /** Large preview, tap to pause, minimal chrome — publish composer only. */
+  composer?: boolean;
 };
 
 export default function UploadDropzone({
@@ -57,10 +59,23 @@ export default function UploadDropzone({
   onDurationLoaded,
   disabled,
   error,
+  composer = false,
 }: UploadDropzoneProps) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
   const inputId = useId();
   const [isDragOver, setIsDragOver] = useState(false);
+
+  useEffect(() => {
+    if (!composer || !previewUrl) return;
+    const v = videoRef.current;
+    if (!v) return;
+    v.muted = true;
+    const p = v.play();
+    if (p && typeof (p as Promise<void>).catch === 'function') {
+      (p as Promise<void>).catch(() => {});
+    }
+  }, [composer, previewUrl, file]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
@@ -100,6 +115,10 @@ export default function UploadDropzone({
     WebkitBackdropFilter: 'blur(20px)',
   };
 
+  const composerEmptyClass =
+    'flex flex-col items-center justify-center min-h-[160px] rounded-2xl border border-dashed border-white/[0.12] bg-white/[0.03] px-4 py-8 transition cursor-pointer focus-within:outline-none focus-within:ring-2 focus-within:ring-accent/30 touch-manipulation ' +
+    (isDragOver ? 'border-accent/45 bg-accent/[0.06]' : '[@media(hover:hover)]:hover:border-white/20');
+
   return (
     <div className="space-y-2">
       <input
@@ -116,20 +135,96 @@ export default function UploadDropzone({
       {!file ? (
         <label
           htmlFor={inputId}
-          className={`${dropzoneClass} touch-manipulation focus-within:ring-2 focus-within:ring-accent/30 focus-within:ring-offset-2 focus-within:ring-offset-[#0D0D0E]`}
-          style={dropzoneStyle}
+          className={
+            composer
+              ? `${composerEmptyClass} focus-within:ring-offset-2 focus-within:ring-offset-[#030306]`
+              : `${dropzoneClass} touch-manipulation focus-within:ring-2 focus-within:ring-accent/30 focus-within:ring-offset-2 focus-within:ring-offset-[#0D0D0E]`
+          }
+          style={composer ? undefined : dropzoneStyle}
           onDrop={handleDrop}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
         >
-          <span className="w-14 h-14 rounded-full flex items-center justify-center mb-4 min-w-[44px] min-h-[44px] flex-shrink-0" style={{ background: 'rgba(177,18,38,0.18)' }}>
-            <IconUpload className="w-7 h-7 text-accent" />
+          <span
+            className={`mb-3 flex h-12 w-12 shrink-0 items-center justify-center rounded-full ${composer ? 'bg-accent/15' : 'mb-4 min-h-[44px] min-w-[44px]'}`}
+            style={composer ? undefined : { background: 'rgba(177,18,38,0.18)' }}
+          >
+            <IconUpload className={`text-accent ${composer ? 'h-6 w-6' : 'w-7 h-7'}`} />
           </span>
-          <p className="text-[15px] font-semibold text-text-primary mb-1">Add your video</p>
-          <p className="text-[13px] text-text-secondary text-center px-4">
-            {isDragOver ? 'Drop video here' : `Choose from device or drag a video (MP4, MOV, M4V · max ${MAX_MB} MB)`}
-          </p>
+          <p className={`font-semibold text-text-primary ${composer ? 'text-[14px]' : 'text-[15px] mb-1'}`}>Add your video</p>
+          {!composer && (
+            <p className="text-[13px] text-text-secondary text-center px-4">
+              {isDragOver ? 'Drop video here' : `Choose from device or drag a video (MP4, MOV, M4V · max ${MAX_MB} MB)`}
+            </p>
+          )}
+          {composer && (
+            <p className="mt-1 max-w-[280px] text-center text-[12px] text-white/45">MP4, MOV, M4V, WebM · max {MAX_MB} MB</p>
+          )}
         </label>
+      ) : composer ? (
+        <div className="flex w-full flex-col items-center">
+          {previewUrl ? (
+            <button
+              type="button"
+              disabled={disabled}
+              onClick={() => {
+                const v = videoRef.current;
+                if (!v) return;
+                if (v.paused) void v.play();
+                else v.pause();
+              }}
+              className="relative w-full max-w-md overflow-hidden rounded-2xl bg-black focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 disabled:opacity-60"
+              aria-label="Tap to play or pause preview"
+            >
+              <video
+                ref={videoRef}
+                src={previewUrl}
+                className="mx-auto max-h-[min(52dvh,560px)] w-full object-contain"
+                muted
+                playsInline
+                loop
+                preload="auto"
+                disablePictureInPicture
+                disableRemotePlayback
+                onLoadedMetadata={(e) => {
+                  const v = e.currentTarget;
+                  const sec = Math.ceil(v.duration) || 1;
+                  onDurationLoaded?.(sec);
+                }}
+              />
+            </button>
+          ) : (
+            <p className="text-[14px] text-white/50">{file.name}</p>
+          )}
+          <div className="mt-3 flex w-full max-w-md items-center justify-between gap-3 px-1">
+            {durationSec > 0 ? (
+              <span className="text-[12px] tabular-nums text-white/40">{durationSec}s</span>
+            ) : (
+              <span />
+            )}
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                disabled={disabled}
+                onClick={() => inputRef.current?.click()}
+                className="min-h-[44px] rounded-full px-4 text-[13px] font-medium text-white/70 transition-colors [@media(hover:hover)]:hover:text-white"
+              >
+                Replace
+              </button>
+              <button
+                type="button"
+                disabled={disabled}
+                onClick={() => {
+                  if (inputRef.current) inputRef.current.value = '';
+                  onClear();
+                }}
+                className="min-h-[44px] rounded-full px-3 text-[13px] font-medium text-white/35 [@media(hover:hover)]:hover:text-white/55"
+              >
+                Remove
+              </button>
+            </div>
+          </div>
+        </div>
       ) : (
         <div
           className={dropzoneClass}

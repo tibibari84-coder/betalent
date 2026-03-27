@@ -70,101 +70,104 @@ export default function PublishSuccessCard(props: Props) {
   const viewHref = successReady && successVideoId ? `/video/${successVideoId}` : '/my-videos';
 
   return (
-    <div
-      className="rounded-[24px] border border-[rgba(255,255,255,0.12)] p-5 md:p-8 animate-studio-enter"
-      style={{ background: 'rgba(26,26,28,0.78)', backdropFilter: 'blur(20px)' }}
-    >
-      <div className="flex flex-col md:flex-row gap-5 md:gap-8 items-start">
-        <div className="w-full md:w-[280px] shrink-0">
-          <div className="relative rounded-[18px] overflow-hidden border border-white/10 bg-black aspect-[9/16] max-h-[420px]">
-            {previewUrl ? (
-              <video src={previewUrl} className="w-full h-full object-cover" playsInline muted />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center text-white/35 text-[13px]">
-                Performance preview
-              </div>
-            )}
-            <div className="absolute top-3 left-3 rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider bg-black/65 border border-white/10 text-white/90">
-              {successReady ? 'Published' : 'Processing'}
-            </div>
+    <div className="flex min-h-[min(100dvh,720px)] flex-col animate-studio-enter">
+      <div className="relative mx-auto w-full max-w-sm overflow-hidden rounded-2xl bg-black">
+        {previewUrl ? (
+          <video
+            src={previewUrl}
+            className="aspect-[9/16] max-h-[48dvh] w-full object-cover sm:max-h-[420px]"
+            playsInline
+            muted
+            loop
+            autoPlay
+            preload="metadata"
+          />
+        ) : (
+          <div className="flex aspect-[9/16] max-h-[48dvh] w-full items-center justify-center bg-black text-[13px] text-white/35">
+            Performance preview
           </div>
-        </div>
-
-        <div className="flex-1 min-w-0 text-left">
-          <div className="w-14 h-14 rounded-full flex items-center justify-center mb-4 bg-accent/20">
-            <IconCheck className="w-8 h-8 text-accent" />
-          </div>
-          <h2 className="font-display text-[22px] md:text-[28px] font-bold text-text-primary mb-2">
-            {successReady ? 'Published successfully' : 'Upload complete'}
-          </h2>
-          <p className="text-[14px] text-text-secondary mb-4 max-w-[520px]">
-            {successReady ? 'Your performance is now live.' : 'Your performance is processing and will be live shortly.'}
-          </p>
-
-          <div className="rounded-[14px] border border-white/10 bg-white/[0.03] p-4 mb-5">
-            <p className="text-[11px] uppercase tracking-[0.14em] text-white/45 font-semibold mb-2">Performance details</p>
-            <p className="text-[15px] text-white font-medium truncate">{title || 'Untitled performance'}</p>
-            <p className="text-[13px] text-white/60 mt-1">
-              {styleLabel || 'Style not set'}{durationSec > 0 ? ` · ${durationSec}s` : ''}
-            </p>
-          </div>
-
-          <div className="rounded-[14px] border border-white/10 bg-white/[0.02] p-4 mb-5">
-            <p className="text-[11px] uppercase tracking-[0.14em] text-white/45 font-semibold mb-3">Status</p>
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="px-3 py-1 rounded-full text-[12px] font-medium border border-emerald-400/30 bg-emerald-500/10 text-emerald-300">
-                Uploading complete
-              </span>
-              <span className={`px-3 py-1 rounded-full text-[12px] font-medium border ${successReady ? 'border-emerald-400/30 bg-emerald-500/10 text-emerald-300' : 'border-amber-400/30 bg-amber-500/10 text-amber-200'}`}>
-                {successReady ? 'Processing complete' : 'Processing'}
-              </span>
-              <span className={`px-3 py-1 rounded-full text-[12px] font-medium border ${successReady ? 'border-emerald-400/30 bg-emerald-500/10 text-emerald-300' : 'border-white/15 bg-white/[0.03] text-white/55'}`}>
-                Published successfully
-              </span>
-            </div>
-          </div>
-
-          <div className="rounded-[14px] border border-white/10 bg-white/[0.02] p-4 mb-3">
-            <p className="text-[11px] uppercase tracking-[0.14em] text-white/45 font-semibold mb-3">Actions</p>
-            <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
-              <Link
-                href={viewHref}
-                className="btn-primary flex items-center justify-center gap-2 min-h-[46px] px-6 py-3 rounded-[12px] touch-manipulation"
-              >
-                <IconUpload className="w-5 h-5" />
-                Open video
-              </Link>
-              <button
-                type="button"
-                onClick={() => void handleCopyLink()}
-                className="flex items-center justify-center gap-2 min-h-[46px] px-6 py-3 rounded-[12px] border border-[rgba(255,255,255,0.14)] bg-transparent text-text-primary touch-manipulation active:bg-white/5 [@media(hover:hover)]:hover:bg-white/5 transition-colors"
-              >
-                Copy link
-              </button>
-              <button
-                type="button"
-                onClick={() => void handleShare()}
-                className="flex items-center justify-center gap-2 min-h-[46px] px-6 py-3 rounded-[12px] border border-[rgba(255,255,255,0.14)] bg-transparent text-text-primary touch-manipulation active:bg-white/5 [@media(hover:hover)]:hover:bg-white/5 transition-colors"
-              >
-                <IconShare className="w-5 h-5" />
-                Share
-              </button>
-              <button
-                type="button"
-                onClick={onUploadAnother}
-                className="flex items-center justify-center gap-2 min-h-[46px] px-6 py-3 rounded-[12px] border border-[rgba(255,255,255,0.14)] bg-transparent text-text-primary touch-manipulation active:bg-white/5 [@media(hover:hover)]:hover:bg-white/5 transition-colors"
-              >
-                Upload another
-              </button>
-            </div>
-          </div>
-          {shareMessage && (
-            <p className="text-[13px] text-white/60 mt-2" aria-live="polite">
-              {shareMessage}
-            </p>
-          )}
+        )}
+        <div className="pointer-events-none absolute inset-x-0 top-0 bg-gradient-to-b from-black/70 to-transparent px-3 py-2.5">
+          <span className="inline-flex rounded-full border border-white/15 bg-black/50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-white/90 backdrop-blur-sm">
+            {successReady ? 'Live' : 'Processing'}
+          </span>
         </div>
       </div>
+
+      <div className="mt-6 flex flex-col items-center text-center">
+        <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-accent/18">
+          <IconCheck className="h-8 w-8 text-accent" />
+        </div>
+        <h2 className="font-display text-[1.35rem] font-bold leading-tight text-white md:text-[1.5rem]">
+          {successReady ? "You're live" : 'Upload complete'}
+        </h2>
+        <p className="mt-2 max-w-[20rem] text-[14px] leading-relaxed text-white/55">
+          {successReady
+            ? 'Your performance is on BeTalent. Share it or keep creating.'
+            : 'We are finishing processing. You can open it from your videos anytime.'}
+        </p>
+      </div>
+
+      <div className="mt-6 rounded-2xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-left">
+        <p className="text-[15px] font-medium leading-snug text-white">{title || 'Performance'}</p>
+        <p className="mt-1 text-[12px] text-white/45">
+          {styleLabel || 'Style'}{durationSec > 0 ? ` · ${durationSec}s` : ''}
+        </p>
+      </div>
+
+      <div className="mt-6 flex flex-col gap-2.5">
+        <Link
+          href={viewHref}
+          className="btn-primary flex h-[52px] w-full items-center justify-center gap-2 rounded-2xl text-[15px] font-semibold touch-manipulation"
+        >
+          <IconUpload className="h-5 w-5 shrink-0 opacity-95" aria-hidden />
+          View performance
+        </Link>
+        <div className="grid grid-cols-2 gap-2">
+          <Link
+            href="/feed"
+            className="flex h-[48px] items-center justify-center rounded-xl border border-white/[0.12] bg-white/[0.04] text-[14px] font-medium text-white/85 touch-manipulation [@media(hover:hover)]:hover:bg-white/[0.07]"
+          >
+            Feed
+          </Link>
+          <Link
+            href="/profile/me"
+            className="flex h-[48px] items-center justify-center rounded-xl border border-white/[0.12] bg-white/[0.04] text-[14px] font-medium text-white/85 touch-manipulation [@media(hover:hover)]:hover:bg-white/[0.07]"
+          >
+            Profile
+          </Link>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={() => void handleCopyLink()}
+            className="flex h-[48px] items-center justify-center rounded-xl border border-white/[0.1] text-[14px] font-medium text-white/65 touch-manipulation [@media(hover:hover)]:hover:bg-white/[0.05]"
+          >
+            Copy link
+          </button>
+          <button
+            type="button"
+            onClick={() => void handleShare()}
+            className="flex h-[48px] items-center justify-center gap-2 rounded-xl border border-white/[0.1] text-[14px] font-medium text-white/65 touch-manipulation [@media(hover:hover)]:hover:bg-white/[0.05]"
+          >
+            <IconShare className="h-4 w-4" aria-hidden />
+            Share
+          </button>
+        </div>
+        <button
+          type="button"
+          onClick={onUploadAnother}
+          className="mt-1 min-h-[48px] text-[14px] font-medium text-white/40 underline decoration-white/15 underline-offset-4 [@media(hover:hover)]:hover:text-white/65"
+        >
+          Upload another
+        </button>
+      </div>
+
+      {shareMessage ? (
+        <p className="mt-3 text-center text-[13px] text-white/50" aria-live="polite">
+          {shareMessage}
+        </p>
+      ) : null}
     </div>
   );
 }
