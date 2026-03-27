@@ -128,7 +128,8 @@ export function useStudioRecorder(maxDurationSec: number) {
       const isMobile =
         typeof window !== 'undefined' &&
         window.matchMedia?.('(max-width: 768px)')?.matches === true;
-      const mode: 'user' | 'environment' = isMobile ? 'user' : (facingOverride ?? facingMode);
+      const mode: 'user' | 'environment' =
+        facingOverride !== undefined ? facingOverride : isMobile ? 'user' : facingMode;
       if (facingOverride !== undefined) setFacingMode(mode);
 
       setError(null);
@@ -142,35 +143,39 @@ export function useStudioRecorder(maxDurationSec: number) {
       }
 
       try {
+        // Mobile: soft constraints (TikTok-style 9:16) — strict 1080×1920 + resizeMode crop-and-scale
+        // often triggers digital zoom / aggressive crop on Safari & Android Chrome.
+        const videoConstraints: MediaTrackConstraints = isMobile
+          ? {
+              facingMode: mode,
+              width: { ideal: 720, max: 1080 },
+              height: { ideal: 1280, max: 1920 },
+              aspectRatio: { ideal: 9 / 16 },
+              frameRate: { ideal: 30, max: 60 },
+            }
+          : {
+              facingMode: mode,
+              width: { ideal: 1080 },
+              height: { ideal: 1920 },
+              aspectRatio: 9 / 16,
+              frameRate: { ideal: 30, max: 60 },
+            };
+
         const stream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            facingMode: mode,
-            width: { ideal: 1080 },
-            height: { ideal: 1920 },
-            aspectRatio: 9 / 16,
-            frameRate: { ideal: 30, max: 60 },
-            // Best-effort hint to avoid odd device scaling paths.
-            ...(isMobile ? ({ resizeMode: 'crop-and-scale' } as unknown as MediaTrackConstraints) : {}),
-          },
+          video: videoConstraints,
           audio: {
             echoCancellation: true,
             noiseSuppression: true,
           },
         });
 
-        // Avoid device/browser default zoom if supported (Android zoom caps / iOS quirks).
+        // Reset digital zoom to 1× when supported (Android). Avoid a second width/aspect apply — it often re-crops.
         try {
           const vt = stream.getVideoTracks()[0];
           if (vt) {
             const caps = (vt.getCapabilities?.() ?? {}) as { zoom?: { min: number; max: number } };
             if (caps.zoom) {
               await vt.applyConstraints({ advanced: [{ zoom: 1 }] } as unknown as MediaTrackConstraints);
-            }
-            // Re-assert portrait aspect if the browser partially ignored ideal constraints.
-            try {
-              await vt.applyConstraints({ aspectRatio: 9 / 16, width: { ideal: 1080 }, height: { ideal: 1920 } });
-            } catch {
-              /* ignore */
             }
           }
         } catch {

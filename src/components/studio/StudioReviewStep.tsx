@@ -55,7 +55,7 @@ export default function StudioReviewStep(props: StudioReviewStepProps) {
               <video
                 ref={reviewVideoRef as LegacyRef<HTMLVideoElement>}
                 src={reviewUrl}
-                className="relative z-[1] w-full h-full object-cover object-[50%_35%]"
+                className="relative z-[1] h-full w-full object-cover object-center md:object-[50%_35%]"
                 controls
                 playsInline
               />
