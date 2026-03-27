@@ -22,7 +22,7 @@ export default function StudioReviewStep(props: StudioReviewStepProps) {
   const { reviewUrl, reviewVideoRef, reviewDurationSec, mode: _mode, previewFraming, onRetake, onEditSession, onUseTake } = props;
 
   return (
-    <div className={`${studioPanel} animate-studio-enter`} style={{ minHeight: '100dvh', maxHeight: '100dvh', overflow: 'hidden' }}>
+    <div className={`fixed inset-0 z-[120] ${studioPanel} animate-studio-enter`} style={{ minHeight: '100dvh', maxHeight: '100dvh', overflow: 'hidden' }}>
       <div
         className="h-full overflow-hidden px-3 sm:px-8 md:px-9"
         style={{
@@ -46,7 +46,7 @@ export default function StudioReviewStep(props: StudioReviewStepProps) {
               <ViewfinderFrame>
                 <div
                   className="relative rounded-[24px] overflow-hidden ring-1 ring-white/12 bg-black aspect-[9/16] shadow-[0_0_0_1px_rgba(196,18,47,0.14),0_40px_110px_rgba(0,0,0,0.9)]"
-                  style={{ height: 'min(64dvh, 720px)' }}
+                  style={{ height: 'min(66dvh, 760px)' }}
                 >
                   <div
                     className="pointer-events-none absolute inset-0 z-[10]"

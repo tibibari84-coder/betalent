@@ -50,17 +50,17 @@ function resolvePreviewFraming(params: {
   const isWiderThanStage = ratioDelta > RATIO_EPSILON;
   const isTallerThanStage = ratioDelta < -RATIO_EPSILON;
 
-  // Creator-first selfie strategy:
-  // - Wide streams in a 9:16 stage should avoid side-crop close-ups (contain).
-  // - True portrait streams can use cover with intentional headroom framing.
+  // Creator preview should stay full-bleed like native short-video apps.
+  // "contain" on wide selfie streams creates a letterboxed horizontal strip,
+  // which feels broken even if it reduces crop. We keep cover and tune headroom.
   if (camera === 'user') {
-    if (isWiderThanStage) return { fit: 'contain', objectPosition: '50% 40%' };
+    if (isWiderThanStage) return { fit: 'cover', objectPosition: '50% 36%' };
     if (isTallerThanStage) return { fit: 'cover', objectPosition: '50% 30%' };
     return { fit: 'cover', objectPosition: '50% 33%' };
   }
 
-  // Back camera should prioritize scene coverage over face-centered framing.
-  return { fit: isWiderThanStage ? 'contain' : 'cover', objectPosition: '50% 50%' };
+  // Back camera remains full-bleed to preserve native capture feel.
+  return { fit: 'cover', objectPosition: '50% 50%' };
 }
 
 function pickRecorderMime(): { mimeType: string; fileExt: 'mp4' | 'webm' } {
