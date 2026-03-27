@@ -178,7 +178,11 @@ export default function RecordingStudio(props: RecordingStudioProps) {
     setStep('booth');
     setShowCurtain(true);
     setBoothReady(false);
-    await new Promise((r) => setTimeout(r, CURTAIN_MS));
+    // Keep getUserMedia in the same gesture chain for rules-accept flow on desktop.
+    // Delaying here can cause browsers to treat camera access as non-user-initiated.
+    if (!isRulesAcceptFlow) {
+      await new Promise((r) => setTimeout(r, CURTAIN_MS));
+    }
     if (prepCancelledRef.current) return;
     const result = await studioEnterBooth();
     if (prepCancelledRef.current) {
