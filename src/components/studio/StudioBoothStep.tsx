@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, type LegacyRef, type RefObject } from 'react';
+import { useState, useEffect, useRef, type LegacyRef, type RefObject } from 'react';
 import type { RecordingMode } from '@/constants/recording-modes';
 import type { StudioPreviewFraming, StudioRecorderErrorCode, StudioRecorderPhase } from '@/hooks/useStudioRecorder';
 import { cn } from '@/lib/utils';
@@ -14,7 +14,7 @@ import {
   IconSparkles,
   IconX,
 } from '@/components/ui/Icons';
-import { btnGhost, btnPrimary, btnSecondary, studioIconBtn, studioPanel } from './studio-tokens';
+import { btnGhost, btnPrimary, btnSecondary, studioIconBtn, studioPanel, studioRailBtn } from './studio-tokens';
 import ViewfinderFrame from './ViewfinderFrame';
 
 export type StudioBoothStepProps = {
@@ -78,6 +78,31 @@ export default function StudioBoothStep(props: StudioBoothStepProps) {
   const [narrow, setNarrow] = useState(false);
   const [showGrid, setShowGrid] = useState(false);
   const [effectIdx, setEffectIdx] = useState(0);
+  const [effectsOpen, setEffectsOpen] = useState(false);
+  const swipeFrom = useRef<{ x: number; y: number; fromTop: boolean } | null>(null);
+
+  const durationChips = [...DURATION_PRESETS.filter((s) => s <= maxDurationSec)];
+  if (!durationChips.includes(maxDurationSec)) durationChips.push(maxDurationSec);
+  durationChips.sort((a, b) => a - b);
+
+  const onImmersiveTouchStart = (e: React.TouchEvent) => {
+    const t = e.touches[0];
+    swipeFrom.current = {
+      x: t.clientX,
+      y: t.clientY,
+      fromTop: t.clientY < window.innerHeight * 0.22,
+    };
+  };
+
+  const onImmersiveTouchEnd = (e: React.TouchEvent) => {
+    const s = swipeFrom.current;
+    swipeFrom.current = null;
+    if (!s?.fromTop) return;
+    const t = e.changedTouches[0];
+    const dy = t.clientY - s.y;
+    const dx = Math.abs(t.clientX - s.x);
+    if (dy > 96 && dy > dx * 1.25) onCancelPreview();
+  };
 
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 767px)');
@@ -92,7 +117,6 @@ export default function StudioBoothStep(props: StudioBoothStepProps) {
   const canSwitchCamera = isPreview && !switchingLens;
   const showStatusOverlay = isPreview || isRecording;
 
-  const videoObjectFit = narrow ? 'cover' : previewFraming.fit;
   const videoObjectPosition = previewFraming.objectPosition;
 
   const recordPrimary = (
@@ -188,34 +212,8 @@ export default function StudioBoothStep(props: StudioBoothStepProps) {
             paddingBottom: narrow ? '0' : 'max(10px, env(safe-area-inset-bottom))',
           }}
         >
-          <div className="flex h-full w-full flex-col overflow-hidden">
-            {/* Mobile: floating top bar */}
-            {narrow ? (
-              <header
-                className="relative z-50 flex shrink-0 items-center justify-between px-3 pb-2 pt-[max(10px,env(safe-area-inset-top))]"
-                style={{ background: 'linear-gradient(180deg, rgba(0,0,0,0.65) 0%, transparent 100%)' }}
-              >
-                <button
-                  type="button"
-                  onClick={onCancelPreview}
-                  className={cn(studioIconBtn, 'h-10 w-10')}
-                  aria-label="Close studio"
-                >
-                  <IconX className="!h-5 !w-5" />
-                </button>
-                <button
-                  type="button"
-                  disabled
-                  className="pointer-events-none rounded-full border border-white/[0.1] bg-white/[0.06] px-4 py-1.5 text-[11px] font-medium tracking-wide text-white/40 backdrop-blur-md"
-                  title="Coming soon"
-                >
-                  Add sound
-                </button>
-                <button type="button" disabled className={cn(studioIconBtn, 'h-10 w-10 opacity-40')} aria-label="Settings (soon)" title="Soon">
-                  <IconSettings className="!h-5 !w-5" />
-                </button>
-              </header>
-            ) : (
+          <div className={cn('flex h-full w-full flex-col overflow-hidden', narrow && 'relative')}>
+            {!narrow && (
               <header className="shrink-0 pb-2 pt-0.5">
                 <div className="mx-auto w-full max-w-[560px] rounded-2xl border border-white/[0.08] bg-black/35 px-3 py-2.5 backdrop-blur-xl sm:px-4 sm:py-3">
                   <div className="flex items-center justify-between gap-3">
@@ -234,210 +232,228 @@ export default function StudioBoothStep(props: StudioBoothStepProps) {
               </header>
             )}
 
-            <section className="relative flex min-h-0 flex-1 flex-col md:items-center md:justify-center md:py-4">
-              {/* Right control rail — mobile */}
-              {narrow ? (
-                <div
-                  className="absolute bottom-[38%] right-2 z-40 flex flex-col gap-3"
-                  style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+            {narrow ? (
+              <div
+                className="relative min-h-0 flex-1 touch-manipulation"
+                onTouchStart={onImmersiveTouchStart}
+                onTouchEnd={onImmersiveTouchEnd}
+              >
+                <div className="absolute inset-0 z-0 bg-black">
+                  <video
+                    ref={videoRef as LegacyRef<HTMLVideoElement>}
+                    className="h-full w-full bg-black object-cover"
+                    style={{ objectPosition: videoObjectPosition }}
+                    playsInline
+                    muted
+                  />
+                  {showGrid ? (
+                    <div
+                      className="pointer-events-none absolute inset-0 z-[12] opacity-[0.22]"
+                      style={{
+                        backgroundImage:
+                          'linear-gradient(rgba(255,255,255,0.14) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.14) 1px, transparent 1px)',
+                        backgroundSize: '33.33% 33.33%',
+                      }}
+                      aria-hidden
+                    />
+                  ) : null}
+                  <div
+                    className="pointer-events-none absolute inset-0 z-[10]"
+                    style={{
+                      background:
+                        'linear-gradient(180deg, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.08) 20%, transparent 45%, transparent 62%, rgba(0,0,0,0.5) 100%)',
+                    }}
+                    aria-hidden
+                  />
+                </div>
+
+                <header
+                  className="absolute inset-x-0 top-0 z-50 flex items-center justify-between px-3 pb-14 pt-[max(10px,env(safe-area-inset-top))]"
+                  style={{ background: 'linear-gradient(180deg, rgba(0,0,0,0.78) 0%, transparent 100%)' }}
                 >
                   <button
                     type="button"
-                    onClick={() => void onFlipCamera()}
-                    disabled={!canSwitchCamera}
-                    className={studioIconBtn}
-                    aria-label="Flip camera"
+                    onClick={onCancelPreview}
+                    className={cn(studioIconBtn, 'h-11 w-11')}
+                    aria-label="Close studio"
                   >
-                    <IconArrowPath className="!h-5 !w-5" />
+                    <IconX className="!h-5 !w-5" />
                   </button>
-                  <button type="button" disabled className={studioIconBtn} aria-label="Flash" title="Coming soon">
-                    <IconBolt className="!h-5 !w-5 opacity-50" />
-                  </button>
-                  <button type="button" disabled className={studioIconBtn} aria-label="Timer" title="Coming soon">
-                    <IconClock className="!h-5 !w-5 opacity-50" />
+                  <span className="text-[13px] font-semibold tracking-wide text-white/88">
+                    {isRecording ? 'Recording' : isPreview ? 'Preview' : 'Create'}
+                  </span>
+                  <div className="flex w-[88px] shrink-0 justify-end gap-2">
+                    {isPreview ? (
+                      <button
+                        type="button"
+                        onClick={() => void onFlipCamera()}
+                        disabled={!canSwitchCamera}
+                        className={cn(studioIconBtn, 'h-11 w-11')}
+                        aria-label="Flip camera"
+                      >
+                        <IconArrowPath className="!h-5 !w-5" />
+                      </button>
+                    ) : (
+                      <span className="h-11 w-11 shrink-0" aria-hidden />
+                    )}
+                    <button
+                      type="button"
+                      disabled
+                      className={cn(studioIconBtn, 'h-11 w-11 opacity-40')}
+                      aria-label="Settings (soon)"
+                      title="Soon"
+                    >
+                      <IconSettings className="!h-5 !w-5" />
+                    </button>
+                  </div>
+                </header>
+
+                {showStatusOverlay ? (
+                  <div className="pointer-events-none absolute left-3 right-[4.75rem] top-[calc(3.5rem+env(safe-area-inset-top))] z-[45] flex items-start justify-between gap-2">
+                    <div
+                      className="rounded-full px-3 py-1.5 font-mono text-[11px] tabular-nums text-white/95"
+                      style={{
+                        background: 'rgba(8,8,10,0.72)',
+                        border: '1px solid rgba(255,255,255,0.14)',
+                        backdropFilter: 'blur(10px)',
+                      }}
+                    >
+                      <span className="mr-1.5 text-white/45">TC</span>
+                      {String(Math.floor(recElapsedSec / 60)).padStart(2, '0')}:{String(recElapsedSec % 60).padStart(2, '0')}
+                      <span className="mx-1.5 text-white/30">/</span>
+                      <span className="text-white/55">{maxDurationSec}s</span>
+                    </div>
+                    <div className="flex flex-col items-end gap-1.5">
+                      <div
+                        className="rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em]"
+                        style={{
+                          background: micLive ? 'rgba(5,28,16,0.82)' : 'rgba(34,17,8,0.82)',
+                          border: micLive ? '1px solid rgba(34,197,94,0.45)' : '1px solid rgba(251,191,36,0.4)',
+                          color: micLive ? 'rgba(203,255,226,0.95)' : 'rgba(255,232,188,0.95)',
+                          backdropFilter: 'blur(8px)',
+                        }}
+                      >
+                        {micLive ? 'Mic live' : 'Mic check'}
+                      </div>
+                      {recPhase === 'recording' && (
+                        <div
+                          className="rounded-full border border-accent/60 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-white"
+                          style={{
+                            background: 'rgba(24,5,10,0.88)',
+                            boxShadow: '0 0 22px rgba(196,18,47,0.28)',
+                          }}
+                        >
+                          REC
+                        </div>
+                      )}
+                      {recPhase === 'paused' && (
+                        <div className="rounded-full border border-amber-400/40 bg-amber-500/20 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-amber-100">
+                          Paused
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ) : null}
+
+                <div className="absolute bottom-[28%] right-3 z-40 flex flex-col gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setEffectsOpen((o) => !o)}
+                    className={cn(studioRailBtn, effectsOpen && 'border-accent/45 text-accent')}
+                    aria-label="Effects"
+                    aria-pressed={effectsOpen}
+                  >
+                    <IconSparkles className="!h-6 !w-6" />
                   </button>
                   <button
                     type="button"
                     onClick={() => setShowGrid((v) => !v)}
-                    className={cn(studioIconBtn, showGrid && 'border-accent/40 text-accent')}
-                    aria-label="Grid guide"
+                    className={cn(studioRailBtn, showGrid && 'border-accent/45 text-accent')}
+                    aria-label="Filters and grid"
                     aria-pressed={showGrid}
                   >
-                    <IconLayoutGrid className="!h-5 !w-5" />
+                    <IconLayoutGrid className="!h-6 !w-6" />
                   </button>
-                  <button type="button" disabled className={studioIconBtn} aria-label="Effects" title="Coming soon">
-                    <IconSparkles className="!h-5 !w-5 opacity-50" />
+                  <button type="button" disabled className={studioRailBtn} aria-label="Timer" title="Coming soon">
+                    <IconClock className="!h-6 !w-6 opacity-45" />
+                  </button>
+                  <button type="button" disabled className={studioRailBtn} aria-label="Flash" title="Coming soon">
+                    <IconBolt className="!h-6 !w-6 opacity-45" />
+                  </button>
+                  <button type="button" disabled className={studioRailBtn} aria-label="Speed" title="Coming soon">
+                    <span className="text-[12px] font-bold tabular-nums text-white/50">1×</span>
                   </button>
                 </div>
-              ) : null}
 
-              <div className={cn('mx-auto w-full max-w-[560px]', narrow && 'flex min-h-0 flex-1 flex-col')}>
-                <ViewfinderFrame corners={!narrow}>
-                  <div
-                    className={cn(
-                      'relative overflow-hidden bg-black md:aspect-[9/16]',
-                      narrow
-                        ? 'min-h-0 flex-1 rounded-none ring-0'
-                        : 'aspect-[9/16] rounded-[24px] shadow-[0_0_0_1px_rgba(196,18,47,0.14),0_40px_110px_rgba(0,0,0,0.9),0_0_140px_rgba(196,18,47,0.06)] ring-1 ring-white/12'
-                    )}
-                    style={
-                      narrow
-                        ? { aspectRatio: previewFraming.stageAspect, minHeight: 'min(52dvh, 520px)' }
-                        : { height: 'min(68dvh, 780px)', aspectRatio: previewFraming.stageAspect }
-                    }
-                  >
-                    <video
-                      ref={videoRef as LegacyRef<HTMLVideoElement>}
-                      className="absolute inset-0 h-full w-full bg-black"
-                      style={{ objectFit: videoObjectFit, objectPosition: videoObjectPosition }}
-                      playsInline
-                      muted
-                    />
-                    {showGrid && narrow ? (
-                      <div
-                        className="pointer-events-none absolute inset-0 z-[12] opacity-[0.22]"
-                        style={{
-                          backgroundImage:
-                            'linear-gradient(rgba(255,255,255,0.14) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.14) 1px, transparent 1px)',
-                          backgroundSize: '33.33% 33.33%',
-                        }}
-                        aria-hidden
-                      />
-                    ) : null}
-                    <div
-                      className="pointer-events-none absolute inset-0 z-[10]"
-                      style={{
-                        background:
-                          'linear-gradient(180deg, rgba(0,0,0,0.42) 0%, rgba(0,0,0,0.06) 22%, rgba(0,0,0,0.03) 58%, rgba(0,0,0,0.48) 100%)',
-                      }}
-                      aria-hidden
-                    />
-                    {/* Subtle 9:16 safe framing — not a heavy box */}
-                    <div
-                      className="pointer-events-none absolute inset-[5%] z-[11] rounded-lg border border-white/[0.07]"
-                      aria-hidden
-                    />
+                {switchingLens && boothReady ? (
+                  <div className="absolute inset-0 z-[60] flex items-center justify-center bg-black/75 backdrop-blur-sm">
+                    <p className="text-[13px] font-medium text-white/85">Switching camera…</p>
+                  </div>
+                ) : null}
 
-                    {showStatusOverlay && (
-                      <div className="pointer-events-none absolute inset-x-2 top-2 z-[20] flex items-start justify-between gap-2 sm:inset-x-3 sm:top-3">
+                <div
+                  className="absolute inset-x-0 bottom-0 z-50 flex flex-col pt-8 pb-[max(12px,env(safe-area-inset-bottom))]"
+                  style={{
+                    background: 'linear-gradient(0deg, rgba(0,0,0,0.94) 0%, rgba(0,0,0,0.45) 50%, transparent 100%)',
+                  }}
+                >
+                  {isRecording ? (
+                    <div className="mb-2 px-4">
+                      <div className="h-[3px] w-full overflow-hidden rounded-full bg-white/12">
                         <div
-                          className="rounded-full px-3 py-1.5 font-mono text-[11px] tabular-nums text-white/95 sm:text-[12px]"
+                          className="h-full rounded-full bg-accent/95 transition-[width] duration-200 ease-out"
                           style={{
-                            background: 'rgba(8,8,10,0.72)',
-                            border: '1px solid rgba(255,255,255,0.14)',
-                            backdropFilter: 'blur(10px)',
+                            width: `${Math.min(100, (recElapsedSec / Math.max(1, maxDurationSec)) * 100)}%`,
                           }}
-                        >
-                          <span className="mr-1.5 text-white/45">TC</span>
-                          {String(Math.floor(recElapsedSec / 60)).padStart(2, '0')}:{String(recElapsedSec % 60).padStart(2, '0')}
-                          <span className="mx-1.5 text-white/30">/</span>
-                          <span className="text-white/55">{maxDurationSec}s</span>
-                        </div>
-                        <div className="flex flex-col items-end gap-1.5">
-                          <div
-                            className="rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] sm:text-[11px]"
-                            style={{
-                              background: micLive ? 'rgba(5,28,16,0.82)' : 'rgba(34,17,8,0.82)',
-                              border: micLive ? '1px solid rgba(34,197,94,0.45)' : '1px solid rgba(251,191,36,0.4)',
-                              color: micLive ? 'rgba(203,255,226,0.95)' : 'rgba(255,232,188,0.95)',
-                              backdropFilter: 'blur(8px)',
-                            }}
-                          >
-                            {micLive ? 'Mic live' : 'Mic check'}
-                          </div>
-                          {recPhase === 'recording' && (
-                            <div
-                              className="rounded-full border border-accent/60 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-white"
-                              style={{
-                                background: 'rgba(24,5,10,0.88)',
-                                boxShadow: '0 0 22px rgba(196,18,47,0.28)',
-                              }}
-                            >
-                              REC
-                            </div>
-                          )}
-                          {recPhase === 'paused' && (
-                            <div className="rounded-full border border-amber-400/40 bg-amber-500/20 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-amber-100">
-                              Paused
-                            </div>
-                          )}
-                        </div>
+                        />
                       </div>
-                    )}
-
-                    <div className="pointer-events-none absolute bottom-6 left-0 right-0 z-[20] hidden justify-center md:flex">
-                      <span className="rounded-full border border-white/[0.08] bg-black/30 px-3 py-1 text-[10px] font-medium uppercase tracking-[0.18em] text-white/38 backdrop-blur-sm">
-                        Upper third
-                      </span>
                     </div>
-
-                    {switchingLens && boothReady && (
-                      <div className="absolute inset-0 z-[25] flex items-center justify-center bg-black/72 backdrop-blur-sm">
-                        <p className="text-[13px] font-medium text-white/85">Switching camera…</p>
-                      </div>
-                    )}
-                  </div>
-                </ViewfinderFrame>
-              </div>
-            </section>
-
-            <footer
-              className={cn(
-                'shrink-0',
-                narrow
-                  ? 'border-0 bg-transparent pb-[max(8px,env(safe-area-inset-bottom))] pt-1'
-                  : 'pb-[max(6px,env(safe-area-inset-bottom))] pt-2'
-              )}
-            >
-              {narrow ? (
-                <div className="w-full px-3">
-                  <div className="mb-3 flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                    {EFFECT_STRIP.map((e, i) => (
-                      <button
-                        key={e.id + i}
-                        type="button"
-                        disabled={i > 2}
-                        onClick={() => i <= 2 && setEffectIdx(i)}
-                        className={cn(
-                          'flex shrink-0 flex-col items-center gap-1.5 opacity-100 disabled:opacity-40',
-                          i > 2 && 'pointer-events-none'
-                        )}
-                      >
-                        <span
+                  ) : null}
+                  {effectsOpen ? (
+                    <div className="mb-2 flex snap-x snap-mandatory gap-2 overflow-x-auto px-3 pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                      {EFFECT_STRIP.map((e, i) => (
+                        <button
+                          key={e.id + i}
+                          type="button"
+                          disabled={i > 2}
+                          onClick={() => i <= 2 && setEffectIdx(i)}
                           className={cn(
-                            'flex h-12 w-12 items-center justify-center rounded-full border text-[10px] font-medium transition-colors',
-                            effectIdx === i && i <= 2
-                              ? 'border-accent/50 bg-accent/15 text-white'
-                              : 'border-white/[0.12] bg-black/40 text-white/50'
+                            'flex snap-center shrink-0 flex-col items-center gap-1.5 disabled:opacity-40',
+                            i > 2 && 'pointer-events-none'
                           )}
                         >
-                          {e.label.slice(0, 2)}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                  <div className="mb-4 flex justify-center gap-2 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                    {DURATION_PRESETS.map((sec) => {
+                          <span
+                            className={cn(
+                              'flex h-11 w-11 items-center justify-center rounded-full border text-[10px] font-medium transition-colors',
+                              effectIdx === i && i <= 2
+                                ? 'border-accent/50 bg-accent/15 text-white'
+                                : 'border-white/[0.12] bg-black/50 text-white/50'
+                            )}
+                          >
+                            {e.label.slice(0, 2)}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
+                  <div className="mb-3 flex snap-x snap-mandatory justify-start gap-3 overflow-x-auto px-4 py-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                    {durationChips.map((sec) => {
                       const active = sec === maxDurationSec;
+                      const label = sec >= 600 ? `${Math.round(sec / 60)}m` : `${sec}s`;
                       return (
                         <span
                           key={sec}
                           className={cn(
-                            'shrink-0 rounded-full px-3 py-1.5 text-[12px] font-medium tabular-nums',
-                            active ? 'bg-white/[0.12] text-white' : 'text-white/30'
+                            'snap-center shrink-0 rounded-full px-3 py-2 text-[13px] font-semibold tabular-nums',
+                            active ? 'bg-white/[0.14] text-white' : 'text-white/35'
                           )}
                         >
-                          {sec}s
+                          {label}
                         </span>
                       );
                     })}
-                    {!DURATION_PRESETS.includes(maxDurationSec) ? (
-                      <span className="shrink-0 rounded-full bg-accent/20 px-3 py-1.5 text-[12px] font-semibold tabular-nums text-accent">
-                        {maxDurationSec}s
-                      </span>
-                    ) : null}
                   </div>
-                  <div className="flex items-center justify-between gap-2 px-1">
+                  <div className="flex items-center justify-center gap-6 px-4">
                     {recPhase === 'preview' ? (
                       <button
                         type="button"
@@ -448,37 +464,130 @@ export default function StudioBoothStep(props: StudioBoothStepProps) {
                         <IconArrowLeft className="!h-5 !w-5 opacity-85" />
                       </button>
                     ) : recPhase === 'recording' && pauseSupported ? (
-                      <button type="button" onClick={onPause} className={cn(studioIconBtn, 'h-12 w-12 border-white/10')} aria-label="Pause recording">
+                      <button
+                        type="button"
+                        onClick={onPause}
+                        className={cn(studioIconBtn, 'h-12 w-12 border-white/10')}
+                        aria-label="Pause recording"
+                      >
                         <span className="flex gap-0.5" aria-hidden>
                           <span className="h-4 w-1 rounded-sm bg-white/90" />
                           <span className="h-4 w-1 rounded-sm bg-white/90" />
                         </span>
                       </button>
                     ) : recPhase === 'paused' ? (
-                      <button type="button" onClick={onStop} className={cn(studioIconBtn, 'h-12 w-12 border-white/10')} aria-label="Stop recording">
+                      <button
+                        type="button"
+                        onClick={onStop}
+                        className={cn(studioIconBtn, 'h-12 w-12 border-white/10')}
+                        aria-label="Stop recording"
+                      >
                         <span className="h-3.5 w-3.5 rounded-sm bg-white/90" aria-hidden />
                       </button>
                     ) : (
                       <div className="h-12 w-12 shrink-0" aria-hidden />
                     )}
-                    <div className="flex flex-1 justify-center">{recordPrimary}</div>
-                    {recPhase === 'preview' ? (
-                      <button
-                        type="button"
-                        onClick={() => void onFlipCamera()}
-                        disabled={!canSwitchCamera}
-                        className={cn(studioIconBtn, 'h-12 w-12 border-white/10')}
-                        aria-label="Flip camera"
-                      >
-                        <IconArrowPath className="!h-5 !w-5" />
-                      </button>
-                    ) : (
-                      <div className="h-12 w-12 shrink-0" aria-hidden />
-                    )}
+                    <div className="flex shrink-0 justify-center">{recordPrimary}</div>
+                    <div className="h-12 w-12 shrink-0" aria-hidden />
                   </div>
-                  <p className="mt-2 text-center text-[9px] font-medium uppercase tracking-[0.2em] text-white/25">Preview-only looks · no pipeline change</p>
+                  <p className="mt-1 px-2 text-center text-[9px] font-medium uppercase tracking-[0.18em] text-white/25">
+                    Looks are preview-only · max {maxDurationSec}s
+                  </p>
                 </div>
-              ) : (
+              </div>
+            ) : (
+              <>
+                <section className="relative flex min-h-0 flex-1 flex-col md:items-center md:justify-center md:py-4">
+                  <div className="mx-auto w-full max-w-[560px]">
+                    <ViewfinderFrame corners>
+                      <div
+                        className="relative aspect-[9/16] overflow-hidden rounded-[24px] bg-black shadow-[0_0_0_1px_rgba(196,18,47,0.14),0_40px_110px_rgba(0,0,0,0.9),0_0_140px_rgba(196,18,47,0.06)] ring-1 ring-white/12 md:aspect-[9/16]"
+                        style={{ height: 'min(68dvh, 780px)', aspectRatio: previewFraming.stageAspect }}
+                      >
+                        <video
+                          ref={videoRef as LegacyRef<HTMLVideoElement>}
+                          className="absolute inset-0 h-full w-full bg-black"
+                          style={{ objectFit: previewFraming.fit, objectPosition: previewFraming.objectPosition }}
+                          playsInline
+                          muted
+                        />
+                        <div
+                          className="pointer-events-none absolute inset-0 z-[10]"
+                          style={{
+                            background:
+                              'linear-gradient(180deg, rgba(0,0,0,0.42) 0%, rgba(0,0,0,0.06) 22%, rgba(0,0,0,0.03) 58%, rgba(0,0,0,0.48) 100%)',
+                          }}
+                          aria-hidden
+                        />
+                        <div
+                          className="pointer-events-none absolute inset-[5%] z-[11] rounded-lg border border-white/[0.07]"
+                          aria-hidden
+                        />
+
+                        {showStatusOverlay && (
+                          <div className="pointer-events-none absolute inset-x-2 top-2 z-[20] flex items-start justify-between gap-2 sm:inset-x-3 sm:top-3">
+                            <div
+                              className="rounded-full px-3 py-1.5 font-mono text-[11px] tabular-nums text-white/95 sm:text-[12px]"
+                              style={{
+                                background: 'rgba(8,8,10,0.72)',
+                                border: '1px solid rgba(255,255,255,0.14)',
+                                backdropFilter: 'blur(10px)',
+                              }}
+                            >
+                              <span className="mr-1.5 text-white/45">TC</span>
+                              {String(Math.floor(recElapsedSec / 60)).padStart(2, '0')}:{String(recElapsedSec % 60).padStart(2, '0')}
+                              <span className="mx-1.5 text-white/30">/</span>
+                              <span className="text-white/55">{maxDurationSec}s</span>
+                            </div>
+                            <div className="flex flex-col items-end gap-1.5">
+                              <div
+                                className="rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] sm:text-[11px]"
+                                style={{
+                                  background: micLive ? 'rgba(5,28,16,0.82)' : 'rgba(34,17,8,0.82)',
+                                  border: micLive ? '1px solid rgba(34,197,94,0.45)' : '1px solid rgba(251,191,36,0.4)',
+                                  color: micLive ? 'rgba(203,255,226,0.95)' : 'rgba(255,232,188,0.95)',
+                                  backdropFilter: 'blur(8px)',
+                                }}
+                              >
+                                {micLive ? 'Mic live' : 'Mic check'}
+                              </div>
+                              {recPhase === 'recording' && (
+                                <div
+                                  className="rounded-full border border-accent/60 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-white"
+                                  style={{
+                                    background: 'rgba(24,5,10,0.88)',
+                                    boxShadow: '0 0 22px rgba(196,18,47,0.28)',
+                                  }}
+                                >
+                                  REC
+                                </div>
+                              )}
+                              {recPhase === 'paused' && (
+                                <div className="rounded-full border border-amber-400/40 bg-amber-500/20 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-amber-100">
+                                  Paused
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="pointer-events-none absolute bottom-6 left-0 right-0 z-[20] hidden justify-center md:flex">
+                          <span className="rounded-full border border-white/[0.08] bg-black/30 px-3 py-1 text-[10px] font-medium uppercase tracking-[0.18em] text-white/38 backdrop-blur-sm">
+                            Upper third
+                          </span>
+                        </div>
+
+                        {switchingLens && boothReady && (
+                          <div className="absolute inset-0 z-[25] flex items-center justify-center bg-black/72 backdrop-blur-sm">
+                            <p className="text-[13px] font-medium text-white/85">Switching camera…</p>
+                          </div>
+                        )}
+                      </div>
+                    </ViewfinderFrame>
+                  </div>
+                </section>
+
+                <footer className="shrink-0 pb-[max(6px,env(safe-area-inset-bottom))] pt-2">
                 <div
                   className="mx-auto w-full max-w-[560px] rounded-[20px] border border-white/[0.12] px-3 py-3 sm:px-4 sm:py-4"
                   style={{
@@ -547,8 +656,9 @@ export default function StudioBoothStep(props: StudioBoothStepProps) {
                     )}
                   </div>
                 </div>
-              )}
-            </footer>
+                </footer>
+              </>
+            )}
           </div>
 
           {recError && !boothReady && !showCurtain && (

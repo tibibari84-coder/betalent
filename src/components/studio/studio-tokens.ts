@@ -20,3 +20,7 @@ export const btnSecondary =
 /** Floating circular control (TikTok-style rail) — glass, no heavy box */
 export const studioIconBtn =
   'flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-white/[0.14] bg-black/35 text-white/88 backdrop-blur-md transition-transform active:scale-[0.92] disabled:pointer-events-none disabled:opacity-35 [@media(hover:hover)]:hover:bg-white/[0.08]';
+
+/** Larger rail targets — thumb reach (immersive mobile studio) */
+export const studioRailBtn =
+  'flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-full border border-white/[0.14] bg-black/45 text-white/90 backdrop-blur-md transition-transform active:scale-[0.93] disabled:pointer-events-none disabled:opacity-35 [@media(hover:hover)]:hover:bg-white/[0.1]';

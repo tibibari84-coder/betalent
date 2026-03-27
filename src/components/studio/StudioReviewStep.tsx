@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, type LegacyRef, type RefObject } from 'react';
-import { IconArrowLeft, IconUpload } from '@/components/ui/Icons';
+import { useState, useEffect, useRef, type LegacyRef, type RefObject } from 'react';
+import { IconArrowLeft, IconChevronRight, IconUpload } from '@/components/ui/Icons';
 import type { RecordingMode } from '@/constants/recording-modes';
 import type { StudioPreviewFraming } from '@/hooks/useStudioRecorder';
 import { cn } from '@/lib/utils';
@@ -34,6 +34,8 @@ export default function StudioReviewStep(props: StudioReviewStepProps) {
   } = props;
 
   const [narrow, setNarrow] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const swipeFrom = useRef<{ x: number; y: number; fromTop: boolean; fromBottom: boolean } | null>(null);
 
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 767px)');
@@ -43,31 +45,161 @@ export default function StudioReviewStep(props: StudioReviewStepProps) {
     return () => mq.removeEventListener?.('change', apply);
   }, []);
 
+  useEffect(() => {
+    if (!narrow || !reviewUrl) return;
+    const v = reviewVideoRef.current;
+    if (!v) return;
+    v.muted = true;
+    const p = v.play();
+    if (p && typeof (p as Promise<void>).catch === 'function') {
+      (p as Promise<void>).catch(() => {});
+    }
+  }, [narrow, reviewUrl, reviewVideoRef]);
+
+  const toggleReviewPlayback = () => {
+    const v = reviewVideoRef.current;
+    if (!v) return;
+    if (v.paused) void v.play();
+    else v.pause();
+  };
+
+  const onImmersiveTouchStart = (e: React.TouchEvent) => {
+    const t = e.touches[0];
+    const y = t.clientY;
+    const h = window.innerHeight;
+    swipeFrom.current = {
+      x: t.clientX,
+      y,
+      fromTop: y < h * 0.22,
+      fromBottom: y > h * 0.72,
+    };
+  };
+
+  const onImmersiveTouchEnd = (e: React.TouchEvent) => {
+    const s = swipeFrom.current;
+    swipeFrom.current = null;
+    if (!s) return;
+    const t = e.changedTouches[0];
+    const dy = t.clientY - s.y;
+    const dx = Math.abs(t.clientX - s.x);
+    if (s.fromTop && dy > 96 && dy > dx * 1.25) {
+      onRetake();
+      return;
+    }
+    if (s.fromBottom && dy < -72 && Math.abs(dy) > dx * 1.25) {
+      onUseTake();
+    }
+  };
+
   return (
     <div
       className={cn('fixed inset-0 z-[120] animate-studio-enter', narrow ? 'bg-black' : studioPanel)}
       style={{ minHeight: '100dvh', maxHeight: '100dvh', overflow: 'hidden' }}
     >
-      <div
-        className={cn('h-full overflow-hidden', narrow ? 'px-0' : 'px-3 sm:px-8 md:px-9')}
-        style={{
-          paddingTop: narrow ? '0' : 'max(8px, env(safe-area-inset-top))',
-          paddingBottom: narrow ? '0' : 'max(10px, env(safe-area-inset-bottom))',
-        }}
-      >
-        <div className="flex h-full w-full flex-col overflow-hidden">
-          {narrow ? (
-            <header
-              className="relative z-50 flex shrink-0 items-center justify-between px-3 pb-2 pt-[max(10px,env(safe-area-inset-top))]"
-              style={{ background: 'linear-gradient(180deg, rgba(0,0,0,0.72) 0%, transparent 100%)' }}
-            >
-              <button type="button" onClick={onRetake} className={cn(studioIconBtn, 'h-10 w-10')} aria-label="Re-record">
-                <IconArrowLeft className="!h-5 !w-5" />
+      {narrow ? (
+        <div
+          className="relative h-full w-full touch-manipulation"
+          onTouchStart={onImmersiveTouchStart}
+          onTouchEnd={onImmersiveTouchEnd}
+        >
+          <div className="absolute inset-0 z-0 bg-black">
+            {reviewUrl ? (
+              <button
+                type="button"
+                onClick={toggleReviewPlayback}
+                className="relative h-full w-full cursor-pointer border-0 bg-black p-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent/50"
+                aria-label="Tap to play or pause preview"
+              >
+                <video
+                  ref={reviewVideoRef as LegacyRef<HTMLVideoElement>}
+                  src={reviewUrl}
+                  className="h-full w-full bg-black object-cover"
+                  style={{ objectPosition: previewFraming.objectPosition }}
+                  playsInline
+                  muted
+                  loop
+                  preload="metadata"
+                  disablePictureInPicture
+                  disableRemotePlayback
+                  onTimeUpdate={(ev) => {
+                    const v = ev.currentTarget;
+                    if (!v.duration || !Number.isFinite(v.duration)) return;
+                    setProgress((v.currentTime / v.duration) * 100);
+                  }}
+                />
               </button>
-              <p className="text-[11px] font-medium tabular-nums text-white/55">{reviewDurationSec}s</p>
-              <div className="h-10 w-10 shrink-0" aria-hidden />
-            </header>
-          ) : (
+            ) : null}
+            <div
+              className="pointer-events-none absolute inset-0 z-[10]"
+              style={{
+                background:
+                  'linear-gradient(180deg, rgba(0,0,0,0.65) 0%, transparent 25%, transparent 55%, rgba(0,0,0,0.75) 100%)',
+              }}
+              aria-hidden
+            />
+          </div>
+
+          <header
+            className="absolute inset-x-0 top-0 z-50 flex items-center justify-between px-3 pb-12 pt-[max(10px,env(safe-area-inset-top))]"
+            style={{ background: 'linear-gradient(180deg, rgba(0,0,0,0.82) 0%, transparent 100%)' }}
+          >
+            <button type="button" onClick={onRetake} className={cn(studioIconBtn, 'h-11 w-11')} aria-label="Re-record">
+              <IconArrowLeft className="!h-5 !w-5" />
+            </button>
+            <span className="text-[13px] font-semibold tracking-wide text-white/88">Preview</span>
+            <div className="h-11 w-11 shrink-0" aria-hidden />
+          </header>
+
+          <div className="pointer-events-none absolute bottom-[calc(5.5rem+env(safe-area-inset-bottom))] left-4 right-4 z-40">
+            <div className="h-0.5 w-full overflow-hidden rounded-full bg-white/15">
+              <div className="h-full rounded-full bg-white/50 transition-[width] duration-150" style={{ width: `${progress}%` }} />
+            </div>
+            <p className="mt-1 text-center text-[11px] tabular-nums text-white/40">{reviewDurationSec}s</p>
+          </div>
+
+          <div
+            className="absolute inset-x-0 bottom-0 z-50 flex flex-col gap-2 px-4 pb-[max(14px,env(safe-area-inset-bottom))] pt-6"
+            style={{
+              background: 'linear-gradient(0deg, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.5) 55%, transparent 100%)',
+            }}
+          >
+            <button
+              type="button"
+              onClick={onUseTake}
+              className="btn-primary flex h-[54px] w-full items-center justify-center gap-2 rounded-2xl text-[16px] font-semibold shadow-[0_8px_32px_rgba(196,18,47,0.35)]"
+            >
+              {primaryActionLabel}
+              <IconChevronRight className="h-5 w-5 opacity-90" aria-hidden />
+            </button>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={onRetake}
+                className={`${btnGhost} min-h-[48px] flex-1 justify-center border-white/[0.1] bg-white/[0.04] text-white/75`}
+              >
+                Re-record
+              </button>
+              <button
+                type="button"
+                onClick={onEditSession}
+                title="Returns to session prep and discards this take"
+                className={`${btnGhost} min-h-[48px] flex-1 justify-center border-white/[0.08] bg-transparent text-white/45`}
+              >
+                Edit session
+              </button>
+            </div>
+            <p className="pb-1 text-center text-[10px] text-white/30">Swipe down from top to re-record · swipe up from bottom for Continue</p>
+          </div>
+        </div>
+      ) : (
+        <div
+          className="h-full overflow-hidden px-3 sm:px-8 md:px-9"
+          style={{
+            paddingTop: 'max(8px, env(safe-area-inset-top))',
+            paddingBottom: 'max(10px, env(safe-area-inset-bottom))',
+          }}
+        >
+          <div className="flex h-full w-full flex-col overflow-hidden">
             <header className="shrink-0 pb-2 pt-0.5">
               <div className="mx-auto flex w-full max-w-[560px] items-center justify-between gap-3 rounded-2xl border border-white/[0.08] bg-black/35 px-3 py-2.5 backdrop-blur-xl sm:px-4 sm:py-3">
                 <div className="min-w-0">
@@ -77,83 +209,45 @@ export default function StudioReviewStep(props: StudioReviewStepProps) {
                 <p className="shrink-0 text-[11px] tabular-nums text-white/50">{reviewDurationSec}s</p>
               </div>
             </header>
-          )}
 
-          <section className={cn('flex min-h-0 flex-1 flex-col', narrow ? 'py-0' : 'items-center justify-center py-2 sm:py-4')}>
-            <div className={cn('w-full', narrow ? 'flex min-h-0 flex-1 flex-col' : 'max-w-[560px]')}>
-              <ViewfinderFrame corners={!narrow}>
-                <div
-                  className={cn(
-                    'relative overflow-hidden bg-black md:aspect-[9/16]',
-                    narrow
-                      ? 'min-h-0 flex-1 rounded-none ring-0'
-                      : 'aspect-[9/16] rounded-[24px] shadow-[0_0_0_1px_rgba(196,18,47,0.14),0_40px_110px_rgba(0,0,0,0.9)] ring-1 ring-white/12'
-                  )}
-                  style={
-                    narrow
-                      ? { aspectRatio: previewFraming.stageAspect, minHeight: 'min(52dvh, 520px)' }
-                      : { height: 'min(68dvh, 780px)', aspectRatio: previewFraming.stageAspect }
-                  }
-                >
+            <section className="flex min-h-0 flex-1 flex-col items-center justify-center py-2 sm:py-4">
+              <div className="w-full max-w-[560px]">
+                <ViewfinderFrame corners>
                   <div
-                    className="pointer-events-none absolute inset-0 z-[10]"
-                    style={{
-                      background:
-                        'linear-gradient(180deg, rgba(0,0,0,0.36) 0%, rgba(0,0,0,0.05) 22%, rgba(0,0,0,0.03) 62%, rgba(0,0,0,0.4) 100%)',
-                    }}
-                    aria-hidden
-                  />
-                  <div
-                    className="pointer-events-none absolute inset-[5%] z-[11] rounded-lg border border-white/[0.07]"
-                    aria-hidden
-                  />
-                  {reviewUrl && (
-                    <video
-                      ref={reviewVideoRef as LegacyRef<HTMLVideoElement>}
-                      src={reviewUrl}
-                      className="relative z-[1] h-full w-full bg-black"
-                      style={{
-                        objectFit: narrow ? 'cover' : previewFraming.fit,
-                        objectPosition: previewFraming.objectPosition,
-                      }}
-                      controls
-                      playsInline
-                    />
-                  )}
-                </div>
-              </ViewfinderFrame>
-            </div>
-          </section>
-
-          <footer
-            className={cn(
-              'shrink-0',
-              narrow
-                ? 'border-0 bg-transparent pb-[max(12px,env(safe-area-inset-bottom))] pt-2'
-                : 'pb-[max(6px,env(safe-area-inset-bottom))] pt-2'
-            )}
-          >
-            {narrow ? (
-              <div className="flex flex-col gap-2 px-4">
-                <button type="button" onClick={onUseTake} className={`${btnPrimary} min-h-[52px] w-full justify-center gap-2`}>
-                  <IconUpload className="h-5 w-5 shrink-0 opacity-95" aria-hidden />
-                  {primaryActionLabel}
-                </button>
-                <div className="flex gap-2">
-                  <button type="button" onClick={onRetake} className={`${btnGhost} min-h-[48px] flex-1 justify-center text-white/70`}>
-                    Re-record
-                  </button>
-                  <button
-                    type="button"
-                    onClick={onEditSession}
-                    title="Returns to session prep and discards this take"
-                    className={`${btnGhost} min-h-[48px] flex-1 justify-center text-white/45`}
+                    className="relative aspect-[9/16] overflow-hidden rounded-[24px] bg-black shadow-[0_0_0_1px_rgba(196,18,47,0.14),0_40px_110px_rgba(0,0,0,0.9)] ring-1 ring-white/12 md:aspect-[9/16]"
+                    style={{ height: 'min(68dvh, 780px)', aspectRatio: previewFraming.stageAspect }}
                   >
-                    Edit session
-                  </button>
-                </div>
+                    <div
+                      className="pointer-events-none absolute inset-0 z-[10]"
+                      style={{
+                        background:
+                          'linear-gradient(180deg, rgba(0,0,0,0.36) 0%, rgba(0,0,0,0.05) 22%, rgba(0,0,0,0.03) 62%, rgba(0,0,0,0.4) 100%)',
+                      }}
+                      aria-hidden
+                    />
+                    <div
+                      className="pointer-events-none absolute inset-[5%] z-[11] rounded-lg border border-white/[0.07]"
+                      aria-hidden
+                    />
+                    {reviewUrl && (
+                      <video
+                        ref={reviewVideoRef as LegacyRef<HTMLVideoElement>}
+                        src={reviewUrl}
+                        className="relative z-[1] h-full w-full bg-black"
+                        style={{
+                          objectFit: previewFraming.fit,
+                          objectPosition: previewFraming.objectPosition,
+                        }}
+                        controls
+                        playsInline
+                      />
+                    )}
+                  </div>
+                </ViewfinderFrame>
               </div>
-            ) : (
+            </section>
+
+            <footer className="shrink-0 pb-[max(6px,env(safe-area-inset-bottom))] pt-2">
               <div
                 className="mx-auto w-full max-w-[560px] rounded-[20px] border border-white/[0.12] px-3 py-3 sm:px-4 sm:py-4"
                 style={{
@@ -185,10 +279,10 @@ export default function StudioReviewStep(props: StudioReviewStepProps) {
                   </button>
                 </div>
               </div>
-            )}
-          </footer>
+            </footer>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
