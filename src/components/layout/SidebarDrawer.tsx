@@ -60,20 +60,21 @@ export function SidebarDrawer({
         onClick={onClose}
         onKeyDown={(e) => e.key === 'Enter' && onClose()}
       />
-      {/* Drawer panel */}
+      {/* Drawer panel — narrow sheet (Meta-style): leaves backdrop visible; not full-bleed width */}
       <aside
         role="dialog"
         aria-modal="true"
         aria-label="Main navigation"
-        className="fixed left-0 top-0 z-[61] h-full w-[90vw] max-w-[340px] max-[379px]:w-[88vw] min-[481px]:w-[86vw] min-[481px]:max-w-[380px] min-[640px]:w-[82vw] min-[640px]:max-w-[400px] min-[768px]:w-[76vw] min-[768px]:max-w-[440px] flex flex-col transition-transform duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] lg:hidden"
+        className="fixed left-0 top-0 z-[61] flex h-[100dvh] max-h-[100dvh] w-[min(276px,76vw)] flex-col overflow-hidden rounded-r-[20px] shadow-[8px_0_48px_rgba(0,0,0,0.45)] transition-transform duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] sm:w-[min(300px,82vw)] md:w-[min(316px,85vw)] lg:hidden"
         style={{
           ...DRAWER_STYLE,
           transform: isOpen ? 'translateX(0)' : 'translateX(-100%)',
           borderRight: '1px solid rgba(255,255,255,0.06)',
+          paddingTop: 'env(safe-area-inset-top, 0px)',
         }}
       >
-        <div className="flex h-14 items-center justify-between shrink-0 px-[14px] sm:px-4 border-b border-white/[0.06]">
-          <span className="font-display text-[14px] sm:text-[15px] font-semibold text-white tracking-wide">Menu</span>
+        <div className="flex h-12 shrink-0 items-center justify-between border-b border-white/[0.06] px-3 sm:h-14 sm:px-4">
+          <span className="font-display text-[13px] font-semibold tracking-wide text-white sm:text-[15px]">Menu</span>
           <button
             type="button"
             onClick={onClose}
@@ -83,7 +84,10 @@ export function SidebarDrawer({
             <IconX className="w-[20px] h-[20px]" />
           </button>
         </div>
-        <div className="flex-1 overflow-y-auto overflow-x-hidden py-3 px-[14px] sm:px-4 pb-4">
+        <div
+          className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-3 py-2.5 pb-[max(1rem,env(safe-area-inset-bottom))] sm:px-4 sm:py-3"
+          style={{ WebkitOverflowScrolling: 'touch' }}
+        >
           <Sidebar variant="drawer" />
         </div>
       </aside>

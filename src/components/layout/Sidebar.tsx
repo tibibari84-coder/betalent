@@ -51,14 +51,14 @@ function SidebarMessagesButton({ isDrawer = false }: { isDrawer?: boolean }) {
       <div
         className={
           isDrawer
-            ? 'relative z-[1] grid grid-cols-[34px_minmax(0,1fr)_16px] items-center h-[58px] rounded-[16px] px-[14px] sm:px-4 w-full'
+            ? 'relative z-[1] grid w-full grid-cols-[30px_minmax(0,1fr)_14px] items-center rounded-[14px] px-3 sm:grid-cols-[34px_minmax(0,1fr)_16px] sm:rounded-[16px] sm:px-4 h-[50px] sm:h-[54px]'
             : 'relative z-[1] flex items-center rounded-[16px] px-4 xl:px-[18px] py-3 w-full'
         }
       >
         <span
           className={
             isDrawer
-              ? 'shrink-0 flex items-center justify-center w-[34px] h-[34px] rounded-[10px]'
+              ? 'flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-[9px] sm:h-[34px] sm:w-[34px] sm:rounded-[10px]'
               : 'mr-3 shrink-0 flex items-center justify-center w-10 h-10 rounded-[12px]'
           }
           style={{
@@ -66,11 +66,11 @@ function SidebarMessagesButton({ isDrawer = false }: { isDrawer?: boolean }) {
             border: '1px solid rgba(255,255,255,0.04)',
           }}
         >
-          <IconChat className={isDrawer ? 'w-[17px] h-[17px] text-white' : 'w-4 h-4 text-white'} aria-hidden />
+          <IconChat className={isDrawer ? 'h-[15px] w-[15px] text-white sm:h-[17px] sm:w-[17px]' : 'w-4 h-4 text-white'} aria-hidden />
         </span>
-        <div className={isDrawer ? 'min-w-0 pl-3' : 'min-w-0 flex-1'}>
+        <div className={isDrawer ? 'min-w-0 pl-2.5 sm:pl-3' : 'min-w-0 flex-1'}>
           <span className="flex items-center gap-2 min-w-0">
-            <span className={`block truncate font-semibold leading-[1.2] text-[#F3F4F6] ${isDrawer ? 'text-[14px]' : 'text-[14px]'}`}>
+            <span className={`block truncate font-semibold leading-[1.2] text-[#F3F4F6] ${isDrawer ? 'text-[13px] sm:text-[14px]' : 'text-[14px]'}`}>
               {t('nav.messages')}
             </span>
             {dmUnread > 0 ? (
@@ -82,12 +82,12 @@ function SidebarMessagesButton({ isDrawer = false }: { isDrawer?: boolean }) {
               </span>
             ) : null}
           </span>
-          <span className={`block truncate leading-[1.2] text-[#87909c] ${isDrawer ? 'mt-[1px] text-[11.5px]' : 'mt-0.5 text-[11px]'}`}>
+          <span className={`block truncate leading-[1.2] text-[#87909c] ${isDrawer ? 'mt-px text-[10.5px] sm:text-[11.5px]' : 'mt-0.5 text-[11px]'}`}>
             {t('nav.messagesDesc')}
           </span>
         </div>
         <span
-          className={`shrink-0 leading-none text-[#6f7782] transition-transform duration-200 group-hover:translate-x-[2px] ${isDrawer ? 'text-[16px] justify-self-end' : 'ml-2.5 text-[16px]'}`}
+          className={`shrink-0 leading-none text-[#6f7782] transition-transform duration-200 group-hover:translate-x-[2px] ${isDrawer ? 'justify-self-end text-[14px] sm:text-[16px]' : 'ml-2.5 text-[16px]'}`}
           aria-hidden
         >
           ›
@@ -137,7 +137,7 @@ export default function Sidebar({ variant = 'sidebar' }: { variant?: 'sidebar' |
               <div
                 className={
                   isDrawer
-                    ? 'relative z-[1] grid grid-cols-[34px_minmax(0,1fr)_16px] items-center h-[58px] rounded-[16px] px-[14px] sm:px-4 w-full'
+                    ? 'relative z-[1] grid w-full grid-cols-[30px_minmax(0,1fr)_14px] items-center rounded-[14px] px-3 sm:grid-cols-[34px_minmax(0,1fr)_16px] sm:rounded-[16px] sm:px-4 h-[50px] sm:h-[54px]'
                     : 'relative z-[1] flex items-center rounded-[16px] px-4 xl:px-[18px] py-3 w-full'
                 }
                 style={isActive ? SIDEBAR_ACTIVE_STYLE : SIDEBAR_BASE_STYLE}
@@ -145,7 +145,7 @@ export default function Sidebar({ variant = 'sidebar' }: { variant?: 'sidebar' |
                 <span
                   className={
                     isDrawer
-                      ? 'shrink-0 flex items-center justify-center w-[34px] h-[34px] rounded-[10px]'
+                      ? 'flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-[9px] sm:h-[34px] sm:w-[34px] sm:rounded-[10px]'
                       : 'mr-3 shrink-0 flex items-center justify-center w-10 h-10 rounded-[12px]'
                   }
                   style={{
@@ -153,7 +153,7 @@ export default function Sidebar({ variant = 'sidebar' }: { variant?: 'sidebar' |
                     border: isActive ? '1px solid rgba(255,80,100,0.18)' : '1px solid rgba(255,255,255,0.04)',
                   }}
                 >
-                  <Icon className={isDrawer ? 'w-[17px] h-[17px] text-white' : 'w-4 h-4 text-white'} aria-hidden />
+                  <Icon className={isDrawer ? 'h-[15px] w-[15px] text-white sm:h-[17px] sm:w-[17px]' : 'w-4 h-4 text-white'} aria-hidden />
                 </span>
 
                 <div className={isDrawer ? 'min-w-0 pl-3' : 'min-w-0 flex-1'}>
@@ -170,7 +170,7 @@ export default function Sidebar({ variant = 'sidebar' }: { variant?: 'sidebar' |
                   <span
                     className={`
                       block truncate leading-[1.2]
-                      ${isDrawer ? 'mt-[1px] text-[11.5px]' : 'mt-0.5 text-[11px]'}
+                      ${isDrawer ? 'mt-px text-[10.5px] sm:text-[11.5px]' : 'mt-0.5 text-[11px]'}
                       ${isActive ? 'text-[#efc1ca]' : 'text-[#87909c]'}
                     `}
                   >
@@ -180,9 +180,9 @@ export default function Sidebar({ variant = 'sidebar' }: { variant?: 'sidebar' |
 
                 <span
                   className={`
-                    shrink-0 text-[16px] leading-none
+                    shrink-0 leading-none
                     transition-transform duration-200 group-hover:translate-x-[2px]
-                    ${isDrawer ? 'justify-self-end' : 'ml-2.5'}
+                    ${isDrawer ? 'justify-self-end text-[14px] sm:text-[16px]' : 'ml-2.5 text-[16px]'}
                     ${isActive ? 'text-[#f0b7c3]' : 'text-[#6f7782]'}
                   `}
                   aria-hidden
