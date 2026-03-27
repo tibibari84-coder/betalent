@@ -19,6 +19,8 @@ import ViewfinderFrame from './ViewfinderFrame';
 
 export type StudioBoothStepProps = {
   maxDurationSec: number;
+  /** Front-camera mirror preview (iPhone-style); back camera stays natural. */
+  mirrorPreview?: boolean;
   videoRef: RefObject<HTMLVideoElement | null>;
   recPhase: StudioRecorderPhase;
   recElapsedSec: number;
@@ -53,6 +55,7 @@ const EFFECT_STRIP = [
 export default function StudioBoothStep(props: StudioBoothStepProps) {
   const {
     maxDurationSec,
+    mirrorPreview = false,
     videoRef,
     recPhase,
     recElapsedSec,
@@ -241,7 +244,10 @@ export default function StudioBoothStep(props: StudioBoothStepProps) {
                 <div className="absolute inset-0 z-0 bg-black">
                   <video
                     ref={videoRef as LegacyRef<HTMLVideoElement>}
-                    className="h-full w-full bg-black object-cover"
+                    className={cn(
+                      'h-full w-full bg-black object-cover',
+                      mirrorPreview && '-scale-x-100'
+                    )}
                     style={{ objectPosition: videoObjectPosition }}
                     playsInline
                     muted
@@ -506,7 +512,10 @@ export default function StudioBoothStep(props: StudioBoothStepProps) {
                       >
                         <video
                           ref={videoRef as LegacyRef<HTMLVideoElement>}
-                          className="absolute inset-0 h-full w-full bg-black"
+                          className={cn(
+                            'absolute inset-0 h-full w-full bg-black',
+                            mirrorPreview && '-scale-x-100'
+                          )}
                           style={{ objectFit: previewFraming.fit, objectPosition: previewFraming.objectPosition }}
                           playsInline
                           muted

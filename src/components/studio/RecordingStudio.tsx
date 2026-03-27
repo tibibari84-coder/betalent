@@ -101,6 +101,7 @@ export default function RecordingStudio(props: RecordingStudioProps) {
     discardRecording: studioDiscardRecording,
     flipCamera: studioFlipCamera,
     startPreview: studioStartPreview,
+    facingMode,
   } = useStudioRecorder(maxDurationSec);
   const reviewVideoRef = useRef<HTMLVideoElement>(null);
 
@@ -380,6 +381,7 @@ export default function RecordingStudio(props: RecordingStudioProps) {
       <StudioBoothStep
         maxDurationSec={maxDurationSec}
         mode={mode}
+        mirrorPreview={facingMode === 'user'}
         videoRef={videoRef}
         recPhase={recPhase}
         recElapsedSec={recElapsedSec}
