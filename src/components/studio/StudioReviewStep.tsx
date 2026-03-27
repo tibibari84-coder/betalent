@@ -3,92 +3,108 @@
 import type { LegacyRef, RefObject } from 'react';
 import { IconUpload } from '@/components/ui/Icons';
 import type { RecordingMode } from '@/constants/recording-modes';
+import type { StudioPreviewFraming } from '@/hooks/useStudioRecorder';
 import { btnGhost, btnPrimary, studioPanel } from './studio-tokens';
 import ViewfinderFrame from './ViewfinderFrame';
-import { getStudioModeCopy } from './studio-mode-copy';
 
 export type StudioReviewStepProps = {
   reviewUrl: string | null;
   reviewVideoRef: RefObject<HTMLVideoElement | null>;
   reviewDurationSec: number;
   mode: RecordingMode;
+  previewFraming: StudioPreviewFraming;
   onRetake: () => void;
   onEditSession: () => void;
   onUseTake: () => void;
 };
 
 export default function StudioReviewStep(props: StudioReviewStepProps) {
-  const { reviewUrl, reviewVideoRef, reviewDurationSec, mode, onRetake, onEditSession, onUseTake } = props;
-  const copy = getStudioModeCopy(mode);
+  const { reviewUrl, reviewVideoRef, reviewDurationSec, mode: _mode, previewFraming, onRetake, onEditSession, onUseTake } = props;
 
   return (
     <div className={`${studioPanel} animate-studio-enter`} style={{ minHeight: '100dvh', maxHeight: '100dvh', overflow: 'hidden' }}>
       <div
-        className="p-3 sm:p-8 md:p-9 space-y-5 sm:space-y-8 h-full overflow-auto"
+        className="h-full overflow-hidden px-3 sm:px-8 md:px-9"
         style={{
-          paddingTop: 'max(16px, env(safe-area-inset-top))',
-          paddingBottom: 'max(20px, env(safe-area-inset-bottom))',
+          paddingTop: 'max(8px, env(safe-area-inset-top))',
+          paddingBottom: 'max(10px, env(safe-area-inset-bottom))',
         }}
       >
-        <div className="space-y-2">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-[10px] sm:text-[11px] uppercase tracking-[0.2em] text-accent/90 font-semibold">{copy.reviewLabel}</span>
-            <span className="text-white/25 hidden sm:inline">·</span>
-            <span className="text-[11px] text-white/40 tabular-nums">{reviewDurationSec}s take</span>
-          </div>
-          <h3 className="font-display text-[1.35rem] sm:text-[1.5rem] font-bold text-white tracking-tight">{copy.reviewTitle}</h3>
-          <p className="text-[13px] text-white/48 max-w-md leading-relaxed">
-            {copy.reviewDescription}
-          </p>
-        </div>
+        <div className="h-full w-full flex flex-col overflow-hidden">
+          <header className="shrink-0 pt-0.5 pb-2">
+            <div className="mx-auto w-full max-w-[560px] rounded-2xl border border-white/[0.08] bg-black/35 backdrop-blur-xl px-3 py-2.5 sm:px-4 sm:py-3 flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-[9px] sm:text-[10px] uppercase tracking-[0.2em] text-white/42 font-semibold">BETALENT Studio</p>
+                <p className="text-[12px] sm:text-[13px] text-white/82 truncate">Review take before publish</p>
+              </div>
+              <p className="text-[11px] text-white/50 tabular-nums shrink-0">{reviewDurationSec}s</p>
+            </div>
+          </header>
 
-        <ViewfinderFrame>
-          <div
-            className="relative rounded-[20px] sm:rounded-[22px] overflow-hidden ring-1 ring-white/10 bg-black aspect-[9/16] shadow-[0_24px_80px_rgba(0,0,0,0.75)]"
-            style={{ minHeight: 'min(64svh, 640px)', maxHeight: 'min(72svh, 720px)' }}
-          >
+          <section className="flex-1 min-h-0 flex items-center justify-center py-2 sm:py-4">
+            <div className="w-full max-w-[560px]">
+              <ViewfinderFrame>
+                <div
+                  className="relative rounded-[24px] overflow-hidden ring-1 ring-white/12 bg-black aspect-[9/16] shadow-[0_0_0_1px_rgba(196,18,47,0.14),0_40px_110px_rgba(0,0,0,0.9)]"
+                  style={{ height: 'min(64dvh, 720px)' }}
+                >
+                  <div
+                    className="pointer-events-none absolute inset-0 z-[10]"
+                    style={{
+                      background:
+                        'linear-gradient(180deg, rgba(0,0,0,0.36) 0%, rgba(0,0,0,0.05) 22%, rgba(0,0,0,0.03) 62%, rgba(0,0,0,0.4) 100%)',
+                    }}
+                    aria-hidden
+                  />
+                  {reviewUrl && (
+                    <video
+                      ref={reviewVideoRef as LegacyRef<HTMLVideoElement>}
+                      src={reviewUrl}
+                      className="relative z-[1] h-full w-full bg-black"
+                      style={{ objectFit: previewFraming.fit, objectPosition: previewFraming.objectPosition }}
+                      controls
+                      playsInline
+                    />
+                  )}
+                </div>
+              </ViewfinderFrame>
+            </div>
+          </section>
+
+          <footer className="shrink-0 pt-2 pb-[max(6px,env(safe-area-inset-bottom))]">
             <div
-              className="pointer-events-none absolute inset-0 z-[12] bg-[radial-gradient(ellipse_at_center,transparent_0%,transparent_50%,rgba(0,0,0,0.35)_100%)]"
-              aria-hidden
-            />
-            {reviewUrl && (
-              <video
-                ref={reviewVideoRef as LegacyRef<HTMLVideoElement>}
-                src={reviewUrl}
-                className="relative z-[1] h-full w-full object-cover object-center md:object-[50%_35%]"
-                controls
-                playsInline
-              />
-            )}
-          </div>
-        </ViewfinderFrame>
-
-        <div className="rounded-[16px] border border-white/10 bg-white/[0.02] p-3 sm:p-4 max-w-lg mx-auto w-full">
-          <div className="flex flex-col sm:flex-row gap-2.5 sm:gap-3 justify-center items-stretch sm:items-center flex-wrap">
-          <button type="button" onClick={onRetake} className={`${btnGhost} justify-center order-2 sm:order-1 min-h-[54px]`}>
-            Re-record
-          </button>
-          <button
-            type="button"
-            onClick={onEditSession}
-            title="Returns to session prep and discards this take"
-            className={`${btnGhost} justify-center order-3 sm:order-2 text-white/55 min-h-[52px]`}
-          >
-            Edit session
-          </button>
-          <button
-            type="button"
-            onClick={onUseTake}
-            className={`${btnPrimary} order-1 sm:order-3 inline-flex items-center justify-center gap-2 flex-1 sm:flex-initial min-w-0 min-h-[56px]`}
-          >
-            <IconUpload className="w-5 h-5 shrink-0 opacity-95" aria-hidden />
-            Publish performance
-          </button>
-          </div>
+              className="mx-auto w-full max-w-[560px] rounded-[20px] border border-white/[0.12] px-3 py-3 sm:px-4 sm:py-4"
+              style={{
+                background: 'linear-gradient(180deg, rgba(16,16,18,0.7) 0%, rgba(8,8,10,0.82) 100%)',
+                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.08), 0 16px 44px rgba(0,0,0,0.5)',
+                backdropFilter: 'blur(18px)',
+              }}
+            >
+              <p className="text-center text-[10px] uppercase tracking-[0.2em] text-white/36 font-semibold mb-2.5">Review controls</p>
+              <div className="grid grid-cols-1 gap-2.5 sm:flex sm:flex-wrap sm:justify-center sm:items-center sm:gap-3">
+                <button type="button" onClick={onRetake} className={`${btnGhost} justify-center min-h-[52px] w-full sm:w-auto`}>
+                  Re-record
+                </button>
+                <button
+                  type="button"
+                  onClick={onEditSession}
+                  title="Returns to session prep and discards this take"
+                  className={`${btnGhost} justify-center text-white/55 min-h-[50px] w-full sm:w-auto`}
+                >
+                  Edit session
+                </button>
+                <button
+                  type="button"
+                  onClick={onUseTake}
+                  className={`${btnPrimary} inline-flex items-center justify-center gap-2 min-h-[56px] w-full sm:w-auto sm:min-w-[220px]`}
+                >
+                  <IconUpload className="w-5 h-5 shrink-0 opacity-95" aria-hidden />
+                  Publish performance
+                </button>
+              </div>
+            </div>
+          </footer>
         </div>
-        <p className="text-center text-[11px] sm:text-[12px] text-white/38 tracking-wide max-w-sm mx-auto leading-relaxed">
-          Routed through the standard BETALENT upload &amp; processing queue.
-        </p>
       </div>
     </div>
   );

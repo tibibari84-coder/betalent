@@ -30,6 +30,7 @@ export type StudioPreviewFraming = {
 };
 
 const STUDIO_STAGE_RATIO = 9 / 16;
+const RATIO_EPSILON = 0.015;
 
 function resolvePreviewFraming(params: {
   sourceRatio: number | null;
@@ -41,16 +42,25 @@ function resolvePreviewFraming(params: {
     return { fit: 'cover', objectPosition: camera === 'user' ? '50% 33%' : '50% 50%' };
   }
 
-  const ratioDelta = sourceRatio - STUDIO_STAGE_RATIO;
-  const isWiderThanStage = ratioDelta > 0.015;
-
-  // Front camera on phones often reports a wider stream than 9:16.
-  // Using "cover" there crops the sides and makes faces feel unnaturally close.
-  if (isMobile && camera === 'user' && isWiderThanStage) {
-    return { fit: 'contain', objectPosition: '50% 38%' };
+  if (!isMobile) {
+    return { fit: 'cover', objectPosition: camera === 'user' ? '50% 33%' : '50% 50%' };
   }
 
-  return { fit: 'cover', objectPosition: camera === 'user' ? '50% 33%' : '50% 50%' };
+  const ratioDelta = sourceRatio - STUDIO_STAGE_RATIO;
+  const isWiderThanStage = ratioDelta > RATIO_EPSILON;
+  const isTallerThanStage = ratioDelta < -RATIO_EPSILON;
+
+  // Creator-first selfie strategy:
+  // - Wide streams in a 9:16 stage should avoid side-crop close-ups (contain).
+  // - True portrait streams can use cover with intentional headroom framing.
+  if (camera === 'user') {
+    if (isWiderThanStage) return { fit: 'contain', objectPosition: '50% 40%' };
+    if (isTallerThanStage) return { fit: 'cover', objectPosition: '50% 30%' };
+    return { fit: 'cover', objectPosition: '50% 33%' };
+  }
+
+  // Back camera should prioritize scene coverage over face-centered framing.
+  return { fit: isWiderThanStage ? 'contain' : 'cover', objectPosition: '50% 50%' };
 }
 
 function pickRecorderMime(): { mimeType: string; fileExt: 'mp4' | 'webm' } {
@@ -231,8 +241,8 @@ export function useStudioRecorder(maxDurationSec: number) {
           return { ok: false, message, code: 'no_camera' };
         }
 
-        // Determine framing from the actual stream dimensions.
-        // getSettings().aspectRatio is not consistent across browsers, so we derive from width/height as well.
+        // Determine framing from actual stream dimensions (not only requested constraints).
+        // Safari can ignore or reinterpret ideal ratios, so metadata-driven composition is required.
         try {
           const vt = videoTracks[0];
           const s = vt?.getSettings?.() as MediaTrackSettings | undefined;
@@ -255,17 +265,16 @@ export function useStudioRecorder(maxDurationSec: number) {
           } catch {
             /* autoplay policies */
           }
-          if (el.videoWidth > 0 && el.videoHeight > 0) {
-            const sourceRatio = el.videoWidth / el.videoHeight;
-            setPreviewFraming(resolvePreviewFraming({ sourceRatio, isMobile, camera: mode }));
-          } else {
-            el.onloadedmetadata = () => {
-              if (el.videoWidth > 0 && el.videoHeight > 0) {
-                const sourceRatio = el.videoWidth / el.videoHeight;
-                setPreviewFraming(resolvePreviewFraming({ sourceRatio, isMobile, camera: mode }));
-              }
-            };
-          }
+          const applyFramingFromElement = () => {
+            if (el.videoWidth > 0 && el.videoHeight > 0) {
+              const sourceRatio = el.videoWidth / el.videoHeight;
+              setPreviewFraming(resolvePreviewFraming({ sourceRatio, isMobile, camera: mode }));
+            }
+          };
+          applyFramingFromElement();
+          el.onloadedmetadata = () => applyFramingFromElement();
+          // onresize is supported for HTMLVideoElement and keeps framing stable on stream renegotiation.
+          el.onresize = () => applyFramingFromElement();
         }
         setPhase('preview');
         return { ok: true };
