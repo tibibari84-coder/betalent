@@ -11,7 +11,7 @@ export type SubmitTalentVoteResult =
     }
   | {
       ok: false;
-      code: 'VIDEO_NOT_FOUND' | 'VOTES_DISABLED';
+      code: 'VIDEO_NOT_FOUND' | 'VOTES_DISABLED' | 'CANNOT_VOTE_OWN_VIDEO';
     };
 
 /**
@@ -35,7 +35,10 @@ export async function submitTalentVote(params: {
   if (!video) {
     return { ok: false, code: 'VIDEO_NOT_FOUND' };
   }
-  if (userId !== video.creatorId && !video.creator.allowVotesOnPerformances) {
+  if (userId === video.creatorId) {
+    return { ok: false, code: 'CANNOT_VOTE_OWN_VIDEO' };
+  }
+  if (!video.creator.allowVotesOnPerformances) {
     return { ok: false, code: 'VOTES_DISABLED' };
   }
 

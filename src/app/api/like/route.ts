@@ -6,6 +6,7 @@
  */
 
 import { NextResponse } from 'next/server';
+import { Prisma } from '@prisma/client';
 import { requireAuth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { CANONICAL_PUBLIC_VIDEO_WHERE } from '@/lib/video-moderation';
@@ -44,13 +45,21 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true, liked: true, likesCount });
     }
 
-    await prisma.$transaction([
-      prisma.like.create({ data: { userId: user.id, videoId } }),
-      prisma.video.update({
-        where: { id: videoId },
-        data: { likesCount: { increment: 1 } },
-      }),
-    ]);
+    try {
+      await prisma.$transaction([
+        prisma.like.create({ data: { userId: user.id, videoId } }),
+        prisma.video.update({
+          where: { id: videoId },
+          data: { likesCount: { increment: 1 } },
+        }),
+      ]);
+    } catch (e) {
+      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
+        const likesCount = await getVideoLikesCount(videoId);
+        return NextResponse.json({ ok: true, liked: true, likesCount });
+      }
+      throw e;
+    }
     const likesCount = await getVideoLikesCount(videoId);
     return NextResponse.json({ ok: true, liked: true, likesCount });
   } catch (e) {

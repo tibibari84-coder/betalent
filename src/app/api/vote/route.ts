@@ -43,6 +43,9 @@ export async function POST(req: Request) {
       if (result.code === 'VOTES_DISABLED') {
         return apiError(403, 'This creator has turned off talent votes on performances', { code: result.code });
       }
+      if (result.code === 'CANNOT_VOTE_OWN_VIDEO') {
+        return apiError(403, 'You cannot vote on your own performance', { code: result.code });
+      }
       return apiError(404, 'Video not found', { code: 'VIDEO_NOT_FOUND' });
     }
     return NextResponse.json({
