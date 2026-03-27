@@ -51,6 +51,9 @@ interface CommentsPanelProps {
   onCommentsCountChange?: (count: number) => void;
 }
 
+const COMMENT_AVATAR_MAIN = 36;
+const COMMENT_AVATAR_REPLY = 28;
+
 function CommentRow({
   c,
   showReply,
@@ -83,6 +86,8 @@ function CommentRow({
 
   const displayBody = c.isDeleted ? 'Comment deleted' : c.body;
   const bodyClass = c.isDeleted ? 'text-text-muted italic' : 'text-text-secondary';
+  const isReply = depth > 0;
+  const avatarSize = isReply ? COMMENT_AVATAR_REPLY : COMMENT_AVATAR_MAIN;
 
   const handleLike = async () => {
     const prevL = liked;
@@ -113,34 +118,36 @@ function CommentRow({
 
   return (
     <article
-      className="rounded-[14px] p-4"
+      className="rounded-[16px] p-4 sm:p-[18px]"
       style={{
-        background: 'rgba(26,26,28,0.72)',
-        backdropFilter: 'blur(20px)',
-        border: '1px solid rgba(255,255,255,0.08)',
-        marginLeft: depth > 0 ? '0.5rem' : 0,
+        background: isReply ? 'rgba(31,31,34,0.74)' : 'rgba(26,26,30,0.78)',
+        backdropFilter: 'blur(16px)',
+        border: '1px solid rgba(255,255,255,0.06)',
       }}
     >
-      <div className="flex gap-3">
+      <div className="flex gap-3.5">
         <Link href={`/profile/${c.username}`} className="shrink-0">
-          <div className="w-9 h-9 rounded-full overflow-hidden bg-canvas-tertiary flex items-center justify-center">
+          <div
+            className="rounded-full overflow-hidden bg-canvas-tertiary flex items-center justify-center"
+            style={{ width: avatarSize, height: avatarSize }}
+          >
             {c.avatarUrl ? (
               <img src={c.avatarUrl} alt={c.username} className="avatar-image h-full w-full" />
             ) : (
-              <span className="text-text-secondary text-sm font-semibold">{c.username.charAt(0)}</span>
+              <span className="text-text-secondary text-[13px] font-semibold">{c.username.charAt(0)}</span>
             )}
           </div>
         </Link>
         <div className="flex-1 min-w-0 overflow-hidden">
           <div className="flex items-center gap-2 min-w-0 flex-wrap">
-            <Link href={`/profile/${c.username}`} className="font-medium text-[13px] text-text-primary hover:text-accent transition-colors truncate min-w-0">
+            <Link href={`/profile/${c.username}`} className="font-semibold text-[16px] text-text-primary hover:text-accent transition-colors truncate min-w-0 leading-[1.25]">
               @{c.username}
             </Link>
             {c.isCreator && (
               <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-accent/20 text-accent">Creator</span>
             )}
             {c.parentUsername && (
-              <span className="text-[12px] text-text-muted">
+              <span className="text-[13px] text-text-muted">
                 → <span className="text-text-secondary">@{c.parentUsername}</span>
               </span>
             )}
@@ -150,18 +157,18 @@ function CommentRow({
                 {c.country.length === 2 ? getFlagEmoji(c.country) : c.country}
               </span>
             )}
-            <span className="text-[12px] text-text-muted shrink-0">{c.timestamp}</span>
+            <span className="text-[13px] text-text-muted/90 shrink-0">{c.timestamp}</span>
           </div>
-          <div className={`mt-1.5 text-[14px] leading-relaxed break-words overflow-hidden ${bodyClass}`}>
+          <div className={`mt-[14px] text-[18px] leading-[1.5] break-words overflow-hidden ${bodyClass}`}>
             {c.isDeleted ? displayBody : <CommentBody text={c.body} />}
           </div>
           {!c.isDeleted && (
-            <div className="mt-2.5 flex flex-wrap items-center gap-4 text-[12px]">
+            <div className="mt-3.5 flex flex-wrap items-center gap-3 text-[13px] leading-none">
               {showReply && onReply && (
                 <button
                   type="button"
                   onClick={() => setShowReplyInput((v) => !v)}
-                  className="text-text-muted hover:text-accent transition-colors"
+                  className="text-text-muted hover:text-accent transition-colors min-h-8 px-1"
                 >
                   Reply
                 </button>
@@ -169,13 +176,13 @@ function CommentRow({
               <button
                 type="button"
                 onClick={handleLike}
-                className={`flex items-center gap-1 transition-colors ${liked ? 'text-accent' : 'text-text-muted hover:text-accent'}`}
+                className={`flex items-center gap-1 transition-colors min-h-8 px-1 ${liked ? 'text-accent' : 'text-text-muted hover:text-accent'}`}
               >
                 <IconHeart className={`w-4 h-4 ${liked ? 'fill-current' : ''}`} />
                 {likeCount > 0 && <span>{likeCount}</span>}
               </button>
               {onReport && (
-                <button type="button" onClick={() => onReport(c.id)} className="text-text-muted hover:text-text-secondary transition-colors">
+                <button type="button" onClick={() => onReport(c.id)} className="text-text-muted hover:text-text-secondary transition-colors min-h-8 px-1">
                   Report
                 </button>
               )}
@@ -188,7 +195,7 @@ function CommentRow({
                     onDelete(c);
                   }}
                   disabled={deleting}
-                  className="text-text-muted hover:text-red-400 transition-colors"
+                  className="text-text-muted hover:text-red-400 transition-colors min-h-8 px-1"
                 >
                   {deleting ? 'Deleting…' : 'Delete'}
                 </button>
@@ -197,7 +204,7 @@ function CommentRow({
           )}
           {showReplyInput && onReply && (
             <form
-              className="mt-3 flex gap-2"
+              className="mt-3.5 flex gap-2.5"
               onSubmit={(e) => {
                 e.preventDefault();
                 const v = replyInputRef.current?.value?.trim();
@@ -212,13 +219,13 @@ function CommentRow({
                 ref={replyInputRef}
                 type="text"
                 placeholder={`Reply to @${c.username}...`}
-                className="flex-1 h-9 px-3 rounded-[10px] border border-white/[0.1] text-zinc-200 placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-accent/25 text-[13px]"
+                className="flex-1 h-[44px] px-3.5 rounded-[12px] border border-white/[0.1] text-zinc-200 placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-accent/25 text-[16px]"
                 style={{ background: 'linear-gradient(180deg, #3a3a3e 0%, #323236 100%)' }}
               />
-              <button type="submit" className="px-3 h-9 rounded-[10px] bg-accent text-white text-[13px] font-medium hover:opacity-95">
+              <button type="submit" className="px-4 h-[44px] rounded-[12px] bg-accent text-white text-[14px] font-medium hover:opacity-95">
                 Reply
               </button>
-              <button type="button" onClick={() => setShowReplyInput(false)} className="px-3 h-9 rounded-[10px] text-text-muted hover:text-text-primary text-[13px]">
+              <button type="button" onClick={() => setShowReplyInput(false)} className="px-3 h-[44px] rounded-[12px] text-text-muted hover:text-text-primary text-[13px]">
                 Cancel
               </button>
             </form>
@@ -548,16 +555,16 @@ export default function CommentsPanel({
       <div className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm md:hidden" onClick={onClose} aria-hidden />
 
       <aside
-        className="fixed z-50 flex flex-col w-full max-w-[420px] h-full md:w-[420px] md:h-full md:right-0 md:top-0 bottom-0 rounded-t-[24px] md:rounded-none max-h-[85vh] transition-transform duration-300 ease-out"
+        className="fixed inset-x-0 z-50 flex flex-col w-full h-[min(92dvh,920px)] md:inset-x-auto md:w-[430px] md:h-full md:right-0 md:top-0 bottom-0 rounded-t-[24px] md:rounded-none transition-transform duration-220 ease-out"
         style={{
-          background: 'rgba(26,26,28,0.95)',
+          background: 'rgba(18,18,22,0.96)',
           backdropFilter: 'blur(20px)',
           WebkitBackdropFilter: 'blur(20px)',
           borderLeft: '1px solid rgba(255,255,255,0.08)',
           boxShadow: '-8px 0 32px rgba(0,0,0,0.4)',
         }}
       >
-        <header className="flex items-center justify-between px-4 md:px-5 py-4 border-b border-[rgba(255,255,255,0.08)] shrink-0">
+        <header className="flex items-center justify-between px-5 md:px-5 py-4 border-b border-[rgba(255,255,255,0.08)] shrink-0">
           <div className="flex items-center gap-2">
             <h2 className="font-display text-[18px] font-semibold text-text-primary">Comments</h2>
             <span className="px-2 py-0.5 rounded-full text-[12px] font-medium text-text-secondary" style={{ background: 'rgba(255,255,255,0.08)' }}>
@@ -569,7 +576,7 @@ export default function CommentsPanel({
           </button>
         </header>
 
-        <div className="flex-1 overflow-y-auto px-4 md:px-5 py-4 space-y-3">
+        <div className="flex-1 overflow-y-auto px-5 md:px-5 py-4 space-y-4">
           {(localError || submitError) && (
             <div className="rounded-[10px] px-3 py-2 text-[13px] text-amber-200/90 bg-amber-500/10 border border-amber-500/20">{localError || submitError}</div>
           )}
@@ -591,7 +598,7 @@ export default function CommentsPanel({
             </div>
           ) : (
             list.map((c) => (
-              <div key={c.id} className="space-y-2">
+              <div key={c.id} className="space-y-3 pb-[2px]">
                 <CommentRow
                   c={c}
                   showReply={showComposer}
@@ -600,11 +607,15 @@ export default function CommentsPanel({
                   onReport={isSignedIn ? (id) => setReportId(id) : undefined}
                 />
                 {(c.replyCount ?? 0) > 0 && (
-                  <div className="pl-3">
+                  <div className="pl-3.5 relative">
+                    <span
+                      className="absolute left-[9px] top-0 bottom-0 w-px bg-white/[0.08]"
+                      aria-hidden
+                    />
                     {!expanded[c.id] ? (
                       <button
                         type="button"
-                        className="text-[12px] text-accent font-medium"
+                        className="text-[13px] text-accent font-medium min-h-8 px-1"
                         onClick={async () => {
                           setExpanded((e) => ({ ...e, [c.id]: true }));
                           await loadReplies(c.id);
@@ -613,7 +624,7 @@ export default function CommentsPanel({
                         View replies ({c.replyCount ?? 0})
                       </button>
                     ) : (
-                      <div className="space-y-2 mt-2">
+                      <div className="space-y-2.5 mt-2">
                         {(replyPages[c.id]?.loading && !(replyPages[c.id]?.items?.length) && (
                           <p className="text-[12px] text-text-muted">Loading replies…</p>
                         ))}
@@ -629,7 +640,7 @@ export default function CommentsPanel({
                           />
                         ))}
                         {replyPages[c.id]?.next && (
-                          <button type="button" className="text-[12px] text-accent" onClick={() => loadMoreReplies(c.id)}>
+                          <button type="button" className="text-[13px] text-accent min-h-8 px-1" onClick={() => loadMoreReplies(c.id)}>
                             Load more replies
                           </button>
                         )}
@@ -662,18 +673,34 @@ export default function CommentsPanel({
                 inputRef.current!.value = '';
               }
             }}
-            className="flex items-center gap-2 px-4 md:px-5 py-4 border-t border-[rgba(255,255,255,0.08)] shrink-0"
-            style={{ background: 'rgba(26,26,28,0.95)', backdropFilter: 'blur(20px)' }}
+            className="sticky bottom-0 flex items-center gap-2 px-4 md:px-5 pt-3 pb-[max(10px,env(safe-area-inset-bottom))] border-t border-[rgba(255,255,255,0.08)] shrink-0"
+            style={{ background: 'rgba(18,18,22,0.96)', backdropFilter: 'blur(20px)' }}
           >
+            <button
+              type="button"
+              className="w-11 h-[54px] rounded-[14px] flex items-center justify-center text-text-secondary hover:text-text-primary hover:bg-white/[0.06] transition-colors shrink-0"
+              aria-label="Open media tools"
+            >
+              <IconComment className="w-5 h-5" />
+            </button>
             <input
               ref={inputRef}
               type="text"
               placeholder="Add a comment..."
               disabled={busy}
-              className="flex-1 h-11 px-4 rounded-[12px] border border-white/[0.1] text-zinc-200 placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-accent/25 focus:border-white/[0.14] text-[13px] disabled:opacity-60 disabled:cursor-not-allowed"
+              className="flex-1 h-[54px] px-4 rounded-[16px] border border-white/[0.1] text-zinc-200 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-accent/25 focus:border-white/[0.14] text-[16px] disabled:opacity-60 disabled:cursor-not-allowed"
               style={{ background: 'linear-gradient(180deg, #3a3a3e 0%, #323236 100%)' }}
             />
-            <button type="submit" disabled={busy} className="w-11 h-11 rounded-[12px] flex items-center justify-center bg-accent text-white hover:bg-accent-hover transition-colors shrink-0 disabled:opacity-60 disabled:cursor-not-allowed" aria-label="Send">
+            <button
+              type="button"
+              className="w-10 h-[54px] rounded-[14px] flex items-center justify-center text-text-secondary hover:text-text-primary hover:bg-white/[0.06] transition-colors shrink-0"
+              aria-label="Emoji"
+            >
+              <span className="text-[18px]" aria-hidden>
+                😊
+              </span>
+            </button>
+            <button type="submit" disabled={busy} className="w-12 h-[54px] rounded-[14px] flex items-center justify-center bg-accent text-white hover:bg-accent-hover transition-colors shrink-0 disabled:opacity-60 disabled:cursor-not-allowed" aria-label="Send">
               <IconPaperAirplane className="w-5 h-5" />
             </button>
           </form>
