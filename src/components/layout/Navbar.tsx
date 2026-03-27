@@ -378,11 +378,11 @@ export default function Navbar({
           onKeyDown={onMenuKeyDown}
         >
           <div className="px-2 py-1.5 sm:px-3.5 sm:py-3 border-b border-white/[0.08] min-w-0 flex items-center gap-2 sm:gap-3">
-            <span className="flex h-6.5 w-6.5 sm:h-9 sm:w-9 items-center justify-center overflow-hidden rounded-full bg-white/10 ring-1 ring-white/15 shrink-0">
+            <span className="flex h-6 w-6 sm:h-9 sm:w-9 items-center justify-center overflow-hidden rounded-full bg-white/10 ring-1 ring-white/15 shrink-0">
               {user && user !== 'loading' && user.avatarUrl ? (
                 <img src={user.avatarUrl} alt="" className="avatar-image h-full w-full object-cover" />
               ) : (
-                <IconUser className="w-[14px] h-[14px] text-white/75" />
+                <IconUser className="w-[12px] h-[12px] text-white/75" />
               )}
             </span>
             <div className="min-w-0">
