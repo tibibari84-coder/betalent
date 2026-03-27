@@ -36,7 +36,7 @@ const ITEMS: { href: string; labelKey: string; icon: React.ComponentType<{ class
   { href: '/feed', labelKey: 'nav.home', icon: IconHome },
   { href: '/explore', labelKey: 'nav.search', icon: IconSearch },
   { href: '/upload', labelKey: 'nav.upload', icon: IconUpload, isUpload: true },
-  { href: '/notifications', labelKey: 'nav.inbox', icon: IconInbox },
+  { href: '/inbox', labelKey: 'nav.inbox', icon: IconInbox },
   { href: '/profile/me', labelKey: 'nav.profile', icon: IconProfile },
 ];
 
