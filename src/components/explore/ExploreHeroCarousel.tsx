@@ -45,6 +45,9 @@ const AUTO_SLIDE_MS = 5500;
 
 const VINYL_LOGO_SRC = '/images/betalent-vinyl-logo.png';
 
+/** Zoom past outer ring text (“BETALENT” / “GLOBAL …”) baked into the PNG; clip keeps circle. */
+const VINYL_CENTER_ZOOM = 142; // % of circle diameter — tune if needed
+
 /** Premium energy ring — same branded vinyl on every slide */
 function EnergyRing({ variant, isActive }: { variant: 'mic' | 'trophy' | 'trending'; isActive: boolean }) {
   return (
@@ -82,14 +85,22 @@ function EnergyRing({ variant, isActive }: { variant: 'mic' | 'trophy' | 'trendi
             border: '1px solid rgba(255,255,255,0.08)',
           }}
         >
-          <Image
-            src={VINYL_LOGO_SRC}
-            alt=""
-            fill
-            className="object-cover rounded-full"
-            sizes="(max-width: 640px) 260px, (max-width: 1024px) 320px, 420px"
-            priority={variant === 'mic'}
-          />
+          <div
+            className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
+            style={{
+              width: `${VINYL_CENTER_ZOOM}%`,
+              height: `${VINYL_CENTER_ZOOM}%`,
+            }}
+          >
+            <Image
+              src={VINYL_LOGO_SRC}
+              alt=""
+              fill
+              className="object-cover object-center rounded-full"
+              sizes="(max-width: 640px) 260px, (max-width: 1024px) 320px, 420px"
+              priority={variant === 'mic'}
+            />
+          </div>
         </div>
       </div>
     </div>
