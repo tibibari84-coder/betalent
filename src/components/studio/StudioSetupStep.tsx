@@ -24,6 +24,7 @@ export type StudioSetupStepProps = {
   setContentType: (v: 'ORIGINAL' | 'COVER' | 'REMIX') => void;
   rulesAcknowledged: boolean;
   setRulesAcknowledged: (v: boolean) => void;
+  onRulesAccepted?: () => void;
   t: (key: string) => string;
   loading: boolean;
   localError: string;
@@ -51,6 +52,7 @@ export default function StudioSetupStep(props: StudioSetupStepProps) {
     setContentType,
     rulesAcknowledged,
     setRulesAcknowledged,
+    onRulesAccepted,
     t,
     loading,
     localError,
@@ -63,6 +65,13 @@ export default function StudioSetupStep(props: StudioSetupStepProps) {
     onSwitchToDeviceUpload,
   } = props;
   const copy = getStudioModeCopy(mode);
+
+  const handleRulesAcknowledgedChange = (next: boolean) => {
+    setRulesAcknowledged(next);
+    if (next && !rulesAcknowledged) {
+      onRulesAccepted?.();
+    }
+  };
 
   // Defer client-only check to avoid hydration mismatch (window/navigator not available on server)
   const [recordingSupported, setRecordingSupported] = useState(false);
@@ -142,7 +151,7 @@ export default function StudioSetupStep(props: StudioSetupStepProps) {
             contentType={contentType}
             setContentType={setContentType}
             rulesAcknowledged={rulesAcknowledged}
-            setRulesAcknowledged={setRulesAcknowledged}
+            setRulesAcknowledged={handleRulesAcknowledgedChange}
             titleLabel={t('upload.titleLabel')}
             titlePlaceholder={t('upload.titlePlaceholder')}
             descriptionLabel={t('upload.description')}

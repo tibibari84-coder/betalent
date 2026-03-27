@@ -79,7 +79,6 @@ export default function RecordingStudio(props: RecordingStudioProps) {
   const [localError, setLocalError] = useState('');
   const [pendingMobileTake, setPendingMobileTake] = useState<{ file: File; durationSec: number } | null>(null);
   const autoEnterTriedRef = useRef(false);
-  const prevRulesAcknowledgedRef = useRef(rulesAcknowledged);
   const prepCancelledRef = useRef(false);
 
   const {
@@ -297,6 +296,15 @@ export default function RecordingStudio(props: RecordingStudioProps) {
     onAcceptTake(take.file, take.durationSec);
   }, [pendingMobileTake, setupValid, onAcceptTake]);
 
+  const handleRulesAccepted = useCallback(() => {
+    // Desktop only: trigger camera entry directly from the checkbox user gesture.
+    if (isMobileStudio) return;
+    if (step !== 'setup') return;
+    if (pendingMobileTake) return;
+    if (!title.trim() || !styleSlug) return;
+    void enterLiveRoom();
+  }, [isMobileStudio, step, pendingMobileTake, title, styleSlug, enterLiveRoom]);
+
   const handleClose = useCallback(() => {
     prepCancelledRef.current = true;
     studioLeaveBooth();
@@ -327,21 +335,6 @@ export default function RecordingStudio(props: RecordingStudioProps) {
     void enterLiveRoom();
   }, [isMobileStudio, step, pendingMobileTake, enterLiveRoom]);
 
-  useEffect(() => {
-    // Desktop creator flow: once rules are accepted (and required fields are valid),
-    // jump directly into camera without requiring a second "Enter" click.
-    const justAcknowledged = !prevRulesAcknowledgedRef.current && rulesAcknowledged;
-    prevRulesAcknowledgedRef.current = rulesAcknowledged;
-
-    if (isMobileStudio) return;
-    if (step !== 'setup') return;
-    if (pendingMobileTake) return;
-    if (!justAcknowledged) return;
-    if (!setupValid) return;
-
-    void enterLiveRoom();
-  }, [isMobileStudio, step, pendingMobileTake, rulesAcknowledged, setupValid, enterLiveRoom]);
-
   if (step === 'setup') {
     return (
       <StudioSetupStep
@@ -358,6 +351,7 @@ export default function RecordingStudio(props: RecordingStudioProps) {
         setContentType={setContentType}
         rulesAcknowledged={rulesAcknowledged}
         setRulesAcknowledged={setRulesAcknowledged}
+        onRulesAccepted={handleRulesAccepted}
         t={t}
         loading={loading}
         localError={localError}
