@@ -1,20 +1,48 @@
 /**
  * POST /api/comments/[commentId]/like
- * Toggle like on a comment. Auth required.
+ * - No JSON body (or empty): quick heart — toggle any reaction off, or add LIKE if none.
+ * - JSON { "reaction": "LOVE" | ... }: set/replace reaction; same as current removes (toggle off).
  */
 
 import { NextResponse } from 'next/server';
+import type { CommentReactionType } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { requireAuth } from '@/lib/auth';
 import { isSchemaDriftError } from '@/lib/runtime-config';
+import { reactionSummaryForSingleComment } from '@/lib/comment-reaction-summary';
+import { isCommentReactionType } from '@/constants/comment-reactions';
+
+function serializeSummary(s: Record<string, number>): Record<string, number> {
+  const o: Record<string, number> = {};
+  for (const [k, v] of Object.entries(s)) {
+    if (typeof v === 'number' && v > 0) o[k] = v;
+  }
+  return o;
+}
 
 export async function POST(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ commentId: string }> }
 ) {
   try {
     const user = await requireAuth();
     const { commentId } = await params;
+
+    let body: { reaction?: unknown } = {};
+    try {
+      const ct = req.headers.get('content-type');
+      if (ct?.includes('application/json')) {
+        const t = await req.text();
+        if (t.trim()) body = JSON.parse(t) as { reaction?: unknown };
+      }
+    } catch {
+      body = {};
+    }
+
+    const requested =
+      typeof body.reaction === 'string' && isCommentReactionType(body.reaction)
+        ? (body.reaction as CommentReactionType)
+        : undefined;
 
     const comment = await prisma.comment.findUnique({
       where: { id: commentId },
@@ -28,28 +56,98 @@ export async function POST(
       where: { userId_commentId: { userId: user.id, commentId } },
     });
 
-    if (existing) {
+    /** Quick heart (no reaction field): remove any reaction, or add LIKE. */
+    if (requested === undefined) {
+      if (existing) {
+        await prisma.$transaction([
+          prisma.commentLike.delete({ where: { id: existing.id } }),
+          prisma.comment.update({
+            where: { id: commentId },
+            data: { likeCount: { decrement: 1 } },
+          }),
+        ]);
+        const updated = await prisma.comment.findUnique({
+          where: { id: commentId },
+          select: { likeCount: true },
+        });
+        const summaryRaw = await reactionSummaryForSingleComment(commentId);
+        return NextResponse.json({
+          ok: true,
+          liked: false,
+          likeCount: Math.max(0, updated?.likeCount ?? 0),
+          myReaction: null,
+          reactionSummary: serializeSummary(summaryRaw as Record<string, number>),
+        });
+      }
+
       await prisma.$transaction([
-        prisma.commentLike.delete({ where: { id: existing.id } }),
+        prisma.commentLike.create({
+          data: { userId: user.id, commentId, reaction: 'LIKE' },
+        }),
         prisma.comment.update({
           where: { id: commentId },
-          data: { likeCount: { decrement: 1 } },
+          data: { likeCount: { increment: 1 } },
         }),
       ]);
       const updated = await prisma.comment.findUnique({
         where: { id: commentId },
         select: { likeCount: true },
       });
+      const summaryRaw = await reactionSummaryForSingleComment(commentId);
       return NextResponse.json({
         ok: true,
-        liked: false,
-        likeCount: Math.max(0, updated?.likeCount ?? 0),
+        liked: true,
+        likeCount: updated?.likeCount ?? 0,
+        myReaction: 'LIKE',
+        reactionSummary: serializeSummary(summaryRaw as Record<string, number>),
+      });
+    }
+
+    /** Picker: set or change reaction; same reaction again = remove. */
+    if (existing) {
+      if (existing.reaction === requested) {
+        await prisma.$transaction([
+          prisma.commentLike.delete({ where: { id: existing.id } }),
+          prisma.comment.update({
+            where: { id: commentId },
+            data: { likeCount: { decrement: 1 } },
+          }),
+        ]);
+        const updated = await prisma.comment.findUnique({
+          where: { id: commentId },
+          select: { likeCount: true },
+        });
+        const summaryRaw = await reactionSummaryForSingleComment(commentId);
+        return NextResponse.json({
+          ok: true,
+          liked: false,
+          likeCount: Math.max(0, updated?.likeCount ?? 0),
+          myReaction: null,
+          reactionSummary: serializeSummary(summaryRaw as Record<string, number>),
+        });
+      }
+
+      await prisma.commentLike.update({
+        where: { id: existing.id },
+        data: { reaction: requested },
+      });
+      const updated = await prisma.comment.findUnique({
+        where: { id: commentId },
+        select: { likeCount: true },
+      });
+      const summaryRaw = await reactionSummaryForSingleComment(commentId);
+      return NextResponse.json({
+        ok: true,
+        liked: true,
+        likeCount: updated?.likeCount ?? 0,
+        myReaction: requested,
+        reactionSummary: serializeSummary(summaryRaw as Record<string, number>),
       });
     }
 
     await prisma.$transaction([
       prisma.commentLike.create({
-        data: { userId: user.id, commentId },
+        data: { userId: user.id, commentId, reaction: requested },
       }),
       prisma.comment.update({
         where: { id: commentId },
@@ -60,10 +158,13 @@ export async function POST(
       where: { id: commentId },
       select: { likeCount: true },
     });
+    const summaryRaw = await reactionSummaryForSingleComment(commentId);
     return NextResponse.json({
       ok: true,
       liked: true,
       likeCount: updated?.likeCount ?? 0,
+      myReaction: requested,
+      reactionSummary: serializeSummary(summaryRaw as Record<string, number>),
     });
   } catch (e) {
     if (e instanceof Error && e.message === 'Unauthorized') {

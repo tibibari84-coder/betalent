@@ -66,6 +66,17 @@ enum CommentPermission {
   OFF
 }
 
+/// Single reaction per user per comment (stored on CommentLike.reaction).
+enum CommentReactionType {
+  LIKE
+  LOVE
+  CARE
+  HAHA
+  WOW
+  SAD
+  ANGRY
+}
+
 /// Post-upload processing: thumbnail, premium audio (loudness/limiter), audio analysis, integrity/moderation.
 enum ProcessingStatus {
   PENDING_PROCESSING
@@ -914,15 +925,17 @@ model Comment {
 
 /// Per-user like on a comment (separate from video Like).
 model CommentLike {
-  id        String   @id @default(cuid())
+  id        String              @id @default(cuid())
   userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   commentId String
-  comment   Comment  @relation(fields: [commentId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
+  comment   Comment             @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  reaction  CommentReactionType @default(LIKE)
+  createdAt DateTime            @default(now())
 
   @@unique([userId, commentId])
   @@index([commentId])
+  @@index([commentId, reaction])
 }
 
 /// User report of a comment (moderation queue).

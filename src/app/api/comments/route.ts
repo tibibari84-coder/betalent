@@ -8,12 +8,22 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
 import { checkCommentPermission } from '@/lib/comment-service';
+import { reactionSummariesForCommentIds } from '@/lib/comment-reaction-summary';
+import type { CommentReactionType } from '@prisma/client';
 import { CANONICAL_PUBLIC_VIDEO_WHERE } from '@/lib/video-moderation';
 import { isSchemaDriftError } from '@/lib/runtime-config';
 import { isDatabaseUnavailableError } from '@/lib/db-errors';
 
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 50;
+
+function serializeReactionSummary(s: Partial<Record<CommentReactionType, number>>): Record<string, number> {
+  const o: Record<string, number> = {};
+  for (const [k, v] of Object.entries(s)) {
+    if (typeof v === 'number' && v > 0) o[k] = v;
+  }
+  return o;
+}
 
 function formatTimestamp(d: Date): string {
   const s = Math.floor((Date.now() - d.getTime()) / 1000);
@@ -106,10 +116,11 @@ export async function GET(req: Request) {
       currentUserId && ids.length
         ? await prisma.commentLike.findMany({
             where: { userId: currentUserId, commentId: { in: ids } },
-            select: { commentId: true },
+            select: { commentId: true, reaction: true },
           })
         : [];
-    const likedSet = new Set(likeRows.map((l) => l.commentId));
+    const myReactionByComment = new Map(likeRows.map((l) => [l.commentId, l.reaction]));
+    const summaries = await reactionSummariesForCommentIds(ids);
 
     const isCreatorOrAdmin = user?.role === 'ADMIN';
     const comments = items.map((c) => {
@@ -120,11 +131,13 @@ export async function GET(req: Request) {
       const canDelete =
         !!currentUserId &&
         (authorId === currentUserId || video.creatorId === currentUserId || isCreatorOrAdmin);
+      const myR = myReactionByComment.get(c.id);
       return {
         id: c.id,
         parentId: c.parentId,
         userId: authorId,
         username: c.user.username,
+        displayName: c.user.displayName ?? c.user.username,
         avatarUrl: c.user.avatarUrl ?? undefined,
         country: c.user.country ?? undefined,
         timestamp: formatTimestamp(c.createdAt),
@@ -137,7 +150,9 @@ export async function GET(req: Request) {
         isCreator: !!isCreator,
         canDelete,
         createdAt: c.createdAt.toISOString(),
-        likedByMe: likedSet.has(c.id),
+        likedByMe: myReactionByComment.has(c.id),
+        myReaction: myR ?? null,
+        reactionSummary: serializeReactionSummary(summaries.get(c.id) ?? {}),
       };
     });
 
@@ -149,6 +164,7 @@ export async function GET(req: Request) {
       canComment,
       creatorId: video.creatorId,
       currentUserId: currentUserId ?? null,
+      viewerRole: user?.role ?? null,
       nextCursor,
     });
   } catch (e) {

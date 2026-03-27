@@ -1,37 +1,13 @@
 'use client';
 
 import { useRef, useEffect, useState, useCallback } from 'react';
-import { IconComment, IconHeart, IconX, IconPaperAirplane } from '@/components/ui/Icons';
+import { IconComment, IconX, IconPaperAirplane } from '@/components/ui/Icons';
 import Link from 'next/link';
-import { getFlagEmoji } from '@/lib/countries';
-import VerifiedBadge from '@/components/shared/VerifiedBadge';
-import { CommentBody } from '@/components/comments/CommentBody';
 import { CONTENT_REPORT_TYPE_LABELS, type ContentReportTypeKey } from '@/constants/content-report';
+import { CommentRow } from '@/components/comments/CommentRow';
+import type { CommentItem, ApiComment, CommentPatch } from '@/components/comments/comment-types';
 
-export interface CommentItem {
-  id: string;
-  username: string;
-  avatarUrl?: string;
-  country?: string;
-  timestamp: string;
-  body: string;
-  likeCount?: number;
-  replyCount?: number;
-  verified?: boolean;
-  verificationLevel?: string | null;
-  parentUsername?: string;
-  replies?: CommentItem[];
-  isDeleted?: boolean;
-  canDelete?: boolean;
-  isCreator?: boolean;
-  likedByMe?: boolean;
-  userId?: string;
-}
-
-type ApiComment = CommentItem & {
-  createdAt?: string;
-  parentId?: string | null;
-};
+export type { CommentItem };
 
 interface CommentsPanelProps {
   isOpen: boolean;
@@ -49,191 +25,6 @@ interface CommentsPanelProps {
   submitError?: string | null;
   isSubmitting?: boolean;
   onCommentsCountChange?: (count: number) => void;
-}
-
-const COMMENT_AVATAR_MAIN = 36;
-const COMMENT_AVATAR_REPLY = 28;
-
-function CommentRow({
-  c,
-  showReply,
-  onReply,
-  onDelete,
-  onReport,
-  depth = 0,
-}: {
-  c: ApiComment;
-  showReply: boolean;
-  onReply?: (body: string, parentId: string) => void;
-  onDelete?: (comment: ApiComment) => void;
-  onReport?: (id: string) => void;
-  depth?: number;
-}) {
-  const [showReplyInput, setShowReplyInput] = useState(false);
-  const [deleting, setDeleting] = useState(false);
-  const [liked, setLiked] = useState(!!c.likedByMe);
-  const [likeCount, setLikeCount] = useState(c.likeCount ?? 0);
-  const replyInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    setLiked(!!c.likedByMe);
-    setLikeCount(c.likeCount ?? 0);
-  }, [c.id, c.likedByMe, c.likeCount]);
-
-  useEffect(() => {
-    if (showReplyInput) replyInputRef.current?.focus();
-  }, [showReplyInput]);
-
-  const displayBody = c.isDeleted ? 'Comment deleted' : c.body;
-  const bodyClass = c.isDeleted ? 'text-text-muted italic' : 'text-text-secondary';
-  const isReply = depth > 0;
-  const avatarSize = isReply ? COMMENT_AVATAR_REPLY : COMMENT_AVATAR_MAIN;
-
-  const handleLike = async () => {
-    const prevL = liked;
-    const prevN = likeCount;
-    setLiked(!prevL);
-    setLikeCount((n) => Math.max(0, n + (prevL ? -1 : 1)));
-    try {
-      const res = await fetch(`/api/comments/${encodeURIComponent(c.id)}/like`, { method: 'POST' });
-      const data = await res.json();
-      if (res.status === 401) {
-        const from =
-          typeof window !== 'undefined' ? encodeURIComponent(window.location.pathname || '/') : '/';
-        window.location.href = `/login?from=${from}`;
-        return;
-      }
-      if (data.ok) {
-        setLiked(data.liked);
-        setLikeCount(data.likeCount);
-      } else {
-        setLiked(prevL);
-        setLikeCount(prevN);
-      }
-    } catch {
-      setLiked(prevL);
-      setLikeCount(prevN);
-    }
-  };
-
-  return (
-    <article
-      className="rounded-[16px] p-4 sm:p-[18px]"
-      style={{
-        background: isReply ? 'rgba(31,31,34,0.74)' : 'rgba(26,26,30,0.78)',
-        backdropFilter: 'blur(16px)',
-        border: '1px solid rgba(255,255,255,0.06)',
-      }}
-    >
-      <div className="flex gap-3.5">
-        <Link href={`/profile/${c.username}`} className="shrink-0">
-          <div
-            className="rounded-full overflow-hidden bg-canvas-tertiary flex items-center justify-center"
-            style={{ width: avatarSize, height: avatarSize }}
-          >
-            {c.avatarUrl ? (
-              <img src={c.avatarUrl} alt={c.username} className="avatar-image h-full w-full" />
-            ) : (
-              <span className="text-text-secondary text-[13px] font-semibold">{c.username.charAt(0)}</span>
-            )}
-          </div>
-        </Link>
-        <div className="flex-1 min-w-0 overflow-hidden">
-          <div className="flex items-center gap-2 min-w-0 flex-wrap">
-            <Link href={`/profile/${c.username}`} className="font-semibold text-[16px] text-text-primary hover:text-accent transition-colors truncate min-w-0 leading-[1.25]">
-              @{c.username}
-            </Link>
-            {c.isCreator && (
-              <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-accent/20 text-accent">Creator</span>
-            )}
-            {c.parentUsername && (
-              <span className="text-[13px] text-text-muted">
-                → <span className="text-text-secondary">@{c.parentUsername}</span>
-              </span>
-            )}
-            <VerifiedBadge verified={!!c.verified} verificationLevel={c.verificationLevel ?? undefined} size="sm" />
-            {c.country && (
-              <span className="text-[16px] shrink-0" title={c.country}>
-                {c.country.length === 2 ? getFlagEmoji(c.country) : c.country}
-              </span>
-            )}
-            <span className="text-[13px] text-text-muted/90 shrink-0">{c.timestamp}</span>
-          </div>
-          <div className={`mt-[14px] text-[18px] leading-[1.5] break-words overflow-hidden ${bodyClass}`}>
-            {c.isDeleted ? displayBody : <CommentBody text={c.body} />}
-          </div>
-          {!c.isDeleted && (
-            <div className="mt-3.5 flex flex-wrap items-center gap-3 text-[13px] leading-none">
-              {showReply && onReply && (
-                <button
-                  type="button"
-                  onClick={() => setShowReplyInput((v) => !v)}
-                  className="text-text-muted hover:text-accent transition-colors min-h-8 px-1"
-                >
-                  Reply
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={handleLike}
-                className={`flex items-center gap-1 transition-colors min-h-8 px-1 ${liked ? 'text-accent' : 'text-text-muted hover:text-accent'}`}
-              >
-                <IconHeart className={`w-4 h-4 ${liked ? 'fill-current' : ''}`} />
-                {likeCount > 0 && <span>{likeCount}</span>}
-              </button>
-              {onReport && (
-                <button type="button" onClick={() => onReport(c.id)} className="text-text-muted hover:text-text-secondary transition-colors min-h-8 px-1">
-                  Report
-                </button>
-              )}
-              {c.canDelete && onDelete && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (typeof window !== 'undefined' && !window.confirm('Delete this comment?')) return;
-                    setDeleting(true);
-                    onDelete(c);
-                  }}
-                  disabled={deleting}
-                  className="text-text-muted hover:text-red-400 transition-colors min-h-8 px-1"
-                >
-                  {deleting ? 'Deleting…' : 'Delete'}
-                </button>
-              )}
-            </div>
-          )}
-          {showReplyInput && onReply && (
-            <form
-              className="mt-3.5 flex gap-2.5"
-              onSubmit={(e) => {
-                e.preventDefault();
-                const v = replyInputRef.current?.value?.trim();
-                if (v) {
-                  onReply(v, c.id);
-                  setShowReplyInput(false);
-                  replyInputRef.current!.value = '';
-                }
-              }}
-            >
-              <input
-                ref={replyInputRef}
-                type="text"
-                placeholder={`Reply to @${c.username}...`}
-                className="flex-1 h-[44px] px-3.5 rounded-[12px] border border-white/[0.1] text-zinc-200 placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-accent/25 text-[16px]"
-                style={{ background: 'linear-gradient(180deg, #3a3a3e 0%, #323236 100%)' }}
-              />
-              <button type="submit" className="px-4 h-[44px] rounded-[12px] bg-accent text-white text-[14px] font-medium hover:opacity-95">
-                Reply
-              </button>
-              <button type="button" onClick={() => setShowReplyInput(false)} className="px-3 h-[44px] rounded-[12px] text-text-muted hover:text-text-primary text-[13px]">
-                Cancel
-              </button>
-            </form>
-          )}
-        </div>
-      </div>
-    </article>
-  );
 }
 
 function ReportCommentModal({
@@ -340,14 +131,67 @@ export default function CommentsPanel({
     commentPermission: CommentsPanelProps['commentPermission'];
     canComment: boolean;
     isSignedIn: boolean;
-  }>({ commentsCount: 0, commentPermission: 'EVERYONE', canComment: false, isSignedIn: false });
+    currentUserId: string | null;
+  }>({
+    commentsCount: 0,
+    commentPermission: 'EVERYONE',
+    canComment: false,
+    isSignedIn: false,
+    currentUserId: null,
+  });
   const [submitting, setSubmitting] = useState(false);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [replyPages, setReplyPages] = useState<Record<string, { items: ApiComment[]; next: string | null; loading: boolean }>>({});
   const [reportId, setReportId] = useState<string | null>(null);
   const [reportInfo, setReportInfo] = useState<string | null>(null);
+  const [hiddenIds, setHiddenIds] = useState<Set<string>>(() => new Set());
 
   const selfFetch = Boolean(videoId);
+  const hideStorageKey = videoId ? `bt_comment_hide_${videoId}` : null;
+
+  useEffect(() => {
+    if (!hideStorageKey || typeof window === 'undefined') return;
+    try {
+      const raw = sessionStorage.getItem(hideStorageKey);
+      if (raw) setHiddenIds(new Set(JSON.parse(raw) as string[]));
+    } catch {
+      /* noop */
+    }
+  }, [hideStorageKey]);
+
+  const hideCommentLocal = useCallback(
+    (id: string) => {
+      setHiddenIds((prev) => {
+        const n = new Set(prev);
+        n.add(id);
+        if (hideStorageKey && typeof window !== 'undefined') {
+          try {
+            sessionStorage.setItem(hideStorageKey, JSON.stringify(Array.from(n)));
+          } catch {
+            /* noop */
+          }
+        }
+        return n;
+      });
+    },
+    [hideStorageKey]
+  );
+
+  const patchComment = useCallback((id: string, patch: CommentPatch) => {
+    setSelfList((prev) => prev.map((row) => (row.id === id ? { ...row, ...patch } : row)));
+    setReplyPages((p) => {
+      const next = { ...p };
+      for (const k of Object.keys(p)) {
+        const page = p[k];
+        if (!page?.items?.some((r) => r.id === id)) continue;
+        next[k] = {
+          ...page,
+          items: page.items.map((r) => (r.id === id ? { ...r, ...patch } : r)),
+        };
+      }
+      return next;
+    });
+  }, []);
 
   const mergeById = useCallback((prev: ApiComment[], next: ApiComment[]) => {
     const seen = new Set(prev.map((c) => c.id));
@@ -381,6 +225,7 @@ export default function CommentsPanel({
           commentPermission: data.commentPermission,
           canComment: data.canComment,
           isSignedIn: !!data.currentUserId,
+          currentUserId: (data.currentUserId as string | null) ?? null,
         });
         onCommentsCountChange?.(data.commentsCount ?? 0);
         if (isMore) setSelfList((prev) => mergeById(prev, rows));
@@ -545,6 +390,8 @@ export default function CommentsPanel({
 
   const showComposer = canComment && isSignedIn && !commentsDisabled;
 
+  const visibleList = list.filter((c) => !hiddenIds.has(c.id));
+
   return (
     <>
       <ReportCommentModal
@@ -555,28 +402,51 @@ export default function CommentsPanel({
       <div className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm md:hidden" onClick={onClose} aria-hidden />
 
       <aside
-        className="fixed inset-x-0 z-50 flex flex-col w-full h-[min(92dvh,920px)] md:inset-x-auto md:w-[430px] md:h-full md:right-0 md:top-0 bottom-0 rounded-t-[24px] md:rounded-none transition-transform duration-220 ease-out"
+        className="fixed inset-x-0 z-50 flex w-full h-[min(92dvh,920px)] flex-col overflow-hidden md:inset-x-auto md:bottom-0 md:right-0 md:top-0 md:h-full md:w-[430px] rounded-t-[24px] md:rounded-none transition-transform duration-220 ease-out"
         style={{
-          background: 'rgba(18,18,22,0.96)',
-          backdropFilter: 'blur(20px)',
-          WebkitBackdropFilter: 'blur(20px)',
           borderLeft: '1px solid rgba(255,255,255,0.08)',
-          boxShadow: '-8px 0 32px rgba(0,0,0,0.4)',
+          boxShadow: '-8px 0 48px rgba(0,0,0,0.5)',
         }}
       >
-        <header className="flex items-center justify-between px-5 md:px-5 py-4 border-b border-[rgba(255,255,255,0.08)] shrink-0">
-          <div className="flex items-center gap-2">
-            <h2 className="font-display text-[18px] font-semibold text-text-primary">Comments</h2>
-            <span className="px-2 py-0.5 rounded-full text-[12px] font-medium text-text-secondary" style={{ background: 'rgba(255,255,255,0.08)' }}>
-              {totalCount}
-            </span>
+        <div
+          className="pointer-events-none absolute inset-0"
+          style={{
+            background:
+              'radial-gradient(120% 80% at 50% -10%, rgba(196,18,47,0.14), transparent 55%), linear-gradient(180deg, rgba(16,16,20,0.98) 0%, rgba(10,10,12,0.99) 100%)',
+          }}
+          aria-hidden
+        />
+        <div
+          className="relative z-[1] flex min-h-0 flex-1 flex-col"
+          style={{ backdropFilter: 'blur(22px)', WebkitBackdropFilter: 'blur(22px)' }}
+        >
+        <header className="flex shrink-0 flex-col border-b border-[rgba(255,255,255,0.08)] px-5 pb-3 pt-2 md:px-5 md:pt-3">
+          <div className="mx-auto mb-2 h-1 w-10 shrink-0 rounded-full bg-white/20 md:hidden" aria-hidden />
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <h2 className="font-display text-[18px] font-semibold text-text-primary">Comments</h2>
+              <span
+                className="px-2 py-0.5 rounded-full text-[12px] font-medium text-text-secondary"
+                style={{ background: 'rgba(255,255,255,0.08)' }}
+              >
+                {totalCount}
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="min-w-[44px] min-h-[44px] w-10 h-10 rounded-[10px] flex items-center justify-center text-text-secondary hover:text-text-primary hover:bg-white/5 transition-colors"
+              aria-label="Close"
+            >
+              <IconX className="w-5 h-5" />
+            </button>
           </div>
-          <button type="button" onClick={onClose} className="min-w-[44px] min-h-[44px] w-10 h-10 rounded-[10px] flex items-center justify-center text-text-secondary hover:text-text-primary hover:bg-white/5 transition-colors" aria-label="Close">
-            <IconX className="w-5 h-5" />
-          </button>
+          <p className="mt-2 text-center text-[10px] font-medium uppercase tracking-[0.14em] text-white/35 md:text-left">
+            Press · hold · reactions · actions
+          </p>
         </header>
 
-        <div className="flex-1 overflow-y-auto px-5 md:px-5 py-4 space-y-4">
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-y-contain px-5 py-4 touch-pan-y md:px-5">
           {(localError || submitError) && (
             <div className="rounded-[10px] px-3 py-2 text-[13px] text-amber-200/90 bg-amber-500/10 border border-amber-500/20">{localError || submitError}</div>
           )}
@@ -586,25 +456,54 @@ export default function CommentsPanel({
             </div>
           )}
           {loading && selfFetch ? (
-            <p className="text-[13px] text-text-muted text-center py-8">Loading comments…</p>
-          ) : list.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-center">
-              <div className="w-14 h-14 rounded-full flex items-center justify-center mb-4" style={{ background: 'rgba(255,255,255,0.06)' }}>
-                <IconComment className="w-7 h-7 text-text-muted" />
+            <ul className="space-y-4 py-2" aria-busy="true" aria-label="Loading comments">
+              {[0, 1, 2].map((i) => (
+                <li
+                  key={i}
+                  className="h-[112px] animate-pulse rounded-[18px] bg-gradient-to-br from-white/[0.07] to-white/[0.02] ring-1 ring-white/[0.06]"
+                />
+              ))}
+            </ul>
+          ) : visibleList.length === 0 ? (
+            <div className="flex flex-col items-center justify-center px-2 py-14 text-center">
+              <div
+                className="mb-5 flex h-16 w-16 items-center justify-center rounded-2xl ring-1 ring-white/[0.1]"
+                style={{
+                  background:
+                    'linear-gradient(145deg, rgba(196,18,47,0.18) 0%, rgba(255,255,255,0.06) 100%)',
+                }}
+              >
+                <IconComment className="h-8 w-8 text-white/50" />
               </div>
-              <p className="text-[13px] text-text-secondary">
-                {commentsDisabled ? 'Comments are disabled for this performance.' : 'No comments yet. Be the first!'}
+              <p className="text-[15px] font-semibold tracking-tight text-white/90">
+                {commentsDisabled
+                  ? 'Comments off'
+                  : list.length > 0 && hiddenIds.size > 0
+                    ? 'Nothing to show'
+                    : 'Start the conversation'}
+              </p>
+              <p className="mt-2 max-w-[280px] text-[13px] leading-relaxed text-white/45">
+                {commentsDisabled
+                  ? 'This performance does not accept comments.'
+                  : list.length > 0 && hiddenIds.size > 0
+                    ? 'Comments you hid this session stay hidden until you open a new tab or clear site data.'
+                    : 'Be the first voice in the room. Long-press a comment (or use ···), hold the reaction chip for the full picker.'}
               </p>
             </div>
           ) : (
-            list.map((c) => (
+            visibleList.map((c) => (
               <div key={c.id} className="space-y-3 pb-[2px]">
                 <CommentRow
                   c={c}
+                  videoId={videoId ?? ''}
+                  viewerUserId={selfFetch ? meta.currentUserId : null}
+                  isSignedIn={isSignedIn}
                   showReply={showComposer}
                   onReply={submitComment}
                   onDelete={deleteComment}
                   onReport={isSignedIn ? (id) => setReportId(id) : undefined}
+                  onPatch={patchComment}
+                  onHide={hideCommentLocal}
                 />
                 {(c.replyCount ?? 0) > 0 && (
                   <div className="pl-3.5 relative">
@@ -615,7 +514,7 @@ export default function CommentsPanel({
                     {!expanded[c.id] ? (
                       <button
                         type="button"
-                        className="text-[13px] text-accent font-medium min-h-8 px-1"
+                        className="min-h-9 rounded-lg px-2 text-[13px] font-semibold text-accent transition-colors hover:bg-white/[0.05]"
                         onClick={async () => {
                           setExpanded((e) => ({ ...e, [c.id]: true }));
                           await loadReplies(c.id);
@@ -628,17 +527,24 @@ export default function CommentsPanel({
                         {(replyPages[c.id]?.loading && !(replyPages[c.id]?.items?.length) && (
                           <p className="text-[12px] text-text-muted">Loading replies…</p>
                         ))}
-                        {(replyPages[c.id]?.items ?? []).map((r) => (
-                          <CommentRow
-                            key={r.id}
-                            c={{ ...r, parentUsername: c.username }}
-                            showReply={false}
-                            onReply={submitComment}
-                            onDelete={deleteComment}
-                            onReport={isSignedIn ? (id) => setReportId(id) : undefined}
-                            depth={1}
-                          />
-                        ))}
+                        {(replyPages[c.id]?.items ?? [])
+                          .filter((r) => !hiddenIds.has(r.id))
+                          .map((r) => (
+                            <CommentRow
+                              key={r.id}
+                              c={{ ...r, parentUsername: c.username }}
+                              videoId={videoId ?? ''}
+                              viewerUserId={selfFetch ? meta.currentUserId : null}
+                              isSignedIn={isSignedIn}
+                              showReply={false}
+                              onReply={submitComment}
+                              onDelete={deleteComment}
+                              onReport={isSignedIn ? (id) => setReportId(id) : undefined}
+                              onPatch={patchComment}
+                              onHide={hideCommentLocal}
+                              depth={1}
+                            />
+                          ))}
                         {replyPages[c.id]?.next && (
                           <button type="button" className="text-[13px] text-accent min-h-8 px-1" onClick={() => loadMoreReplies(c.id)}>
                             Load more replies
@@ -673,8 +579,12 @@ export default function CommentsPanel({
                 inputRef.current!.value = '';
               }
             }}
-            className="sticky bottom-0 flex items-center gap-2 px-4 md:px-5 pt-3 pb-[max(10px,env(safe-area-inset-bottom))] border-t border-[rgba(255,255,255,0.08)] shrink-0"
-            style={{ background: 'rgba(18,18,22,0.96)', backdropFilter: 'blur(20px)' }}
+            className="sticky bottom-0 flex shrink-0 items-center gap-2 border-t border-white/[0.1] px-4 pb-[max(12px,env(safe-area-inset-bottom))] pt-3 shadow-[0_-12px_40px_rgba(0,0,0,0.35)] md:px-5"
+            style={{
+              background: 'linear-gradient(180deg, rgba(20,20,24,0.96) 0%, rgba(12,12,14,0.98) 100%)',
+              backdropFilter: 'blur(24px)',
+              WebkitBackdropFilter: 'blur(24px)',
+            }}
           >
             <button
               type="button"
@@ -705,7 +615,7 @@ export default function CommentsPanel({
             </button>
           </form>
         ) : (
-          <div className="px-4 md:px-5 py-3 border-t border-[rgba(255,255,255,0.08)] shrink-0">
+          <div className="shrink-0 border-t border-white/[0.1] px-4 py-3 md:px-5" style={{ background: 'rgba(12,12,14,0.95)' }}>
             {!isSignedIn ? (
               <p className="text-[12px] text-text-muted text-center">
                 <Link href={`/login?from=${typeof window !== 'undefined' ? encodeURIComponent(window.location.pathname) : '/'}`} className="text-accent hover:underline">
@@ -722,6 +632,7 @@ export default function CommentsPanel({
             )}
           </div>
         )}
+        </div>
       </aside>
     </>
   );
