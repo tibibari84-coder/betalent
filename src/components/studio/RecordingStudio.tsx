@@ -86,6 +86,7 @@ export default function RecordingStudio(props: RecordingStudioProps) {
     pauseSupported,
     micLive,
     lastTake,
+    previewFraming,
     consumeLastTake,
     enterBooth: studioEnterBooth,
     leaveBooth: studioLeaveBooth,
@@ -325,6 +326,7 @@ export default function RecordingStudio(props: RecordingStudioProps) {
         recElapsedSec={recElapsedSec}
         recError={recError}
         micLive={micLive}
+        previewFraming={previewFraming}
         pauseSupported={pauseSupported}
         showCurtain={showCurtain}
         switchingLens={switchingLens}
@@ -348,6 +350,7 @@ export default function RecordingStudio(props: RecordingStudioProps) {
       reviewVideoRef={reviewVideoRef}
       reviewDurationSec={reviewDurationSec}
       mode={mode}
+      previewFraming={previewFraming}
       onRetake={() => void handleRetake()}
       onEditSession={goSetupFromReview}
       onUseTake={handleUseTake}
