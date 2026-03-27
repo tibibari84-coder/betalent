@@ -234,8 +234,9 @@ export function useStudioRecorder(maxDurationSec: number) {
           /* non-fatal */
         }
 
-        const audioTracks = stream.getAudioTracks().filter((t) => t.readyState === 'live');
-        const videoTracks = stream.getVideoTracks().filter((t) => t.readyState === 'live');
+        // Some engines briefly expose tracks before readyState is "live"; treat anything not ended as usable.
+        const audioTracks = stream.getAudioTracks().filter((t) => t.readyState !== 'ended');
+        const videoTracks = stream.getVideoTracks().filter((t) => t.readyState !== 'ended');
         if (!audioTracks.length) {
           stream.getTracks().forEach((t) => t.stop());
           const message = 'Microphone not detected. Connect a mic and try again.';
@@ -308,13 +309,32 @@ export function useStudioRecorder(maxDurationSec: number) {
         setPhase('preview');
         return { ok: true };
       } catch (e) {
-        const err = e as DOMException;
-        if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-          const message = 'Camera and microphone access is blocked. Allow permissions and try again.';
+        const err = e as DOMException & { message?: string };
+        const name = err?.name ?? '';
+        const msgLower = (err?.message ?? '').toLowerCase();
+        // Delayed or non-gesture getUserMedia often reports NotAllowedError even when the user did not choose "Block".
+        if (name === 'NotAllowedError' || name === 'PermissionDeniedError') {
+          const message =
+            'The browser did not allow camera/mic access (often if the request was not started directly from your tap). Tap “Enter live room” again and allow when prompted — or reset camera/mic permissions for this site in browser settings.';
           setError({ code: 'permission_denied', message });
           return { ok: false, message, code: 'permission_denied' };
         }
-        if (err.name === 'NotFoundError') {
+        if (name === 'SecurityError' || msgLower.includes('secure context')) {
+          const message = 'Camera and microphone require a secure connection (HTTPS). Open the site over HTTPS and try again.';
+          setError({ code: 'permission_denied', message });
+          return { ok: false, message, code: 'permission_denied' };
+        }
+        if (name === 'NotReadableError' || name === 'TrackStartError') {
+          const message = 'Camera or microphone is busy or unavailable. Close other apps using the camera, then try again.';
+          setError({ code: 'unknown', message });
+          return { ok: false, message, code: 'unknown' };
+        }
+        if (name === 'OverconstrainedError') {
+          const message = 'These camera settings are not supported on this device. Try again or use Upload from device.';
+          setError({ code: 'unknown', message });
+          return { ok: false, message, code: 'unknown' };
+        }
+        if (name === 'NotFoundError') {
           const message = 'No suitable camera or microphone was found. Use Upload from device.';
           setError({ code: 'no_camera', message });
           return { ok: false, message, code: 'no_camera' };

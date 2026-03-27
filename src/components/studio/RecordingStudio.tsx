@@ -36,6 +36,7 @@ export type RecordingStudioProps = {
   loading: boolean;
 };
 
+/** Curtain delay before camera — mobile only (desktop must call getUserMedia in the same gesture). */
 const CURTAIN_MS = 520;
 const RETAKE_CURTAIN_MS = 300;
 
@@ -178,9 +179,9 @@ export default function RecordingStudio(props: RecordingStudioProps) {
     setStep('booth');
     setShowCurtain(true);
     setBoothReady(false);
-    // Keep getUserMedia in the same gesture chain for rules-accept flow on desktop.
-    // Delaying here can cause browsers to treat camera access as non-user-initiated.
-    if (!isRulesAcceptFlow) {
+    // Desktop: do not delay — Chrome/Safari treat delayed getUserMedia as non–user-initiated → NotAllowedError.
+    // Mobile: keep short curtain delay (this flow was already working on phones).
+    if (!isRulesAcceptFlow && isMobileStudio) {
       await new Promise((r) => setTimeout(r, CURTAIN_MS));
     }
     if (prepCancelledRef.current) return;
@@ -257,7 +258,9 @@ export default function RecordingStudio(props: RecordingStudioProps) {
     setStep('booth');
     setShowCurtain(true);
     setBoothReady(false);
-    await new Promise((r) => setTimeout(r, RETAKE_CURTAIN_MS));
+    if (isMobileStudio) {
+      await new Promise((r) => setTimeout(r, RETAKE_CURTAIN_MS));
+    }
     if (prepCancelledRef.current) return;
     const result = await studioDiscardRecording();
     if (prepCancelledRef.current) {
@@ -274,7 +277,7 @@ export default function RecordingStudio(props: RecordingStudioProps) {
     setBoothReady(true);
     setShowCurtain(false);
     setLocalError('');
-  }, [studioDiscardRecording, studioLeaveBooth]);
+  }, [isMobileStudio, studioDiscardRecording, studioLeaveBooth]);
 
   const handleUseTake = useCallback(() => {
     if (!reviewBlob) return;
