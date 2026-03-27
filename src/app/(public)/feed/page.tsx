@@ -14,10 +14,6 @@ import type { CreatorRecommendationPayload } from '@/types/creator-recommendatio
 
 type TabId = 'for-you' | 'following' | 'trending' | 'new-voices' | 'challenges';
 
-/** Matches scroll column — immersive width scales up to 860px on ultra-wide */
-const FEED_STAGE_CLASS =
-  'w-full max-w-[min(100%,min(96vw,560px))] md:max-w-[min(100%,min(92vw,620px))] lg:max-w-[min(100%,min(88vw,700px))] xl:max-w-[min(100%,min(82vw,780px))] 2xl:max-w-[min(100%,min(76vw,860px))]';
-
 export default function FeedPage() {
   const { viewer } = useViewer();
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
@@ -485,7 +481,7 @@ export default function FeedPage() {
 
   return (
     <div
-      className="flex flex-col h-full min-h-0 flex-1 w-full overflow-hidden min-w-0 relative bg-[#050505]"
+      className="flex flex-col h-full min-h-0 flex-1 w-full max-w-none overflow-hidden min-w-0 relative bg-[#050505]"
       style={{
         paddingTop: 'env(safe-area-inset-top)',
       }}
@@ -497,22 +493,22 @@ export default function FeedPage() {
             'radial-gradient(115% 62% at 52% 2%, rgba(196,18,47,0.12) 0%, transparent 55%), radial-gradient(75% 40% at 85% 88%, rgba(130,30,52,0.12) 0%, transparent 70%)',
         }}
       />
-      <div className="absolute inset-0 flex justify-center pointer-events-none z-0">
+      <div className="absolute inset-0 flex justify-center pointer-events-none z-0 opacity-60 md:opacity-100">
         <div
-          className={`hidden md:block h-full border-x border-white/[0.06] ${FEED_STAGE_CLASS}`}
+          className="hidden md:block h-full w-full max-w-[900px] border-x border-white/[0.05]"
           style={{
-            boxShadow: 'inset 0 0 100px rgba(0,0,0,0.45)',
-            background: 'linear-gradient(90deg, rgba(0,0,0,0.42) 0%, transparent 14%, transparent 86%, rgba(0,0,0,0.42) 100%)',
+            boxShadow: 'inset 0 0 80px rgba(0,0,0,0.35)',
+            background: 'linear-gradient(90deg, rgba(0,0,0,0.35) 0%, transparent 12%, transparent 88%, rgba(0,0,0,0.35) 100%)',
           }}
         />
       </div>
 
-      <div className={`relative z-10 mx-auto flex-shrink-0 min-w-0 px-3 sm:px-4 pt-3 md:pt-3.5 space-y-3 ${FEED_STAGE_CLASS}`}>
-        <FirstSessionBanner />
-        <div
-          className="rounded-2xl border border-white/[0.1] bg-black/28 backdrop-blur-md px-2.5 py-2 md:px-3.5 md:py-2.5"
-          style={{ boxShadow: '0 12px 48px rgba(0,0,0,0.4)' }}
-        >
+      {/* Top overlay rail: tabs + optional welcome — full width, no nested page card */}
+      <div className="relative z-20 w-full flex-shrink-0 border-b border-white/[0.06] bg-black/45 backdrop-blur-xl">
+        <div className="w-full max-w-none px-2 pt-2 pb-0 md:px-3">
+          <FirstSessionBanner />
+        </div>
+        <div className="w-full px-1.5 pb-1.5 pt-0 md:px-2 md:pb-2">
           <FeedTabBar activeTab={activeTab} onTabChange={setActiveTab} />
         </div>
       </div>
@@ -523,22 +519,22 @@ export default function FeedPage() {
       >
         <FeedActiveCardProvider scrollContainerRef={scrollContainerRef}>
           <div
-            className={`mx-auto flex flex-col min-w-0 min-h-0 ${FEED_STAGE_CLASS}`}
+            className="flex flex-col w-full max-w-none min-w-0 min-h-0 flex-1"
             style={{
               paddingBottom: 'max(env(safe-area-inset-bottom), 12px)',
             }}
           >
             {loading && videos.length === 0 ? (
-              <div className="flex flex-col items-center justify-center min-h-[50dvh] py-12 text-text-secondary text-[15px]">
+              <div className="flex flex-1 flex-col items-center justify-center min-h-[50dvh] py-10 text-text-secondary text-[14px]">
                 Loading…
               </div>
             ) : showErrorState ? (
-              <div className="min-h-[80dvh] pt-3 pb-6">
-                <FeedEmptyState {...(errorStateProps ?? {})} />
+              <div className="flex flex-1 flex-col min-h-[min(100dvh,calc(100dvh-var(--topbar-height)-var(--bottom-nav-height)))] w-full">
+                <FeedEmptyState {...(errorStateProps ?? {})} variant="immersive" />
               </div>
             ) : showEmptyState ? (
-              <div className="min-h-[80dvh] pt-3 pb-6">
-                <FeedEmptyState {...emptyStateProps} />
+              <div className="flex flex-1 flex-col min-h-[min(100dvh,calc(100dvh-var(--topbar-height)-var(--bottom-nav-height)))] w-full">
+                <FeedEmptyState {...emptyStateProps} variant="immersive" />
               </div>
             ) : (
               <>

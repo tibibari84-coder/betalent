@@ -63,9 +63,10 @@ function RootShellContent({
               isImmersiveFeedRoute || isSettingsRoute ? 'pt-0 laptop:pt-0' : 'pt-[var(--shell-content-gap-mobile)] laptop:pt-[var(--shell-content-gap-desktop)]'
             )}
             style={{
-              maxWidth: 'var(--shell-max-width)',
-              paddingLeft: 'var(--topbar-pad-x)',
-              paddingRight: 'var(--topbar-pad-x)',
+              // /feed: full-bleed short-video surface (no boxed page column); other routes unchanged
+              maxWidth: isImmersiveFeedRoute ? '100%' : 'var(--shell-max-width)',
+              paddingLeft: isImmersiveFeedRoute ? 0 : 'var(--topbar-pad-x)',
+              paddingRight: isImmersiveFeedRoute ? 0 : 'var(--topbar-pad-x)',
             }}
           >
             {/*
@@ -75,9 +76,10 @@ function RootShellContent({
             */}
             <div
               className={cn(
-                'flex w-full min-w-0 min-h-0 flex-col gap-y-6 lg:flex-row lg:items-stretch lg:gap-y-0 h-full'
+                'flex w-full min-w-0 min-h-0 flex-col lg:flex-row lg:items-stretch h-full',
+                isImmersiveFeedRoute ? 'gap-y-0' : 'gap-y-6 lg:gap-y-0'
               )}
-              style={{ columnGap: 'var(--shell-gap)' }}
+              style={{ columnGap: isImmersiveFeedRoute ? 0 : 'var(--shell-gap)' }}
             >
               <aside
                 className={cn(
