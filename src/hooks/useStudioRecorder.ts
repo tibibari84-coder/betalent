@@ -24,6 +24,35 @@ export type StudioTakeResult = {
   durationSec: number;
 };
 
+export type StudioPreviewFraming = {
+  fit: 'cover' | 'contain';
+  objectPosition: string;
+};
+
+const STUDIO_STAGE_RATIO = 9 / 16;
+
+function resolvePreviewFraming(params: {
+  sourceRatio: number | null;
+  isMobile: boolean;
+  camera: 'user' | 'environment';
+}): StudioPreviewFraming {
+  const { sourceRatio, isMobile, camera } = params;
+  if (!sourceRatio || !Number.isFinite(sourceRatio)) {
+    return { fit: 'cover', objectPosition: camera === 'user' ? '50% 33%' : '50% 50%' };
+  }
+
+  const ratioDelta = sourceRatio - STUDIO_STAGE_RATIO;
+  const isWiderThanStage = ratioDelta > 0.015;
+
+  // Front camera on phones often reports a wider stream than 9:16.
+  // Using "cover" there crops the sides and makes faces feel unnaturally close.
+  if (isMobile && camera === 'user' && isWiderThanStage) {
+    return { fit: 'contain', objectPosition: '50% 38%' };
+  }
+
+  return { fit: 'cover', objectPosition: camera === 'user' ? '50% 33%' : '50% 50%' };
+}
+
 function pickRecorderMime(): { mimeType: string; fileExt: 'mp4' | 'webm' } {
   if (typeof MediaRecorder === 'undefined') {
     return { mimeType: '', fileExt: 'webm' };
@@ -80,6 +109,11 @@ export function useStudioRecorder(maxDurationSec: number) {
   const [micLive, setMicLive] = useState(false);
   /** Last finalized take (manual stop or auto-stop at cap). */
   const [lastTake, setLastTake] = useState<StudioTakeResult | null>(null);
+  /** Preview rendering fallback to avoid “zoomed” feeling when browser returns non-portrait tracks on mobile. */
+  const [previewFraming, setPreviewFraming] = useState<StudioPreviewFraming>({
+    fit: 'cover',
+    objectPosition: '50% 33%',
+  });
 
   useEffect(() => {
     maxDurationRef.current = maxDurationSec;
@@ -99,6 +133,7 @@ export function useStudioRecorder(maxDurationSec: number) {
     if (videoRef.current) {
       videoRef.current.srcObject = null;
     }
+    setPreviewFraming({ fit: 'cover', objectPosition: '50% 33%' });
   }, []);
 
   const resetRecorderOnly = useCallback(() => {
@@ -143,13 +178,12 @@ export function useStudioRecorder(maxDurationSec: number) {
       }
 
       try {
-        // Mobile: soft constraints (TikTok-style 9:16) — strict 1080×1920 + resizeMode crop-and-scale
-        // often triggers digital zoom / aggressive crop on Safari & Android Chrome.
+        // Mobile: portrait-friendly constraints without forcing crop-and-scale.
         const videoConstraints: MediaTrackConstraints = isMobile
           ? {
               facingMode: mode,
-              width: { ideal: 720, max: 1080 },
-              height: { ideal: 1280, max: 1920 },
+              width: { ideal: 1080, max: 1920 },
+              height: { ideal: 1920, max: 2560 },
               aspectRatio: { ideal: 9 / 16 },
               frameRate: { ideal: 30, max: 60 },
             }
@@ -197,6 +231,18 @@ export function useStudioRecorder(maxDurationSec: number) {
           return { ok: false, message, code: 'no_camera' };
         }
 
+        // Determine framing from the actual stream dimensions.
+        // getSettings().aspectRatio is not consistent across browsers, so we derive from width/height as well.
+        try {
+          const vt = videoTracks[0];
+          const s = vt?.getSettings?.() as MediaTrackSettings | undefined;
+          const ratioFromWH = s?.width && s?.height ? s.width / s.height : null;
+          const sourceRatio = typeof s?.aspectRatio === 'number' ? s.aspectRatio : ratioFromWH;
+          setPreviewFraming(resolvePreviewFraming({ sourceRatio, isMobile, camera: mode }));
+        } catch {
+          setPreviewFraming(resolvePreviewFraming({ sourceRatio: null, isMobile, camera: mode }));
+        }
+
         streamRef.current = stream;
         setMicLive(true);
         const el = videoRef.current;
@@ -208,6 +254,17 @@ export function useStudioRecorder(maxDurationSec: number) {
             await el.play();
           } catch {
             /* autoplay policies */
+          }
+          if (el.videoWidth > 0 && el.videoHeight > 0) {
+            const sourceRatio = el.videoWidth / el.videoHeight;
+            setPreviewFraming(resolvePreviewFraming({ sourceRatio, isMobile, camera: mode }));
+          } else {
+            el.onloadedmetadata = () => {
+              if (el.videoWidth > 0 && el.videoHeight > 0) {
+                const sourceRatio = el.videoWidth / el.videoHeight;
+                setPreviewFraming(resolvePreviewFraming({ sourceRatio, isMobile, camera: mode }));
+              }
+            };
           }
         }
         setPhase('preview');
@@ -448,6 +505,7 @@ export function useStudioRecorder(maxDurationSec: number) {
     setError,
     elapsedSec,
     maxDurationSec,
+    previewFraming,
     facingMode,
     pauseSupported,
     micLive,
