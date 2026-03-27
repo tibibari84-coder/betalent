@@ -109,16 +109,16 @@ const config: Config = {
           to: { opacity: '1', transform: 'translateY(0)' },
         },
         'studio-pulse-dot': {
-          '0%, 100%': { opacity: '1', transform: 'scale(1)' },
-          '50%': { opacity: '0.55', transform: 'scale(0.92)' },
+          '0%, 100%': { opacity: '1' },
+          '50%': { opacity: '0.55' },
         },
         'studio-curtain': {
           from: { opacity: '0' },
           to: { opacity: '1' },
         },
         'studio-breathe': {
-          '0%, 100%': { opacity: '0.35', transform: 'scale(1)' },
-          '50%': { opacity: '0.65', transform: 'scale(1.08)' },
+          '0%, 100%': { opacity: '0.35', transform: 'translateY(0)' },
+          '50%': { opacity: '0.65', transform: 'translateY(-4px)' },
         },
       },
       animation: {

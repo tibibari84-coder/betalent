@@ -104,10 +104,10 @@ export default function StudioBoothStep(props: StudioBoothStepProps) {
 
       <div
         className={`${studioPanel} animate-studio-enter ${showCurtain ? 'opacity-40 pointer-events-none' : ''} transition-opacity duration-300`}
-        style={{ minHeight: 'calc(100svh - 24px)' }}
+        style={{ minHeight: '100dvh', maxHeight: '100dvh', overflow: 'hidden' }}
       >
         <div
-          className="p-3 sm:p-6 md:p-8 space-y-4 sm:space-y-6"
+          className="p-3 sm:p-6 md:p-8 space-y-4 sm:space-y-6 h-full overflow-hidden pb-[max(196px,calc(env(safe-area-inset-bottom)+176px))] sm:pb-8"
           style={{
             paddingTop: 'max(16px, env(safe-area-inset-top))',
             paddingBottom: 'max(20px, env(safe-area-inset-bottom))',
@@ -253,7 +253,7 @@ export default function StudioBoothStep(props: StudioBoothStepProps) {
           )}
 
           <div
-            className="mx-auto w-full max-w-xl rounded-[18px] border border-white/[0.1] p-3 sm:p-5 space-y-3 sm:space-y-4"
+            className="fixed left-1/2 bottom-[max(10px,env(safe-area-inset-bottom))] -translate-x-1/2 z-[40] w-[min(92vw,440px)] sm:static sm:left-auto sm:bottom-auto sm:translate-x-0 sm:z-auto sm:w-full mx-auto max-w-xl rounded-[18px] border border-white/[0.1] p-3 sm:p-5 space-y-3 sm:space-y-4"
             style={{
               background: 'linear-gradient(180deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 100%)',
               boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06)',

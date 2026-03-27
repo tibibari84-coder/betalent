@@ -371,6 +371,14 @@ body::before {
   max-height: 48px !important;
   object-fit: contain;
 }
+
+/* Studio capture mode: lock scrolling and remove persistent mobile nav while recording flow is active. */
+body.studio-mode-active {
+  overflow: hidden;
+}
+body.studio-mode-active nav[aria-label="Mobile navigation"] {
+  display: none !important;
+}
 .app-shell main img:not([width]):not([height]),
 .app-shell main img[width="100%"],
 .app-shell aside img:not([width]):not([height]) {

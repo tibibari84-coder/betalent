@@ -22,9 +22,9 @@ export default function StudioReviewStep(props: StudioReviewStepProps) {
   const copy = getStudioModeCopy(mode);
 
   return (
-    <div className={`${studioPanel} animate-studio-enter`} style={{ minHeight: 'calc(100svh - 24px)' }}>
+    <div className={`${studioPanel} animate-studio-enter`} style={{ minHeight: '100dvh', maxHeight: '100dvh', overflow: 'hidden' }}>
       <div
-        className="p-3 sm:p-8 md:p-9 space-y-5 sm:space-y-8"
+        className="p-3 sm:p-8 md:p-9 space-y-5 sm:space-y-8 h-full overflow-auto"
         style={{
           paddingTop: 'max(16px, env(safe-area-inset-top))',
           paddingBottom: 'max(20px, env(safe-area-inset-bottom))',

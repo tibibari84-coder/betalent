@@ -45,7 +45,6 @@ const PRIMARY_APP_MATCHERS: Matcher[] = [
   starts('/challenges/'),
   exact('/leaderboard'),
   starts('/leaderboard/'),
-  exact('/upload'),
   exact('/profile'),
   starts('/profile/'),
   exact('/inbox'),
@@ -68,6 +67,7 @@ const PRIMARY_APP_MATCHERS: Matcher[] = [
 const DETAIL_SECONDARY_MATCHERS: Matcher[] = [
   exact('/settings'),
   starts('/settings/'),
+  exact('/upload'),
   starts('/wallet/'),
   starts('/upload/'),
   exact('/studio'),

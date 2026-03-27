@@ -100,6 +100,22 @@ export default function RecordingStudio(props: RecordingStudioProps) {
   const reviewVideoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
+    const studioActive = step === 'booth' || step === 'review';
+    const body = document.body;
+    if (!studioActive) {
+      body.classList.remove('studio-mode-active');
+      return;
+    }
+    body.classList.add('studio-mode-active');
+    const prevOverflow = body.style.overflow;
+    body.style.overflow = 'hidden';
+    return () => {
+      body.classList.remove('studio-mode-active');
+      body.style.overflow = prevOverflow;
+    };
+  }, [step]);
+
+  useEffect(() => {
     if (!reviewBlob) {
       if (reviewUrl) URL.revokeObjectURL(reviewUrl);
       setReviewUrl(null);
