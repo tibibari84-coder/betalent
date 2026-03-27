@@ -120,8 +120,8 @@ export default function ExploreHeroCarousel() {
         boxShadow: '0 10px 30px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.04)',
       }}
     >
-      {/* Background image — all slides, slightly brighter so cherry/purple glow pops */}
-      <div className="absolute inset-0 z-0" aria-hidden style={{ filter: 'brightness(1.15) contrast(1.05)' }}>
+      {/* Background image — bass-wall pulse: sharp ↔ blur (see .explore-hero-bg-bass in globals.css) */}
+      <div className="absolute inset-0 z-0 explore-hero-bg-bass" aria-hidden>
         <Image
           src="/images/hero-show-your-voice.png"
           alt=""
