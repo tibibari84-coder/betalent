@@ -490,6 +490,13 @@ export default function FeedPage() {
         paddingTop: 'env(safe-area-inset-top)',
       }}
     >
+      <div
+        className="pointer-events-none absolute inset-0 z-0"
+        style={{
+          background:
+            'radial-gradient(115% 62% at 52% 2%, rgba(196,18,47,0.12) 0%, transparent 55%), radial-gradient(75% 40% at 85% 88%, rgba(130,30,52,0.12) 0%, transparent 70%)',
+        }}
+      />
       <div className="absolute inset-0 flex justify-center pointer-events-none z-0">
         <div
           className={`hidden md:block h-full border-x border-white/[0.06] ${FEED_STAGE_CLASS}`}
@@ -503,7 +510,7 @@ export default function FeedPage() {
       <div className={`relative z-10 mx-auto flex-shrink-0 min-w-0 px-3 sm:px-4 pt-3 md:pt-3.5 space-y-3 ${FEED_STAGE_CLASS}`}>
         <FirstSessionBanner />
         <div
-          className="rounded-2xl border border-white/[0.07] bg-black/30 backdrop-blur-md px-3 py-2 md:px-4 md:py-2.5"
+          className="rounded-2xl border border-white/[0.1] bg-black/28 backdrop-blur-md px-2.5 py-2 md:px-3.5 md:py-2.5"
           style={{ boxShadow: '0 12px 48px rgba(0,0,0,0.4)' }}
         >
           <FeedTabBar activeTab={activeTab} onTabChange={setActiveTab} />
@@ -526,11 +533,11 @@ export default function FeedPage() {
                 Loading…
               </div>
             ) : showErrorState ? (
-              <div className="min-h-[80dvh] flex items-center justify-center">
+              <div className="min-h-[80dvh] pt-3 pb-6">
                 <FeedEmptyState {...(errorStateProps ?? {})} />
               </div>
             ) : showEmptyState ? (
-              <div className="min-h-[80dvh] flex items-center justify-center">
+              <div className="min-h-[80dvh] pt-3 pb-6">
                 <FeedEmptyState {...emptyStateProps} />
               </div>
             ) : (
