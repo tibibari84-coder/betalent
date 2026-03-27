@@ -54,7 +54,7 @@ function resolvePreviewFraming(params: {
   // "contain" on wide selfie streams creates a letterboxed horizontal strip,
   // which feels broken even if it reduces crop. We keep cover and tune headroom.
   if (camera === 'user') {
-    if (isWiderThanStage) return { fit: 'cover', objectPosition: '50% 36%' };
+    if (isWiderThanStage) return { fit: 'cover', objectPosition: '50% 35%' };
     if (isTallerThanStage) return { fit: 'cover', objectPosition: '50% 30%' };
     return { fit: 'cover', objectPosition: '50% 33%' };
   }
@@ -239,6 +239,28 @@ export function useStudioRecorder(maxDurationSec: number) {
           const message = 'Camera not detected. Connect a camera or use Upload from device.';
           setError({ code: 'no_camera', message });
           return { ok: false, message, code: 'no_camera' };
+        }
+
+        // If front camera resolves as landscape-like on mobile, request portrait-friendly track geometry once more.
+        // Some browsers initially return a wide stream even when portrait constraints were requested.
+        try {
+          const vt = videoTracks[0];
+          const initial = vt?.getSettings?.() as MediaTrackSettings | undefined;
+          const initialRatio =
+            typeof initial?.aspectRatio === 'number'
+              ? initial.aspectRatio
+              : initial?.width && initial?.height
+                ? initial.width / initial.height
+                : null;
+          if (isMobile && mode === 'user' && initialRatio && initialRatio > 1) {
+            await vt.applyConstraints({
+              width: { ideal: 1080, max: 1920 },
+              height: { ideal: 1920, max: 2560 },
+              aspectRatio: { ideal: 9 / 16 },
+            });
+          }
+        } catch {
+          /* non-fatal */
         }
 
         // Determine framing from actual stream dimensions (not only requested constraints).
