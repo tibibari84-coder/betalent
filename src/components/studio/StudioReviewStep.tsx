@@ -13,13 +13,14 @@ export type StudioReviewStepProps = {
   reviewDurationSec: number;
   mode: RecordingMode;
   previewFraming: StudioPreviewFraming;
+  primaryActionLabel?: string;
   onRetake: () => void;
   onEditSession: () => void;
   onUseTake: () => void;
 };
 
 export default function StudioReviewStep(props: StudioReviewStepProps) {
-  const { reviewUrl, reviewVideoRef, reviewDurationSec, mode: _mode, previewFraming, onRetake, onEditSession, onUseTake } = props;
+  const { reviewUrl, reviewVideoRef, reviewDurationSec, mode: _mode, previewFraming, primaryActionLabel = 'Publish performance', onRetake, onEditSession, onUseTake } = props;
 
   return (
     <div className={`fixed inset-0 z-[120] ${studioPanel} animate-studio-enter`} style={{ minHeight: '100dvh', maxHeight: '100dvh', overflow: 'hidden' }}>
@@ -99,7 +100,7 @@ export default function StudioReviewStep(props: StudioReviewStepProps) {
                   className={`${btnPrimary} inline-flex items-center justify-center gap-2 min-h-[56px] w-full sm:w-auto sm:min-w-[220px]`}
                 >
                   <IconUpload className="w-5 h-5 shrink-0 opacity-95" aria-hidden />
-                  Publish performance
+                  {primaryActionLabel}
                 </button>
               </div>
             </div>

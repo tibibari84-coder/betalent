@@ -68,6 +68,7 @@ export default function RecordingStudio(props: RecordingStudioProps) {
   } = props;
 
   const [step, setStep] = useState<StudioStep>('setup');
+  const [isMobileStudio, setIsMobileStudio] = useState(false);
   const [boothReady, setBoothReady] = useState(false);
   const [showCurtain, setShowCurtain] = useState(false);
   const [switchingLens, setSwitchingLens] = useState(false);
@@ -76,6 +77,8 @@ export default function RecordingStudio(props: RecordingStudioProps) {
   const [reviewExt, setReviewExt] = useState<'mp4' | 'webm'>('webm');
   const [reviewDurationSec, setReviewDurationSec] = useState(1);
   const [localError, setLocalError] = useState('');
+  const [pendingMobileTake, setPendingMobileTake] = useState<{ file: File; durationSec: number } | null>(null);
+  const autoEnterTriedRef = useRef(false);
   const prepCancelledRef = useRef(false);
 
   const {
@@ -133,6 +136,15 @@ export default function RecordingStudio(props: RecordingStudioProps) {
     rulesAcknowledged &&
     (!challengeSlug || !challengeContext || challengeContext.status === 'ENTRY_OPEN');
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const mq = window.matchMedia('(max-width: 768px)');
+    const apply = () => setIsMobileStudio(mq.matches);
+    apply();
+    mq.addEventListener?.('change', apply);
+    return () => mq.removeEventListener?.('change', apply);
+  }, []);
+
   const cancelDuringCurtain = useCallback(() => {
     prepCancelledRef.current = true;
     studioLeaveBooth();
@@ -152,7 +164,7 @@ export default function RecordingStudio(props: RecordingStudioProps) {
 
   const enterLiveRoom = useCallback(async () => {
     setLocalError('');
-    if (!setupValid) {
+    if (!isMobileStudio && !setupValid) {
       setLocalError('Complete your session details and confirm platform rules before entering the live room.');
       return;
     }
@@ -181,7 +193,7 @@ export default function RecordingStudio(props: RecordingStudioProps) {
     setBoothReady(true);
     setShowCurtain(false);
     setLocalError('');
-  }, [setupValid, studioEnterBooth, studioLeaveBooth]);
+  }, [isMobileStudio, setupValid, studioEnterBooth, studioLeaveBooth]);
 
   const handleFlipCamera = useCallback(async () => {
     setSwitchingLens(true);
@@ -265,8 +277,24 @@ export default function RecordingStudio(props: RecordingStudioProps) {
     const file = createFileForUpload(reviewBlob, name, mime);
     const dur = Math.max(1, Math.min(maxDurationSec, reviewDurationSec));
     studioLeaveBooth();
+    if (isMobileStudio) {
+      setPendingMobileTake({ file, durationSec: dur });
+      setStep('setup');
+      return;
+    }
     onAcceptTake(file, dur);
-  }, [reviewBlob, reviewExt, maxDurationSec, reviewDurationSec, studioLeaveBooth, onAcceptTake]);
+  }, [reviewBlob, reviewExt, maxDurationSec, reviewDurationSec, studioLeaveBooth, onAcceptTake, isMobileStudio]);
+
+  const handleUseRecordedTakeFromSetup = useCallback(() => {
+    if (!pendingMobileTake) return;
+    if (!setupValid) {
+      setLocalError('Add title, vocal style, and accept rules before continuing.');
+      return;
+    }
+    const take = pendingMobileTake;
+    setPendingMobileTake(null);
+    onAcceptTake(take.file, take.durationSec);
+  }, [pendingMobileTake, setupValid, onAcceptTake]);
 
   const handleClose = useCallback(() => {
     prepCancelledRef.current = true;
@@ -276,6 +304,7 @@ export default function RecordingStudio(props: RecordingStudioProps) {
     setBoothReady(false);
     setShowCurtain(false);
     setLocalError('');
+    setPendingMobileTake(null);
     onClose();
   }, [studioLeaveBooth, onClose]);
 
@@ -287,6 +316,15 @@ export default function RecordingStudio(props: RecordingStudioProps) {
     setBoothReady(false);
     setShowCurtain(false);
   }, [studioLeaveBooth]);
+
+  useEffect(() => {
+    if (!isMobileStudio) return;
+    if (step !== 'setup') return;
+    if (pendingMobileTake) return;
+    if (autoEnterTriedRef.current) return;
+    autoEnterTriedRef.current = true;
+    void enterLiveRoom();
+  }, [isMobileStudio, step, pendingMobileTake, enterLiveRoom]);
 
   if (step === 'setup') {
     return (
@@ -309,7 +347,9 @@ export default function RecordingStudio(props: RecordingStudioProps) {
         localError={localError}
         maxDurationSec={maxDurationSec}
         mode={mode}
+        postRecordMode={!!pendingMobileTake}
         onEnterBooth={enterLiveRoom}
+        onUseRecordedTake={handleUseRecordedTakeFromSetup}
         onClose={handleClose}
         onSwitchToDeviceUpload={onSwitchToDeviceUpload}
       />
@@ -351,6 +391,7 @@ export default function RecordingStudio(props: RecordingStudioProps) {
       reviewDurationSec={reviewDurationSec}
       mode={mode}
       previewFraming={previewFraming}
+      primaryActionLabel={isMobileStudio ? 'Continue' : 'Publish performance'}
       onRetake={() => void handleRetake()}
       onEditSession={goSetupFromReview}
       onUseTake={handleUseTake}

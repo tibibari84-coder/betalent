@@ -29,7 +29,9 @@ export type StudioSetupStepProps = {
   localError: string;
   maxDurationSec: number;
   mode: RecordingMode;
+  postRecordMode?: boolean;
   onEnterBooth: () => void;
+  onUseRecordedTake?: () => void;
   onClose: () => void;
   onSwitchToDeviceUpload: () => void;
 };
@@ -54,7 +56,9 @@ export default function StudioSetupStep(props: StudioSetupStepProps) {
     localError,
     maxDurationSec,
     mode,
+    postRecordMode = false,
     onEnterBooth,
+    onUseRecordedTake,
     onClose,
     onSwitchToDeviceUpload,
   } = props;
@@ -63,6 +67,9 @@ export default function StudioSetupStep(props: StudioSetupStepProps) {
   // Defer client-only check to avoid hydration mismatch (window/navigator not available on server)
   const [recordingSupported, setRecordingSupported] = useState(false);
   useEffect(() => setRecordingSupported(isStudioRecordingSupported()), []);
+
+  const primaryAction = postRecordMode && onUseRecordedTake ? onUseRecordedTake : onEnterBooth;
+  const primaryLabel = postRecordMode ? 'Continue to submit' : 'Enter live room';
 
   return (
     <div className={`${studioPanel} animate-studio-enter`}>
@@ -155,11 +162,11 @@ export default function StudioSetupStep(props: StudioSetupStepProps) {
         <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 pt-1">
           <button
             type="button"
-            onClick={onEnterBooth}
+            onClick={primaryAction}
             disabled={loading || !recordingSupported}
             className={`${btnPrimary} inline-flex items-center justify-center gap-2 w-full sm:w-auto`}
           >
-            Enter live room
+            {primaryLabel}
             <IconChevronRight className="w-5 h-5 opacity-90 group-hover:translate-x-0.5 transition-transform" aria-hidden />
           </button>
           <button type="button" onClick={onClose} disabled={loading} className={`${btnGhost} w-full sm:w-auto justify-center`}>

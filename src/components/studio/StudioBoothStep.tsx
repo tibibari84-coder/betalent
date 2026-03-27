@@ -233,25 +233,69 @@ export default function StudioBoothStep(props: StudioBoothStepProps) {
                   {isRecording ? 'Recording controls' : isPreview ? 'Preview controls' : 'Studio controls'}
                 </p>
 
+                <div className="sm:hidden flex items-center justify-between gap-3 mb-2">
+                  <button type="button" onClick={onCancelPreview} className={`${btnGhost} min-h-[48px] min-w-[72px] px-3 text-white/60`}>
+                    Back
+                  </button>
+                  {isPreview && !switchingLens && (
+                    <button
+                      type="button"
+                      onClick={onStartRecording}
+                      className="relative h-[78px] w-[78px] rounded-full border border-white/25 bg-white/10 backdrop-blur-md flex items-center justify-center"
+                      aria-label="Start recording"
+                    >
+                      <span className="h-[58px] w-[58px] rounded-full bg-accent shadow-[0_0_26px_rgba(196,18,47,0.55)]" />
+                    </button>
+                  )}
+                  {recPhase === 'recording' && (
+                    <button
+                      type="button"
+                      onClick={onStop}
+                      className="relative h-[78px] w-[78px] rounded-full border border-white/25 bg-white/10 backdrop-blur-md flex items-center justify-center"
+                      aria-label="Stop recording"
+                    >
+                      <span className="h-[34px] w-[34px] rounded-[10px] bg-white shadow-[0_0_18px_rgba(255,255,255,0.35)]" />
+                    </button>
+                  )}
+                  {recPhase === 'paused' && (
+                    <button
+                      type="button"
+                      onClick={onResume}
+                      className="relative h-[78px] w-[78px] rounded-full border border-white/25 bg-white/10 backdrop-blur-md flex items-center justify-center"
+                      aria-label="Resume recording"
+                    >
+                      <span className="h-[58px] w-[58px] rounded-full bg-accent shadow-[0_0_26px_rgba(196,18,47,0.55)]" />
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={onFlipCamera}
+                    className={`${btnGhost} min-h-[48px] min-w-[72px] px-3`}
+                    disabled={!canSwitchCamera || recPhase !== 'preview'}
+                  >
+                    Flip
+                  </button>
+                </div>
+
                 <div className="grid grid-cols-1 gap-2.5 sm:flex sm:flex-wrap sm:items-center sm:justify-center sm:gap-3">
                   {isPreview && !switchingLens && (
                     <>
                       <button
                         type="button"
                         onClick={onStartRecording}
-                        className={`${btnPrimary} min-h-[58px] w-full sm:w-auto sm:min-w-[220px]`}
+                        className={`${btnPrimary} hidden sm:inline-flex min-h-[58px] w-full sm:w-auto sm:min-w-[220px]`}
                       >
                         Start recording
                       </button>
                       <button
                         type="button"
                         onClick={onFlipCamera}
-                        className={`${btnGhost} min-h-[50px] w-full sm:w-auto`}
+                        className={`${btnGhost} hidden sm:inline-flex min-h-[50px] w-full sm:w-auto`}
                         disabled={!canSwitchCamera}
                       >
                         Switch camera
                       </button>
-                      <button type="button" onClick={onCancelPreview} className={`${btnGhost} min-h-[50px] w-full sm:w-auto text-white/55`}>
+                      <button type="button" onClick={onCancelPreview} className={`${btnGhost} hidden sm:inline-flex min-h-[50px] w-full sm:w-auto text-white/55`}>
                         Cancel
                       </button>
                     </>
@@ -260,11 +304,11 @@ export default function StudioBoothStep(props: StudioBoothStepProps) {
                   {recPhase === 'recording' && (
                     <>
                       {pauseSupported && (
-                        <button type="button" onClick={onPause} className={`${btnGhost} min-h-[52px] w-full sm:w-auto`}>
+                        <button type="button" onClick={onPause} className={`${btnGhost} hidden sm:inline-flex min-h-[52px] w-full sm:w-auto`}>
                           Pause
                         </button>
                       )}
-                      <button type="button" onClick={onStop} className={`${btnSecondary} min-h-[60px] w-full sm:w-auto sm:min-w-[220px]`}>
+                      <button type="button" onClick={onStop} className={`${btnSecondary} hidden sm:inline-flex min-h-[60px] w-full sm:w-auto sm:min-w-[220px]`}>
                         Stop
                       </button>
                     </>
@@ -272,10 +316,10 @@ export default function StudioBoothStep(props: StudioBoothStepProps) {
 
                   {recPhase === 'paused' && (
                     <>
-                      <button type="button" onClick={onResume} className={`${btnPrimary} min-h-[58px] w-full sm:w-auto sm:min-w-[220px]`}>
+                      <button type="button" onClick={onResume} className={`${btnPrimary} hidden sm:inline-flex min-h-[58px] w-full sm:w-auto sm:min-w-[220px]`}>
                         Resume
                       </button>
-                      <button type="button" onClick={onStop} className={`${btnSecondary} min-h-[54px] w-full sm:w-auto`}>
+                      <button type="button" onClick={onStop} className={`${btnSecondary} hidden sm:inline-flex min-h-[54px] w-full sm:w-auto`}>
                         Stop
                       </button>
                     </>
