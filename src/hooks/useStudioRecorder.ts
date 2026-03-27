@@ -27,6 +27,7 @@ export type StudioTakeResult = {
 export type StudioPreviewFraming = {
   fit: 'cover' | 'contain';
   objectPosition: string;
+  stageAspect: '9 / 16' | '3 / 4';
 };
 
 const STUDIO_STAGE_RATIO = 9 / 16;
@@ -39,11 +40,19 @@ function resolvePreviewFraming(params: {
 }): StudioPreviewFraming {
   const { sourceRatio, isMobile, camera } = params;
   if (!sourceRatio || !Number.isFinite(sourceRatio)) {
-    return { fit: 'cover', objectPosition: camera === 'user' ? '50% 33%' : '50% 50%' };
+    return {
+      fit: 'cover',
+      objectPosition: camera === 'user' ? '50% 33%' : '50% 50%',
+      stageAspect: isMobile ? '9 / 16' : '3 / 4',
+    };
   }
 
   if (!isMobile) {
-    return { fit: 'cover', objectPosition: camera === 'user' ? '50% 33%' : '50% 50%' };
+    return {
+      fit: 'cover',
+      objectPosition: camera === 'user' ? '50% 34%' : '50% 50%',
+      stageAspect: sourceRatio > 0.72 ? '3 / 4' : '9 / 16',
+    };
   }
 
   const ratioDelta = sourceRatio - STUDIO_STAGE_RATIO;
@@ -54,13 +63,13 @@ function resolvePreviewFraming(params: {
   // "contain" on wide selfie streams creates a letterboxed horizontal strip,
   // which feels broken even if it reduces crop. We keep cover and tune headroom.
   if (camera === 'user') {
-    if (isWiderThanStage) return { fit: 'cover', objectPosition: '50% 35%' };
-    if (isTallerThanStage) return { fit: 'cover', objectPosition: '50% 30%' };
-    return { fit: 'cover', objectPosition: '50% 33%' };
+    if (isWiderThanStage) return { fit: 'cover', objectPosition: '50% 34%', stageAspect: '9 / 16' };
+    if (isTallerThanStage) return { fit: 'cover', objectPosition: '50% 30%', stageAspect: '9 / 16' };
+    return { fit: 'cover', objectPosition: '50% 33%', stageAspect: '9 / 16' };
   }
 
   // Back camera remains full-bleed to preserve native capture feel.
-  return { fit: 'cover', objectPosition: '50% 50%' };
+  return { fit: 'cover', objectPosition: '50% 50%', stageAspect: '9 / 16' };
 }
 
 function pickRecorderMime(): { mimeType: string; fileExt: 'mp4' | 'webm' } {
@@ -123,6 +132,7 @@ export function useStudioRecorder(maxDurationSec: number) {
   const [previewFraming, setPreviewFraming] = useState<StudioPreviewFraming>({
     fit: 'cover',
     objectPosition: '50% 33%',
+    stageAspect: '9 / 16',
   });
 
   useEffect(() => {
@@ -143,7 +153,7 @@ export function useStudioRecorder(maxDurationSec: number) {
     if (videoRef.current) {
       videoRef.current.srcObject = null;
     }
-    setPreviewFraming({ fit: 'cover', objectPosition: '50% 33%' });
+    setPreviewFraming({ fit: 'cover', objectPosition: '50% 33%', stageAspect: '9 / 16' });
   }, []);
 
   const resetRecorderOnly = useCallback(() => {
@@ -192,16 +202,14 @@ export function useStudioRecorder(maxDurationSec: number) {
         const videoConstraints: MediaTrackConstraints = isMobile
           ? {
               facingMode: mode,
-              width: { ideal: 1080, max: 1920 },
-              height: { ideal: 1920, max: 2560 },
-              aspectRatio: { ideal: 9 / 16 },
+              width: { ideal: 1280, max: 1920 },
+              height: { ideal: 1280, max: 2560 },
               frameRate: { ideal: 30, max: 60 },
             }
           : {
               facingMode: mode,
-              width: { ideal: 1080 },
-              height: { ideal: 1920 },
-              aspectRatio: 9 / 16,
+              width: { ideal: 1280, max: 1920 },
+              height: { ideal: 960, max: 1440 },
               frameRate: { ideal: 30, max: 60 },
             };
 
@@ -254,9 +262,8 @@ export function useStudioRecorder(maxDurationSec: number) {
                 : null;
           if (isMobile && mode === 'user' && initialRatio && initialRatio > 1) {
             await vt.applyConstraints({
-              width: { ideal: 1080, max: 1920 },
-              height: { ideal: 1920, max: 2560 },
-              aspectRatio: { ideal: 9 / 16 },
+              width: { ideal: 1280, max: 1920 },
+              height: { ideal: 1280, max: 2560 },
             });
           }
         } catch {

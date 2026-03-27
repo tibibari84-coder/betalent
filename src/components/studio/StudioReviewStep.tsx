@@ -47,7 +47,7 @@ export default function StudioReviewStep(props: StudioReviewStepProps) {
               <ViewfinderFrame>
                 <div
                   className="relative rounded-[24px] overflow-hidden ring-1 ring-white/12 bg-black aspect-[9/16] shadow-[0_0_0_1px_rgba(196,18,47,0.14),0_40px_110px_rgba(0,0,0,0.9)]"
-                  style={{ height: 'min(66dvh, 760px)' }}
+                  style={{ height: 'min(68dvh, 780px)', aspectRatio: previewFraming.stageAspect }}
                 >
                   <div
                     className="pointer-events-none absolute inset-0 z-[10]"
