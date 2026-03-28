@@ -27,7 +27,7 @@ export type DirectUploadMetadata = {
 /** Chain: Upload → Save → Process → Thumbnail → READY → Feed → Open Performance. */
 export type DirectUploadResult =
   | { ok: true; videoId: string; ready: boolean }
-  | { ok: false; message: string; step?: string };
+  | { ok: false; message: string; step?: string; code?: string };
 
 export type UploadProgressStep = 'preparing' | 'uploading' | 'processing';
 
@@ -86,6 +86,8 @@ export async function performDirectUpload(
   }
 
   options?.onStatus?.('preparing');
+  const durationSecInt = Math.max(1, Math.round(Number(metadata.durationSec) || 1));
+
   const initRes = await fetch('/api/upload/init', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -98,7 +100,7 @@ export async function performDirectUpload(
       filename: file.name,
       fileSize: file.size,
       mimeType: mimeType as AllowedVideoMimeType,
-      durationSec: metadata.durationSec >= 1 ? metadata.durationSec : 1,
+      durationSec: durationSecInt,
       ...(metadata.challengeSlug?.trim()
         ? { challengeSlug: metadata.challengeSlug.trim() }
         : {}),
@@ -111,6 +113,17 @@ export async function performDirectUpload(
   }>(initRes);
 
   if (!initParsed.ok) {
+    if (typeof console !== 'undefined' && console.warn) {
+      console.warn('[performDirectUpload] init failed', {
+        status: initParsed.status,
+        code: initParsed.code,
+        step: initParsed.step,
+        message: initParsed.message,
+        mimeType,
+        fileSize: file.size,
+        durationSec: durationSecInt,
+      });
+    }
     if (initParsed.status === 401) {
       return { ok: false, message: 'Login required', step: 'upload' };
     }
@@ -132,6 +145,7 @@ export async function performDirectUpload(
       ok: false,
       message: normalizeUploadMessage(initParsed.message, 'save'),
       step: 'save',
+      code: initParsed.code,
     };
   }
 
@@ -172,10 +186,20 @@ export async function performDirectUpload(
   const completeParsed = await interpretApiResponse<{ ready?: boolean; step?: string }>(completeRes);
 
   if (!completeParsed.ok) {
+    if (typeof console !== 'undefined' && console.warn) {
+      console.warn('[performDirectUpload] complete failed', {
+        status: completeParsed.status,
+        code: completeParsed.code,
+        step: completeParsed.step,
+        message: completeParsed.message,
+        videoId,
+      });
+    }
     return {
       ok: false,
       message: normalizeUploadMessage(completeParsed.message, completeParsed.step),
       step: completeParsed.step,
+      code: completeParsed.code,
     };
   }
 

@@ -194,10 +194,10 @@ export default function UploadFormContent(props: Props) {
 
           <div className="mx-auto w-full space-y-4 px-3 pb-[calc(9.25rem+env(safe-area-inset-bottom))] pt-1 sm:max-w-md sm:px-4 md:space-y-5 md:pb-[calc(9.75rem+env(safe-area-inset-bottom))]">
               {previewUrlStable && file ? (
-                <div className="overflow-hidden rounded-2xl border border-white/[0.1] bg-black">
+                <div className="flex justify-center overflow-hidden rounded-2xl border border-white/[0.1] bg-black">
                   <video
                     src={previewUrlStable}
-                    className="aspect-[9/16] max-h-[min(52dvh,520px)] w-full object-cover"
+                    className="aspect-[9/16] max-h-[min(52dvh,520px)] w-full max-w-[420px] object-contain"
                     controls
                     playsInline
                     preload="metadata"

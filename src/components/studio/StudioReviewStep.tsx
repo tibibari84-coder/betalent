@@ -26,7 +26,7 @@ export default function StudioReviewStep(props: StudioReviewStepProps) {
     reviewVideoRef,
     reviewDurationSec,
     mode: _mode,
-    previewFraming,
+    previewFraming: _previewFraming,
     primaryActionLabel = 'Publish performance',
     onRetake,
     onEditSession,
@@ -102,19 +102,22 @@ export default function StudioReviewStep(props: StudioReviewStepProps) {
           onTouchStart={onImmersiveTouchStart}
           onTouchEnd={onImmersiveTouchEnd}
         >
-          <div className="absolute inset-0 z-0 bg-black">
+          <div className="absolute inset-0 z-0 flex items-center justify-center bg-black">
             {reviewUrl ? (
               <button
                 type="button"
                 onClick={toggleReviewPlayback}
-                className="relative h-full w-full cursor-pointer border-0 bg-black p-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent/50"
+                className="relative flex h-full w-full cursor-pointer items-center justify-center border-0 bg-black p-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent/50"
                 aria-label="Tap to play or pause preview"
               >
+                {/*
+                  Recorded blob: use contain + center only. Live-camera previewFraming used object-cover
+                  + head bias — that wrongly crops/zooms file playback.
+                */}
                 <video
                   ref={reviewVideoRef as LegacyRef<HTMLVideoElement>}
                   src={reviewUrl}
-                  className="h-full w-full bg-black object-cover"
-                  style={{ objectPosition: previewFraming.objectPosition }}
+                  className="max-h-full max-w-full bg-black object-contain"
                   playsInline
                   muted
                   loop
@@ -216,30 +219,21 @@ export default function StudioReviewStep(props: StudioReviewStepProps) {
               <div className="w-full max-w-[560px]">
                 <ViewfinderFrame corners>
                   <div
-                    className="relative aspect-[9/16] overflow-hidden rounded-[24px] bg-black shadow-[0_0_0_1px_rgba(196,18,47,0.14),0_40px_110px_rgba(0,0,0,0.9)] ring-1 ring-white/12 md:aspect-[9/16]"
-                    style={{ height: 'min(68dvh, 780px)', aspectRatio: previewFraming.stageAspect }}
+                    className="relative flex aspect-[9/16] max-h-[min(68dvh,780px)] w-full max-w-[min(100%,420px)] items-center justify-center overflow-hidden rounded-[24px] bg-black shadow-[0_0_0_1px_rgba(196,18,47,0.14),0_40px_110px_rgba(0,0,0,0.9)] ring-1 ring-white/12"
                   >
                     <div
                       className="pointer-events-none absolute inset-0 z-[10]"
                       style={{
                         background:
-                          'linear-gradient(180deg, rgba(0,0,0,0.36) 0%, rgba(0,0,0,0.05) 22%, rgba(0,0,0,0.03) 62%, rgba(0,0,0,0.4) 100%)',
+                          'linear-gradient(180deg, rgba(0,0,0,0.28) 0%, rgba(0,0,0,0.04) 35%, rgba(0,0,0,0.03) 65%, rgba(0,0,0,0.32) 100%)',
                       }}
-                      aria-hidden
-                    />
-                    <div
-                      className="pointer-events-none absolute inset-[5%] z-[11] rounded-lg border border-white/[0.07]"
                       aria-hidden
                     />
                     {reviewUrl && (
                       <video
                         ref={reviewVideoRef as LegacyRef<HTMLVideoElement>}
                         src={reviewUrl}
-                        className="relative z-[1] h-full w-full bg-black"
-                        style={{
-                          objectFit: previewFraming.fit,
-                          objectPosition: previewFraming.objectPosition,
-                        }}
+                        className="relative z-[1] h-full w-full bg-black object-contain"
                         controls
                         playsInline
                       />

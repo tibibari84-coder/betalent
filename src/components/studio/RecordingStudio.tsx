@@ -6,7 +6,7 @@ import type { ChallengeContextLite } from '@/components/upload/UploadMetadataFie
 import type { RecordingMode } from '@/constants/recording-modes';
 import { createFileForUpload } from '@/lib/upload-client';
 import { logStudioCamera } from '@/lib/studio-camera-log';
-import { normalizeRecorderMime } from './recording-mime';
+import { mimeForRecordedStudioBlob } from './recording-mime';
 import StudioSetupStep from './StudioSetupStep';
 import StudioBoothStep from './StudioBoothStep';
 import StudioReviewStep from './StudioReviewStep';
@@ -323,7 +323,7 @@ export default function RecordingStudio(props: RecordingStudioProps) {
 
   const handleUseTake = useCallback(() => {
     if (!reviewBlob) return;
-    const mime = normalizeRecorderMime(reviewBlob.type);
+    const mime = mimeForRecordedStudioBlob(reviewBlob, reviewExt);
     const name = `betalent-studio-${Date.now()}.${reviewExt}`;
     const file = createFileForUpload(reviewBlob, name, mime);
     const dur = Math.max(1, Math.min(maxDurationSec, reviewDurationSec));

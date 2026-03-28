@@ -221,7 +221,11 @@ export default function UploadPage() {
           return;
         }
         const msg = toUiUploadError(result.message);
-        logUploadFlowEvent('upload_failed', { reason: result.step ?? 'upload', message: result.message });
+        logUploadFlowEvent('upload_failed', {
+          reason: result.step ?? 'upload',
+          message: result.message,
+          code: 'code' in result ? result.code : undefined,
+        });
         setPhase('failed');
         setError(msg);
         showBetalentToast({
