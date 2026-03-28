@@ -3,12 +3,10 @@
 import { cn } from '@/lib/utils';
 
 export type StudioModeSelectorProps = {
-  /** Platform / challenge upload cap — options are filtered to not exceed this. */
   platformMaxSec: number;
   value: number;
   onChange: (sec: number) => void;
   disabled?: boolean;
-  showLiveSoon?: boolean;
   className?: string;
 };
 
@@ -23,14 +21,13 @@ export default function StudioModeSelector({
   value,
   onChange,
   disabled,
-  showLiveSoon = true,
   className,
 }: StudioModeSelectorProps) {
   const opts = durationOptions(platformMaxSec);
   return (
     <div
       className={cn(
-        'flex snap-x snap-mandatory justify-center gap-2 overflow-x-auto px-2 py-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
+        'absolute bottom-40 left-1/2 z-20 flex -translate-x-1/2 items-center gap-3',
         className
       )}
       role="group"
@@ -46,10 +43,8 @@ export default function StudioModeSelector({
             disabled={disabled}
             onClick={() => onChange(sec)}
             className={cn(
-              'snap-center shrink-0 rounded-full px-3.5 py-2 text-[13px] font-semibold tabular-nums transition-transform active:scale-[0.96]',
-              active
-                ? 'bg-white/[0.2] text-white shadow-[0_0_0_1px_rgba(255,255,255,0.14)]'
-                : 'bg-white/[0.06] text-white/42',
+              'rounded-full px-5 py-2 text-lg font-semibold transition-transform active:scale-[0.98]',
+              active ? 'bg-white text-black' : 'bg-black/30 text-white/85',
               disabled && 'pointer-events-none opacity-35'
             )}
           >
@@ -57,14 +52,12 @@ export default function StudioModeSelector({
           </button>
         );
       })}
-      {showLiveSoon ? (
-        <span
-          className="snap-center shrink-0 rounded-full border border-white/[0.08] px-3 py-2 text-[11px] font-bold tabular-nums uppercase tracking-[0.14em] text-white/28"
-          title="Coming soon"
-        >
-          Live
-        </span>
-      ) : null}
+      <span
+        className="rounded-full border border-white/20 bg-transparent px-4 py-2 text-sm font-semibold uppercase tracking-wide text-white/45"
+        title="Coming soon"
+      >
+        LIVE
+      </span>
     </div>
   );
 }

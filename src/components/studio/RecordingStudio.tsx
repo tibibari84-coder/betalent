@@ -8,7 +8,7 @@ import { createFileForUpload } from '@/lib/upload-client';
 import { logStudioCamera } from '@/lib/studio-camera-log';
 import { mimeForRecordedStudioBlob } from './recording-mime';
 import StudioSetupStep from './StudioSetupStep';
-import StudioBoothStep from './StudioBoothStep';
+import StudioCameraScreen from './StudioCameraScreen';
 import StudioReviewStep from './StudioReviewStep';
 
 function studioDurationOptions(platformMaxSec: number): number[] {
@@ -110,7 +110,7 @@ export default function RecordingStudio(props: RecordingStudioProps) {
     isAcquiringStream,
     error: recError,
     elapsedSec: recElapsedSec,
-    pauseSupported,
+    elapsedMs: recElapsedMs,
     micLive,
     lastTake,
     previewFraming,
@@ -118,8 +118,6 @@ export default function RecordingStudio(props: RecordingStudioProps) {
     enterBooth: studioEnterBooth,
     leaveBooth: studioLeaveBooth,
     startRecording: studioStartRecording,
-    pauseRecording: studioPauseRecording,
-    resumeRecording: studioResumeRecording,
     stopRecording: studioStopRecording,
     discardRecording: studioDiscardRecording,
     flipCamera: studioFlipCamera,
@@ -389,21 +387,19 @@ export default function RecordingStudio(props: RecordingStudioProps) {
 
   if (step === 'booth') {
     return (
-      <StudioBoothStep
+      <StudioCameraScreen
         platformMaxDurationSec={maxDurationSec}
         recordingCapSec={recordingCapSec}
         onRecordingCapChange={setRecordingCapSec}
-        mode={mode}
         mirrorPreview={facingMode === 'user'}
         videoRef={videoRef}
         recPhase={recPhase}
         cameraPermissionState={cameraPermissionState}
         isAcquiringStream={isAcquiringStream}
         recElapsedSec={recElapsedSec}
+        recElapsedMs={recElapsedMs}
         recError={recError}
         micLive={micLive}
-        previewFraming={previewFraming}
-        pauseSupported={pauseSupported}
         showCurtain={showCurtain}
         switchingLens={switchingLens}
         boothReady={boothReady}
@@ -414,8 +410,6 @@ export default function RecordingStudio(props: RecordingStudioProps) {
         onHardResetCamera={() => void handleHardResetCamera()}
         onStartRecording={() => void studioStartRecording()}
         onFlipCamera={() => void handleFlipCamera()}
-        onPause={() => studioPauseRecording()}
-        onResume={() => studioResumeRecording()}
         onStop={() => void handleStop()}
       />
     );
