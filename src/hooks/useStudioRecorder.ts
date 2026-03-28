@@ -3,6 +3,11 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
 import type { MutableRefObject, RefObject } from 'react';
 import { logStudioCamera } from '@/lib/studio-camera-log';
+import { acquireVideoStreamWithFallback, STUDIO_AUDIO_CONSTRAINTS } from '@/lib/studio/studio-camera-constraints';
+import { resolvePreviewFraming } from '@/lib/studio/studio-preview-framing';
+import type { StudioPreviewFraming } from '@/lib/studio/studio-preview-framing';
+
+export type { StudioPreviewFraming } from '@/lib/studio/studio-preview-framing';
 
 export type StudioCameraPermissionState = 'idle' | 'requesting' | 'granted' | 'denied' | 'error';
 
@@ -31,54 +36,6 @@ export type StudioTakeResult = {
   fileExt: 'mp4' | 'webm';
   durationSec: number;
 };
-
-export type StudioPreviewFraming = {
-  fit: 'cover' | 'contain';
-  objectPosition: string;
-  stageAspect: '9 / 16' | '3 / 4';
-};
-
-const STUDIO_STAGE_RATIO = 9 / 16;
-const RATIO_EPSILON = 0.015;
-
-function resolvePreviewFraming(params: {
-  sourceRatio: number | null;
-  isMobile: boolean;
-  camera: 'user' | 'environment';
-}): StudioPreviewFraming {
-  const { sourceRatio, isMobile, camera } = params;
-  if (!sourceRatio || !Number.isFinite(sourceRatio)) {
-    return {
-      fit: 'cover',
-      objectPosition: camera === 'user' ? '50% 33%' : '50% 50%',
-      stageAspect: isMobile ? '9 / 16' : '3 / 4',
-    };
-  }
-
-  if (!isMobile) {
-    return {
-      fit: 'cover',
-      objectPosition: camera === 'user' ? '50% 34%' : '50% 50%',
-      stageAspect: sourceRatio > 0.72 ? '3 / 4' : '9 / 16',
-    };
-  }
-
-  const ratioDelta = sourceRatio - STUDIO_STAGE_RATIO;
-  const isWiderThanStage = ratioDelta > RATIO_EPSILON;
-  const isTallerThanStage = ratioDelta < -RATIO_EPSILON;
-
-  // Creator preview should stay full-bleed like native short-video apps.
-  // "contain" on wide selfie streams creates a letterboxed horizontal strip,
-  // which feels broken even if it reduces crop. We keep cover and tune headroom.
-  if (camera === 'user') {
-    if (isWiderThanStage) return { fit: 'cover', objectPosition: '50% 34%', stageAspect: '9 / 16' };
-    if (isTallerThanStage) return { fit: 'cover', objectPosition: '50% 30%', stageAspect: '9 / 16' };
-    return { fit: 'cover', objectPosition: '50% 33%', stageAspect: '9 / 16' };
-  }
-
-  // Back camera remains full-bleed to preserve native capture feel.
-  return { fit: 'cover', objectPosition: '50% 50%', stageAspect: '9 / 16' };
-}
 
 /** Best-effort: if browser says camera is already granted, NotAllowedError is often transient (timing, busy device). */
 async function queryCameraPermissionState(): Promise<'granted' | 'denied' | 'prompt' | 'unknown'> {
@@ -443,6 +400,7 @@ export function useStudioRecorder(maxDurationSec: number) {
       setError(null);
       setIsAcquiringStream(true);
       setPermissionState('requesting');
+      logStudioCamera('camera_permission_requested', { facingMode: mode, isMobile });
 
       resetRecorderRefsOnly(
         recorderRef,
@@ -466,33 +424,11 @@ export function useStudioRecorder(maxDurationSec: number) {
       }
 
       try {
-        // Mobile: portrait-friendly constraints without forcing crop-and-scale.
-        const videoConstraints: MediaTrackConstraints = isMobile
-          ? {
-              facingMode: mode,
-              width: { ideal: 1280, max: 1920 },
-              height: { ideal: 1280, max: 2560 },
-              frameRate: { ideal: 30, max: 60 },
-            }
-          : {
-              facingMode: mode,
-              width: { ideal: 1280, max: 1920 },
-              height: { ideal: 960, max: 1440 },
-              frameRate: { ideal: 30, max: 60 },
-            };
-
         // Chrome lists Camera and Microphone separately in site settings. Requesting them in one call can fail
         // the whole prompt when only one side is blocked; split so each gate matches the failing device.
-        const audioConstraints = {
-          echoCancellation: true,
-          noiseSuppression: true,
-        } as const;
-
         let videoStream: MediaStream;
         try {
-          videoStream = await navigator.mediaDevices.getUserMedia({
-            video: videoConstraints,
-          });
+          videoStream = await acquireVideoStreamWithFallback(mode, isMobile);
         } catch (ve) {
           setPhase('idle');
           setIsAcquiringStream(false);
@@ -513,7 +449,7 @@ export function useStudioRecorder(maxDurationSec: number) {
         let audioStream: MediaStream;
         try {
           audioStream = await navigator.mediaDevices.getUserMedia({
-            audio: audioConstraints,
+            audio: STUDIO_AUDIO_CONSTRAINTS,
           });
         } catch (ae) {
           videoStream.getTracks().forEach((t) => t.stop());
@@ -586,8 +522,9 @@ export function useStudioRecorder(maxDurationSec: number) {
                 : null;
           if (isMobile && mode === 'user' && initialRatio && initialRatio > 1) {
             await vt.applyConstraints({
-              width: { ideal: 1280, max: 1920 },
-              height: { ideal: 1280, max: 2560 },
+              width: { ideal: 1080, max: 1920 },
+              height: { ideal: 1920, max: 2560 },
+              aspectRatio: { ideal: 9 / 16 },
             });
           }
         } catch {
@@ -634,6 +571,7 @@ export function useStudioRecorder(maxDurationSec: number) {
         setPermissionState('granted');
         setPhase('preview');
         setIsAcquiringStream(false);
+        logStudioCamera('camera_permission_granted', { facingMode: mode, isMobile });
         logStudioCamera('camera_initialized', { facingMode: mode, isMobile });
         return { ok: true };
       } catch (e) {
@@ -713,6 +651,7 @@ export function useStudioRecorder(maxDurationSec: number) {
     try {
       recorder = new MediaRecorder(stream, { mimeType });
     } catch {
+      logStudioCamera('recording_failed', { reason: 'mediarecorder_constructor', mimeType });
       setError({
         code: 'recorder_not_supported',
         message: 'Studio recorder could not start. Try again or reload the page.',
@@ -725,6 +664,7 @@ export function useStudioRecorder(maxDurationSec: number) {
       if (ev.data && ev.data.size > 0) chunksRef.current.push(ev.data);
     };
     recorder.onstop = () => {
+      const wasAutoStop = autoStopRequestedRef.current;
       const type = mimeRef.current || recorder.mimeType || 'video/webm';
       const blob = new Blob(chunksRef.current, { type });
       const actualSec = Math.max(1, Math.ceil(lastElapsedMsRef.current / 1000));
@@ -739,6 +679,18 @@ export function useStudioRecorder(maxDurationSec: number) {
       chunksRef.current = [];
       recorderRef.current = null;
       autoStopRequestedRef.current = false;
+
+      if (blob.size < 32) {
+        logStudioCamera('recording_failed', {
+          reason: 'empty_or_tiny_blob',
+          wasAutoStop,
+          durationSec: cappedDur,
+        });
+      } else if (wasAutoStop) {
+        logStudioCamera('recording_auto_stopped', { durationSec: cappedDur, mimeType: type });
+      } else {
+        logStudioCamera('recording_stopped', { durationSec: cappedDur, mimeType: type });
+      }
       stopStream();
       if (videoRef.current) videoRef.current.srcObject = null;
       setPhase('stopped');
@@ -756,6 +708,7 @@ export function useStudioRecorder(maxDurationSec: number) {
     try {
       recorder.start(250);
     } catch {
+      logStudioCamera('recording_failed', { reason: 'recorder_start_throw', mimeType });
       setError({
         code: 'recorder_not_supported',
         message: 'Recording could not start. Please try again.',
@@ -763,6 +716,11 @@ export function useStudioRecorder(maxDurationSec: number) {
       recorderRef.current = null;
       return;
     }
+
+    logStudioCamera('recording_started', {
+      maxDurationSec: maxDurationRef.current,
+      mimeType,
+    });
 
     setPauseSupported(typeof recorder.pause === 'function');
     setPhase('recording');

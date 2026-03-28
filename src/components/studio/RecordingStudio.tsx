@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useStudioRecorder, isStudioRecordingSupported } from '@/hooks/useStudioRecorder';
 import type { ChallengeContextLite } from '@/components/upload/UploadMetadataFields';
 import type { RecordingMode } from '@/constants/recording-modes';
@@ -10,6 +10,18 @@ import { normalizeRecorderMime } from './recording-mime';
 import StudioSetupStep from './StudioSetupStep';
 import StudioBoothStep from './StudioBoothStep';
 import StudioReviewStep from './StudioReviewStep';
+
+function studioDurationOptions(platformMaxSec: number): number[] {
+  const base = [15, 60, 90].filter((s) => s <= platformMaxSec);
+  if (!base.includes(platformMaxSec)) base.push(platformMaxSec);
+  return Array.from(new Set(base)).sort((a, b) => a - b);
+}
+
+function defaultRecordingCap(platformMaxSec: number): number {
+  const opts = studioDurationOptions(platformMaxSec);
+  if (opts.includes(60)) return 60;
+  return opts[opts.length - 1] ?? platformMaxSec;
+}
 
 type StudioStep = 'setup' | 'booth' | 'review';
 
@@ -79,6 +91,18 @@ export default function RecordingStudio(props: RecordingStudioProps) {
   const [localError, setLocalError] = useState('');
   const prepCancelledRef = useRef(false);
 
+  const [recordingCapSec, setRecordingCapSec] = useState(() => defaultRecordingCap(maxDurationSec));
+
+  const durationOptionList = useMemo(() => studioDurationOptions(maxDurationSec), [maxDurationSec]);
+
+  useEffect(() => {
+    setRecordingCapSec((prev) => {
+      if (prev <= maxDurationSec && durationOptionList.includes(prev)) return prev;
+      const under = durationOptionList.filter((s) => s <= maxDurationSec);
+      return under[under.length - 1] ?? maxDurationSec;
+    });
+  }, [maxDurationSec, durationOptionList]);
+
   const {
     videoRef,
     phase: recPhase,
@@ -102,7 +126,7 @@ export default function RecordingStudio(props: RecordingStudioProps) {
     startPreview: studioStartPreview,
     hardResetCamera: studioHardResetCamera,
     facingMode,
-  } = useStudioRecorder(maxDurationSec);
+  } = useStudioRecorder(recordingCapSec);
   const reviewVideoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
@@ -366,7 +390,9 @@ export default function RecordingStudio(props: RecordingStudioProps) {
   if (step === 'booth') {
     return (
       <StudioBoothStep
-        maxDurationSec={maxDurationSec}
+        platformMaxDurationSec={maxDurationSec}
+        recordingCapSec={recordingCapSec}
+        onRecordingCapChange={setRecordingCapSec}
         mode={mode}
         mirrorPreview={facingMode === 'user'}
         videoRef={videoRef}

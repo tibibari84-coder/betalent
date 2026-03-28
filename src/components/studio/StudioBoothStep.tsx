@@ -15,15 +15,21 @@ import {
   IconBolt,
   IconClock,
   IconLayoutGrid,
-  IconSettings,
   IconSparkles,
+  IconVolumeUp,
   IconX,
 } from '@/components/ui/Icons';
 import { btnGhost, btnPrimary, btnSecondary, studioIconBtn, studioPanel, studioRailBtn } from './studio-tokens';
 import ViewfinderFrame from './ViewfinderFrame';
+import StudioModeSelector from './camera/StudioModeSelector';
+import StudioRecordControl from './camera/StudioRecordControl';
 
 export type StudioBoothStepProps = {
-  maxDurationSec: number;
+  /** Challenge / upload ceiling (e.g. 90–150s). */
+  platformMaxDurationSec: number;
+  /** Active recording cap — drives MediaRecorder auto-stop and UI. */
+  recordingCapSec: number;
+  onRecordingCapChange: (sec: number) => void;
   /** Front-camera mirror preview (iPhone-style); back camera stays natural. */
   mirrorPreview?: boolean;
   videoRef: RefObject<HTMLVideoElement | null>;
@@ -132,7 +138,9 @@ function CameraAccessOverlayBlock(props: CameraAccessOverlayBlockProps) {
 
 export default function StudioBoothStep(props: StudioBoothStepProps) {
   const {
-    maxDurationSec,
+    platformMaxDurationSec,
+    recordingCapSec,
+    onRecordingCapChange,
     mirrorPreview = false,
     videoRef,
     recPhase,
@@ -166,10 +174,6 @@ export default function StudioBoothStep(props: StudioBoothStepProps) {
   const [showSettingsHelp, setShowSettingsHelp] = useState(false);
   const swipeFrom = useRef<{ x: number; y: number; fromTop: boolean } | null>(null);
 
-  const durationChips = [...DURATION_PRESETS.filter((s) => s <= maxDurationSec)];
-  if (!durationChips.includes(maxDurationSec)) durationChips.push(maxDurationSec);
-  durationChips.sort((a, b) => a - b);
-
   const onImmersiveTouchStart = (e: React.TouchEvent) => {
     const t = e.touches[0];
     swipeFrom.current = {
@@ -200,6 +204,7 @@ export default function StudioBoothStep(props: StudioBoothStepProps) {
   const isPreview =
     boothReady && recPhase === 'preview' && cameraPermissionState === 'granted';
   const isRecording = recPhase === 'recording' || recPhase === 'paused';
+  const modeSelectorDisabled = recPhase === 'recording' || recPhase === 'paused';
   const canSwitchCamera = isPreview && !switchingLens;
 
   const accessMessage = (localError || recError?.message || '').trim();
@@ -232,42 +237,6 @@ export default function StudioBoothStep(props: StudioBoothStepProps) {
         : 'Camera unavailable';
 
   const videoObjectPosition = previewFraming.objectPosition;
-
-  const recordPrimary = (
-    <>
-      {isPreview && !switchingLens && (
-        <button
-          type="button"
-          onClick={onStartRecording}
-          className="relative flex h-[76px] w-[76px] shrink-0 items-center justify-center rounded-full border border-white/20 bg-white/[0.06] backdrop-blur-sm transition-transform active:scale-[0.96] md:h-[78px] md:w-[78px]"
-          aria-label="Start recording"
-        >
-          <span className="absolute h-[62px] w-[62px] rounded-full border border-accent/40 md:h-[58px] md:w-[58px]" aria-hidden />
-          <span className="h-[52px] w-[52px] rounded-full bg-accent md:h-[50px] md:w-[50px]" style={{ boxShadow: '0 0 0 1px rgba(255,255,255,0.08)' }} />
-        </button>
-      )}
-      {recPhase === 'recording' && (
-        <button
-          type="button"
-          onClick={onStop}
-          className="relative flex h-[76px] w-[76px] shrink-0 items-center justify-center rounded-full border border-white/20 bg-white/[0.06] backdrop-blur-sm transition-transform active:scale-[0.96] md:h-[78px] md:w-[78px]"
-          aria-label="Stop recording"
-        >
-          <span className="h-8 w-8 rounded-md bg-white md:h-[34px] md:w-[34px]" style={{ boxShadow: '0 0 0 1px rgba(0,0,0,0.2)' }} />
-        </button>
-      )}
-      {recPhase === 'paused' && (
-        <button
-          type="button"
-          onClick={onResume}
-          className="relative flex h-[76px] w-[76px] shrink-0 items-center justify-center rounded-full border border-white/20 bg-white/[0.06] backdrop-blur-sm transition-transform active:scale-[0.96] md:h-[78px] md:w-[78px]"
-          aria-label="Resume recording"
-        >
-          <span className="h-[52px] w-[52px] rounded-full bg-accent md:h-[58px] md:w-[58px]" />
-        </button>
-      )}
-    </>
-  );
 
   return (
     <>
@@ -339,7 +308,17 @@ export default function StudioBoothStep(props: StudioBoothStepProps) {
                     </div>
                     <div className="shrink-0 text-right">
                       <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-accent/90 sm:text-[11px]">9:16</p>
-                      <p className="tabular-nums text-[10px] text-white/45">max {maxDurationSec}s</p>
+                      <p className="tabular-nums text-[10px] text-white/45">
+                        {recordingCapSec < platformMaxDurationSec ? (
+                          <>
+                            <span className="text-white/55">{recordingCapSec}s</span>
+                            <span className="text-white/30"> · </span>
+                            <span>up to {platformMaxDurationSec}s</span>
+                          </>
+                        ) : (
+                          <>max {recordingCapSec}s</>
+                        )}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -356,7 +335,7 @@ export default function StudioBoothStep(props: StudioBoothStepProps) {
                   <video
                     ref={videoRef as LegacyRef<HTMLVideoElement>}
                     className={cn(
-                      'h-full w-full bg-black object-cover',
+                      'h-full w-full bg-black object-cover brightness-[1.02] contrast-[1.05] saturate-[1.06]',
                       mirrorPreview && '-scale-x-100'
                     )}
                     style={{ objectPosition: videoObjectPosition }}
@@ -400,32 +379,15 @@ export default function StudioBoothStep(props: StudioBoothStepProps) {
                     {isRecording ? 'Recording' : isPreview ? 'Preview' : 'Create'}
                   </span>
                   <div className="flex w-[88px] shrink-0 justify-end gap-2">
-                    {isPreview ? (
-                      <button
-                        type="button"
-                        onClick={() => void onFlipCamera()}
-                        disabled={!canSwitchCamera}
-                        className={cn(studioIconBtn, 'h-11 w-11')}
-                        aria-label="Flip camera"
-                      >
-                        <IconArrowPath className="!h-5 !w-5" />
-                      </button>
-                    ) : (
-                      <span className="h-11 w-11 shrink-0" aria-hidden />
-                    )}
-                    {!narrow ? (
-                      <button
-                        type="button"
-                        disabled
-                        className={cn(studioIconBtn, 'h-11 w-11 opacity-40')}
-                        aria-label="Settings (soon)"
-                        title="Soon"
-                      >
-                        <IconSettings className="!h-5 !w-5" />
-                      </button>
-                    ) : (
-                      <span className="h-11 w-11 shrink-0" aria-hidden />
-                    )}
+                    <button
+                      type="button"
+                      disabled
+                      className={cn(studioIconBtn, 'h-11 w-11 opacity-40')}
+                      aria-label="Sounds (coming soon)"
+                      title="Coming soon"
+                    >
+                      <IconVolumeUp className="!h-5 !w-5" />
+                    </button>
                   </div>
                 </header>
 
@@ -442,7 +404,7 @@ export default function StudioBoothStep(props: StudioBoothStepProps) {
                       <span className="mr-1.5 text-white/45">TC</span>
                       {String(Math.floor(recElapsedSec / 60)).padStart(2, '0')}:{String(recElapsedSec % 60).padStart(2, '0')}
                       <span className="mx-1.5 text-white/30">/</span>
-                      <span className="text-white/55">{maxDurationSec}s</span>
+                      <span className="text-white/55">{recordingCapSec}s</span>
                     </div>
                     <div className="flex flex-col items-end gap-1.5">
                       <div
@@ -510,6 +472,33 @@ export default function StudioBoothStep(props: StudioBoothStepProps) {
                   <div className="absolute bottom-[26%] right-3 z-40 flex flex-col gap-2">
                     <button
                       type="button"
+                      onClick={() => void onFlipCamera()}
+                      disabled={!canSwitchCamera}
+                      className={cn(studioRailBtn, 'h-11 w-11')}
+                      aria-label="Flip camera"
+                    >
+                      <IconArrowPath className="!h-5 !w-5" />
+                    </button>
+                    <button
+                      type="button"
+                      disabled
+                      className={cn(studioRailBtn, 'h-11 w-11 opacity-45')}
+                      aria-label="Flash"
+                      title="Coming soon"
+                    >
+                      <IconBolt className="!h-5 !w-5" />
+                    </button>
+                    <button
+                      type="button"
+                      disabled
+                      className={cn(studioRailBtn, 'h-11 w-11 opacity-45')}
+                      aria-label="Timer"
+                      title="Coming soon"
+                    >
+                      <IconClock className="!h-5 !w-5" />
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => setShowGrid((v) => !v)}
                       className={cn(studioRailBtn, 'h-11 w-11', showGrid && 'border-accent/45 text-accent')}
                       aria-label="Grid"
@@ -562,18 +551,6 @@ export default function StudioBoothStep(props: StudioBoothStepProps) {
                     background: 'linear-gradient(0deg, rgba(0,0,0,0.94) 0%, rgba(0,0,0,0.45) 50%, transparent 100%)',
                   }}
                 >
-                  {isRecording ? (
-                    <div className="mb-2 px-4">
-                      <div className="h-[3px] w-full overflow-hidden rounded-full bg-white/12">
-                        <div
-                          className="h-full rounded-full bg-accent/95 transition-[width] duration-200 ease-out"
-                          style={{
-                            width: `${Math.min(100, (recElapsedSec / Math.max(1, maxDurationSec)) * 100)}%`,
-                          }}
-                        />
-                      </div>
-                    </div>
-                  ) : null}
                   {!narrow && effectsOpen ? (
                     <div className="mb-2 flex snap-x snap-mandatory gap-2 overflow-x-auto px-3 pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                       {EFFECT_STRIP.map((e, i) => (
@@ -601,23 +578,14 @@ export default function StudioBoothStep(props: StudioBoothStepProps) {
                       ))}
                     </div>
                   ) : null}
-                  {!narrow ? (
-                    <div className="mb-3 flex snap-x snap-mandatory justify-start gap-3 overflow-x-auto px-4 py-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                      {durationChips.map((sec) => {
-                        const active = sec === maxDurationSec;
-                        const label = sec >= 600 ? `${Math.round(sec / 60)}m` : `${sec}s`;
-                        return (
-                          <span
-                            key={sec}
-                            className={cn(
-                              'snap-center shrink-0 rounded-full px-3 py-2 text-[13px] font-semibold tabular-nums',
-                              active ? 'bg-white/[0.14] text-white' : 'text-white/35'
-                            )}
-                          >
-                            {label}
-                          </span>
-                        );
-                      })}
+                  {!showCurtain && recPhase !== 'recording' && recPhase !== 'paused' ? (
+                    <div className="mb-2 px-2">
+                      <StudioModeSelector
+                        platformMaxSec={platformMaxDurationSec}
+                        value={recordingCapSec}
+                        onChange={onRecordingCapChange}
+                        disabled={modeSelectorDisabled}
+                      />
                     </div>
                   ) : null}
                   <div className="flex items-center justify-center gap-6 px-4">
@@ -654,12 +622,22 @@ export default function StudioBoothStep(props: StudioBoothStepProps) {
                     ) : (
                       <div className="h-12 w-12 shrink-0" aria-hidden />
                     )}
-                    <div className="flex shrink-0 justify-center">{recordPrimary}</div>
+                    <div className="flex shrink-0 justify-center">
+                      <StudioRecordControl
+                        recPhase={recPhase}
+                        maxDurationSec={recordingCapSec}
+                        elapsedSec={recElapsedSec}
+                        switchingLens={switchingLens}
+                        onStart={onStartRecording}
+                        onStop={onStop}
+                        onResume={onResume}
+                      />
+                    </div>
                     <div className="h-12 w-12 shrink-0" aria-hidden />
                   </div>
                   {!narrow ? (
                     <p className="mt-1 px-2 text-center text-[9px] font-medium uppercase tracking-[0.18em] text-white/25">
-                      Looks are preview-only · max {maxDurationSec}s
+                      Looks are preview-only · {recordingCapSec}s take · up to {platformMaxDurationSec}s upload
                     </p>
                   ) : null}
                 </div>
@@ -687,7 +665,7 @@ export default function StudioBoothStep(props: StudioBoothStepProps) {
                         <video
                           ref={videoRef as LegacyRef<HTMLVideoElement>}
                           className={cn(
-                            'absolute inset-0 h-full w-full bg-black',
+                            'absolute inset-0 h-full w-full bg-black brightness-[1.02] contrast-[1.05] saturate-[1.06]',
                             mirrorPreview && '-scale-x-100'
                           )}
                           style={{ objectFit: previewFraming.fit, objectPosition: previewFraming.objectPosition }}
@@ -720,7 +698,7 @@ export default function StudioBoothStep(props: StudioBoothStepProps) {
                               <span className="mr-1.5 text-white/45">TC</span>
                               {String(Math.floor(recElapsedSec / 60)).padStart(2, '0')}:{String(recElapsedSec % 60).padStart(2, '0')}
                               <span className="mx-1.5 text-white/30">/</span>
-                              <span className="text-white/55">{maxDurationSec}s</span>
+                              <span className="text-white/55">{recordingCapSec}s</span>
                             </div>
                             <div className="flex flex-col items-end gap-1.5">
                               <div
@@ -801,11 +779,29 @@ export default function StudioBoothStep(props: StudioBoothStepProps) {
                   <p className="mb-2.5 text-center text-[10px] font-semibold uppercase tracking-[0.2em] text-white/36">
                     {isRecording ? 'Recording' : isPreview ? 'Preview' : 'Studio'}
                   </p>
+                  {!showCurtain && recPhase !== 'recording' && recPhase !== 'paused' ? (
+                    <div className="mb-3">
+                      <StudioModeSelector
+                        platformMaxSec={platformMaxDurationSec}
+                        value={recordingCapSec}
+                        onChange={onRecordingCapChange}
+                        disabled={modeSelectorDisabled}
+                      />
+                    </div>
+                  ) : null}
                   <div className="mb-2 flex items-center justify-between gap-3 sm:hidden">
                     <button type="button" onClick={onCancelPreview} className={`${btnGhost} min-h-[48px] min-w-[72px] px-3 text-white/60`}>
                       Back
                     </button>
-                    {recordPrimary}
+                    <StudioRecordControl
+                      recPhase={recPhase}
+                      maxDurationSec={recordingCapSec}
+                      elapsedSec={recElapsedSec}
+                      switchingLens={switchingLens}
+                      onStart={onStartRecording}
+                      onStop={onStop}
+                      onResume={onResume}
+                    />
                     <button
                       type="button"
                       onClick={onFlipCamera}

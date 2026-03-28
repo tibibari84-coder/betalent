@@ -5,10 +5,16 @@
  */
 
 export type StudioCameraLogEvent =
+  | 'camera_permission_requested'
+  | 'camera_permission_granted'
   | 'camera_permission_denied'
   | 'microphone_permission_denied'
   | 'camera_retry'
-  | 'camera_initialized';
+  | 'camera_initialized'
+  | 'recording_started'
+  | 'recording_stopped'
+  | 'recording_auto_stopped'
+  | 'recording_failed';
 
 export function logStudioCamera(event: StudioCameraLogEvent, fields?: Record<string, unknown>) {
   if (typeof window === 'undefined') return;
