@@ -37,6 +37,8 @@ export type Props = {
   handleUploadAnother: () => void;
   loading: boolean;
   canSubmit: boolean;
+  /** Shown above Publish when the button is disabled so users know why upload never starts. */
+  publishGateHints: string[];
   progressLabel: string;
   error: string;
   phase: UploadFormPhase;
@@ -81,6 +83,7 @@ export default function UploadFormContent(props: Props) {
     handleUploadAnother,
     loading,
     canSubmit,
+    publishGateHints,
     progressLabel,
     error,
     phase,
@@ -183,7 +186,7 @@ export default function UploadFormContent(props: Props) {
                 <div className="mx-auto w-full max-w-[420px] overflow-hidden rounded-2xl border border-white/[0.1] bg-black">
                   <video
                     src={previewUrlStable}
-                    className="aspect-[9/16] w-full object-cover object-center"
+                    className="aspect-[9/16] w-full object-contain object-center bg-black"
                     controls
                     playsInline
                     preload="metadata"
@@ -370,6 +373,22 @@ export default function UploadFormContent(props: Props) {
             }}
           >
             <div className="mx-auto w-full sm:max-w-md">
+              {publishGateHints.length > 0 ? (
+                <div
+                  id="publish-gate-hints"
+                  className="mb-3 rounded-xl border border-amber-500/35 bg-amber-500/[0.1] px-3 py-2.5"
+                  role="status"
+                >
+                  <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-amber-200/90">
+                    {t('upload.publishBlockedIntro')}
+                  </p>
+                  <ul className="list-disc space-y-1 pl-4 text-[13px] leading-snug text-amber-50/95">
+                    {publishGateHints.map((h, i) => (
+                      <li key={i}>{h}</li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
               {phase === 'uploading' ? (
                 <div className="mb-3" role="region" aria-label="Upload progress">
                   <div
@@ -400,6 +419,7 @@ export default function UploadFormContent(props: Props) {
               <button
                 type="submit"
                 disabled={!canSubmit || loading}
+                aria-describedby={!canSubmit && !loading && publishGateHints.length > 0 ? 'publish-gate-hints' : undefined}
                 className="btn-primary flex h-[52px] w-full items-center justify-center gap-2 rounded-2xl text-[15px] font-semibold disabled:pointer-events-none disabled:opacity-45"
               >
                 <IconUpload className="h-5 w-5 shrink-0" aria-hidden />

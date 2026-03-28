@@ -80,9 +80,30 @@ type InitSuccessBody = {
   contentType?: string;
 };
 
+/** Cross-origin PUT often fails as opaque "Failed to fetch" — usually R2/S3 bucket CORS, not missing "S3 API" in the browser. */
+function messageForPresignedPutFailure(error: unknown): string {
+  const raw = error instanceof Error ? error.message : String(error);
+  const lower = raw.toLowerCase();
+  if (
+    lower.includes('failed to fetch') ||
+    lower.includes('networkerror') ||
+    lower.includes('load failed') ||
+    lower.includes('network request failed')
+  ) {
+    return (
+      'Upload blocked: browser could not reach object storage (often R2 bucket CORS). ' +
+      'In Cloudflare R2 → your bucket → Settings → CORS: allow your app origin (e.g. http://localhost:3000), ' +
+      'methods PUT and HEAD, and Allowed Headers including Content-Type. ' +
+      'The app does not use S3 SDK in the browser — only this PUT to the presigned URL.'
+    );
+  }
+  if (raw.includes('Storage PUT failed')) return raw;
+  return raw.trim() ? raw : 'Upload failed while sending the file to storage.';
+}
+
 /**
- * PUT file bytes to the presigned storage URL. Uses fetch (required for R2/S3 CORS parity).
- * Progress uses a ReadableStream when supported; otherwise uploads the whole File without byte progress.
+ * PUT file bytes to the presigned storage URL.
+ * Uses a single `fetch` with `File` as body (no ReadableStream / duplex) — streaming PUT hangs or fails on several mobile browsers.
  */
 async function putFileToPresignedUrl(
   uploadUrl: string,
@@ -90,46 +111,7 @@ async function putFileToPresignedUrl(
   contentType: string,
   onProgress?: (percent: number) => void
 ): Promise<void> {
-  const canStream = typeof ReadableStream !== 'undefined' && typeof file.stream === 'function';
-
-  if (canStream && onProgress) {
-    try {
-      const reader = file.stream().getReader();
-      const total = Math.max(1, file.size);
-      let loaded = 0;
-      const body = new ReadableStream<Uint8Array>({
-        async pull(controller) {
-          const { done, value } = await reader.read();
-          if (done) {
-            controller.close();
-            return;
-          }
-          loaded += value.byteLength;
-          onProgress(Math.min(99, Math.round((loaded / total) * 100)));
-          controller.enqueue(value);
-        },
-      });
-      const res = await fetch(uploadUrl, {
-        method: 'PUT',
-        body: body as BodyInit,
-        headers: { 'Content-Type': contentType },
-        credentials: 'omit',
-        mode: 'cors',
-        duplex: 'half',
-      } as RequestInit);
-      if (!res.ok) {
-        const errText = await res.text().catch(() => '');
-        throw new Error(`Storage PUT failed (${res.status}): ${errText.slice(0, 240)}`);
-      }
-      onProgress(100);
-      return;
-    } catch (e) {
-      if (typeof console !== 'undefined' && console.warn) {
-        console.warn('[putFileToPresignedUrl] streaming PUT failed, retrying with full body', e);
-      }
-    }
-  }
-
+  onProgress?.(5);
   const res = await fetch(uploadUrl, {
     method: 'PUT',
     body: file,
@@ -233,15 +215,11 @@ export async function performDirectUpload(
   try {
     await putFileToPresignedUrl(uploadUrl, file, putContentType, options?.onProgress);
   } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
+    const msg = messageForPresignedPutFailure(e);
     if (typeof console !== 'undefined' && console.warn) {
-      console.warn('[performDirectUpload] PUT failed', { message: msg });
+      console.warn('[performDirectUpload] PUT failed', { error: e, message: msg });
     }
-    return {
-      ok: false,
-      message: msg.includes('failed') ? msg : `Upload failed: ${msg}`,
-      step: 'upload',
-    };
+    return { ok: false, message: msg, step: 'upload' };
   }
 
   options?.onStatus?.('processing');

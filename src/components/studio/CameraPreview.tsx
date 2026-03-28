@@ -11,8 +11,8 @@ export type CameraPreviewProps = {
 };
 
 /**
- * Full-viewport portrait preview: fills the frame (no floating box / letterbox bands).
- * Selfie bias keeps face + upper torso in frame without stretching.
+ * Natural camera preview: full frame from the device — no object-cover zoom/crop.
+ * Letterboxing only when aspect ratio differs from the viewport (honest, not stretched).
  */
 export default function CameraPreview({ videoRef, mirror, className }: CameraPreviewProps) {
   return (
@@ -22,7 +22,7 @@ export default function CameraPreview({ videoRef, mirror, className }: CameraPre
       playsInline
       muted
       className={cn(
-        'absolute inset-0 h-full w-full bg-black object-cover object-[center_30%]',
+        'absolute inset-0 h-full w-full bg-black object-contain object-center',
         mirror && '-scale-x-100',
         className
       )}

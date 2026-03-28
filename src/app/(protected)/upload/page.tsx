@@ -5,7 +5,7 @@
  * Uses mounted state to defer searchParams read and avoid hydration mismatch.
  */
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import type { UploadProgressStep } from '@/lib/upload-client';
 import { getMimeTypeForUpload, MAX_VIDEO_FILE_SIZE } from '@/constants/upload';
@@ -33,6 +33,9 @@ type ChallengeContext = {
 function toUiUploadError(message: string | undefined): string {
   const raw = (message ?? '').toLowerCase();
   if (!raw) return 'Upload failed. Please try again.';
+  if (raw.includes('upload blocked:') && raw.includes('cors')) {
+    return (message ?? '').trim();
+  }
   if (raw.includes('storage') || raw.includes('direct upload')) return 'Upload service is temporarily unavailable. Please try again.';
   if (raw.includes('permission') || raw.includes('login required')) return 'Please sign in and try again.';
   if (raw.includes('network')) return 'Network issue while uploading. Check your connection and try again.';
@@ -357,6 +360,34 @@ export default function UploadPage() {
     durationSec <= maxStudioDurationSec &&
     rulesAcknowledged &&
     (!challengeSlug || !challengeContext || challengeContext.status === 'ENTRY_OPEN');
+
+  /** Why Publish stays disabled (most often: no vocal style selected — button uses pointer-events-none). */
+  const publishGateHints = useMemo(() => {
+    if (uploadEntryMode !== 'publish' || !file || loading || canSubmit) return [];
+    const hints: string[] = [];
+    if (!derivedTitleForGate) hints.push(t('upload.errorTitleRequired'));
+    if (!styleSlug) hints.push(t('upload.errorChooseStyle'));
+    if (!rulesAcknowledged) hints.push(t('upload.hintAcknowledgeRules'));
+    if (durationSec < 1 || durationSec > maxStudioDurationSec) hints.push(t('upload.hintDurationOutOfRange'));
+    if (challengeSlug && challengeContext && challengeContext.status !== 'ENTRY_OPEN') {
+      hints.push(t('upload.hintChallengeNotOpen'));
+    }
+    return hints;
+  }, [
+    uploadEntryMode,
+    file,
+    loading,
+    canSubmit,
+    derivedTitleForGate,
+    styleSlug,
+    rulesAcknowledged,
+    durationSec,
+    maxStudioDurationSec,
+    challengeSlug,
+    challengeContext,
+    t,
+  ]);
+
   const showSuccess = phase === 'success' && successVideoId;
 
   let progressLabel = '';
@@ -383,6 +414,7 @@ export default function UploadPage() {
       handleUploadAnother,
       loading,
       canSubmit: Boolean(canSubmit),
+      publishGateHints,
       progressLabel,
       error,
       phase,

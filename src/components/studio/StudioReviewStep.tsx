@@ -111,8 +111,7 @@ export default function StudioReviewStep(props: StudioReviewStepProps) {
                 aria-label="Tap to play or pause preview"
               >
                 {/*
-                  Recorded blob: use contain + center only. Live-camera previewFraming used object-cover
-                  + head bias — that wrongly crops/zooms file playback.
+                  Recorded blob: contain + center — same idea as live preview (no cover zoom on playback).
                 */}
                 <video
                   ref={reviewVideoRef as LegacyRef<HTMLVideoElement>}
