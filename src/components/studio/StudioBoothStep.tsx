@@ -29,6 +29,8 @@ export type StudioBoothStepProps = {
   videoRef: RefObject<HTMLVideoElement | null>;
   recPhase: StudioRecorderPhase;
   cameraPermissionState: StudioCameraPermissionState;
+  /** True while getUserMedia / preview pipeline is in progress — hide false “permission denied” UI. */
+  isAcquiringStream: boolean;
   recElapsedSec: number;
   recError: { code: StudioRecorderErrorCode; message: string } | null;
   micLive: boolean;
@@ -145,6 +147,7 @@ export default function StudioBoothStep(props: StudioBoothStepProps) {
     videoRef,
     recPhase,
     cameraPermissionState,
+    isAcquiringStream,
     recElapsedSec,
     recError,
     micLive,
@@ -210,16 +213,21 @@ export default function StudioBoothStep(props: StudioBoothStepProps) {
   const isRecording = recPhase === 'recording' || recPhase === 'paused';
   const canSwitchCamera = isPreview && !switchingLens;
 
-  const accessMessage = localError || recError?.message || '';
+  const accessMessage = (localError || recError?.message || '').trim();
+  const terminalCameraFailure =
+    cameraPermissionState === 'denied' || cameraPermissionState === 'error';
   const showCameraAccessOverlay =
     !showCurtain &&
     !boothReady &&
     !isRecording &&
-    (cameraPermissionState === 'denied' ||
-      cameraPermissionState === 'error' ||
-      (accessMessage.length > 0 && cameraPermissionState !== 'requesting'));
+    !isAcquiringStream &&
+    cameraPermissionState !== 'requesting' &&
+    terminalCameraFailure;
   const showRequestingBanner =
-    !showCurtain && cameraPermissionState === 'requesting' && !boothReady && !isRecording;
+    !showCurtain &&
+    !boothReady &&
+    !isRecording &&
+    (isAcquiringStream || cameraPermissionState === 'requesting');
   const showStatusOverlay = isPreview || isRecording;
 
   useEffect(() => {
@@ -227,7 +235,9 @@ export default function StudioBoothStep(props: StudioBoothStepProps) {
   }, [showCameraAccessOverlay]);
 
   const cameraAccessTitle =
-    cameraPermissionState === 'denied' ? 'Camera access required' : 'Camera unavailable';
+    cameraPermissionState === 'denied' || recError?.code === 'permission_denied'
+      ? 'Camera access required'
+      : 'Camera unavailable';
 
   const videoObjectPosition = previewFraming.objectPosition;
 
@@ -553,7 +563,7 @@ export default function StudioBoothStep(props: StudioBoothStepProps) {
                       role="status"
                       aria-live="polite"
                     >
-                      Connecting to camera…
+                      Requesting camera access…
                     </div>
                   </div>
                 ) : null}
@@ -676,7 +686,7 @@ export default function StudioBoothStep(props: StudioBoothStepProps) {
                         role="status"
                         aria-live="polite"
                       >
-                        Connecting to camera…
+                        Requesting camera access…
                       </div>
                     </div>
                   ) : null}
@@ -869,7 +879,11 @@ export default function StudioBoothStep(props: StudioBoothStepProps) {
             )}
           </div>
 
-          {!showCameraAccessOverlay && (localError || recError) && !isRecording && (
+          {!showCameraAccessOverlay &&
+            (localError || recError) &&
+            !isRecording &&
+            !isAcquiringStream &&
+            cameraPermissionState !== 'requesting' && (
             <div className="flex flex-col items-center gap-2 pt-1" role="alert">
               <p className="px-2 text-center text-[13px] text-red-300/90 sm:text-[14px]">
                 {localError || recError?.message}

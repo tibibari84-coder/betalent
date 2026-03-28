@@ -85,6 +85,7 @@ export default function RecordingStudio(props: RecordingStudioProps) {
     videoRef,
     phase: recPhase,
     permissionState: cameraPermissionState,
+    isAcquiringStream,
     error: recError,
     elapsedSec: recElapsedSec,
     pauseSupported,
@@ -217,6 +218,7 @@ export default function RecordingStudio(props: RecordingStudioProps) {
   const handleRetryPreview = useCallback(async () => {
     logStudioCamera('camera_retry', { action: 'try_again' });
     setLocalError('');
+    setBoothReady(false);
     const result = await studioStartPreview();
     if (!result.ok) {
       setLocalError(result.message);
@@ -228,6 +230,7 @@ export default function RecordingStudio(props: RecordingStudioProps) {
 
   const handleHardResetCamera = useCallback(async () => {
     setLocalError('');
+    setBoothReady(false);
     const result = await studioHardResetCamera();
     if (!result.ok) {
       setLocalError(result.message);
@@ -236,11 +239,6 @@ export default function RecordingStudio(props: RecordingStudioProps) {
     }
     setBoothReady(true);
   }, [studioHardResetCamera]);
-
-  useEffect(() => {
-    if (step !== 'booth' || !boothReady || showCurtain) return;
-    if (recError) setLocalError(recError.message);
-  }, [step, boothReady, showCurtain, recError]);
 
   useEffect(() => {
     if (step !== 'booth') return;
@@ -379,6 +377,7 @@ export default function RecordingStudio(props: RecordingStudioProps) {
         videoRef={videoRef}
         recPhase={recPhase}
         cameraPermissionState={cameraPermissionState}
+        isAcquiringStream={isAcquiringStream}
         recElapsedSec={recElapsedSec}
         recError={recError}
         micLive={micLive}

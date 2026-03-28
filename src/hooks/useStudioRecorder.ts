@@ -75,6 +75,18 @@ function resolvePreviewFraming(params: {
   return { fit: 'cover', objectPosition: '50% 50%', stageAspect: '9 / 16' };
 }
 
+/** Best-effort: if browser says camera is already granted, NotAllowedError is often transient (timing, busy device). */
+async function queryCameraPermissionState(): Promise<'granted' | 'denied' | 'prompt' | 'unknown'> {
+  try {
+    if (typeof navigator === 'undefined' || !navigator.permissions?.query) return 'unknown';
+    const r = await navigator.permissions.query({ name: 'camera' as PermissionName });
+    if (r.state === 'granted' || r.state === 'denied' || r.state === 'prompt') return r.state;
+    return 'unknown';
+  } catch {
+    return 'unknown';
+  }
+}
+
 function pickRecorderMime(): { mimeType: string; fileExt: 'mp4' | 'webm' } {
   if (typeof MediaRecorder === 'undefined') {
     return { mimeType: '', fileExt: 'webm' };
@@ -125,6 +137,8 @@ export function useStudioRecorder(maxDurationSec: number) {
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
   const [phase, setPhase] = useState<StudioRecorderPhase>('idle');
   const [permissionState, setPermissionState] = useState<StudioCameraPermissionState>('idle');
+  /** True from start of getUserMedia until preview is live or attempt fails — UI must not treat this as permission denied. */
+  const [isAcquiringStream, setIsAcquiringStream] = useState(false);
   const [error, setError] = useState<{ code: StudioRecorderErrorCode; message: string } | null>(null);
   const [elapsedSec, setElapsedSec] = useState(0);
   const [pauseSupported, setPauseSupported] = useState(true);
@@ -194,6 +208,7 @@ export function useStudioRecorder(maxDurationSec: number) {
         facingOverride !== undefined ? facingOverride : isMobile ? 'user' : facingMode;
       if (facingOverride !== undefined) setFacingMode(mode);
 
+      setIsAcquiringStream(true);
       setError(null);
       setPermissionState('requesting');
       setPhase('idle');
@@ -204,6 +219,7 @@ export function useStudioRecorder(maxDurationSec: number) {
         const message = 'Studio recording is not available on this browser. Use Upload from device.';
         setError({ code: 'unsupported', message });
         setPermissionState('error');
+        setIsAcquiringStream(false);
         return { ok: false, message, code: 'unsupported' };
       }
 
@@ -253,6 +269,7 @@ export function useStudioRecorder(maxDurationSec: number) {
           setError({ code: 'no_microphone', message });
           setPermissionState('error');
           setPhase('idle');
+          setIsAcquiringStream(false);
           return { ok: false, message, code: 'no_microphone' };
         }
         if (!videoTracks.length) {
@@ -261,6 +278,7 @@ export function useStudioRecorder(maxDurationSec: number) {
           setError({ code: 'no_camera', message });
           setPermissionState('error');
           setPhase('idle');
+          setIsAcquiringStream(false);
           return { ok: false, message, code: 'no_camera' };
         }
 
@@ -322,6 +340,7 @@ export function useStudioRecorder(maxDurationSec: number) {
         }
         setPermissionState('granted');
         setPhase('preview');
+        setIsAcquiringStream(false);
         logStudioCamera('camera_initialized', { facingMode: mode, isMobile });
         return { ok: true };
       } catch (e) {
@@ -329,13 +348,31 @@ export function useStudioRecorder(maxDurationSec: number) {
         const name = err?.name ?? '';
         const msgLower = (err?.message ?? '').toLowerCase();
         setPhase('idle');
+        setIsAcquiringStream(false);
+
+        console.error('[useStudioRecorder] getUserMedia failed', {
+          name,
+          message: err?.message,
+          code: (err as DOMException)?.code,
+          error: e,
+        });
+
         // Delayed or non-gesture getUserMedia often reports NotAllowedError even when the user did not choose "Block".
         if (name === 'NotAllowedError' || name === 'PermissionDeniedError') {
+          const perm = await queryCameraPermissionState();
+          if (perm === 'granted') {
+            const message =
+              'Camera could not start even though permission is on. Try “Reset camera”, close other apps using the camera, or reload the page.';
+            setError({ code: 'unknown', message });
+            setPermissionState('error');
+            logStudioCamera('camera_permission_denied', { reason: name, note: 'api_says_granted' });
+            return { ok: false, message, code: 'unknown' };
+          }
           const message =
             'Camera access is required to record here. Tap “Try again” and allow when prompted, or enable camera and microphone for this site in your browser settings.';
           setError({ code: 'permission_denied', message });
           setPermissionState('denied');
-          logStudioCamera('camera_permission_denied', { reason: name });
+          logStudioCamera('camera_permission_denied', { reason: name, permissionQuery: perm });
           return { ok: false, message, code: 'permission_denied' };
         }
         if (name === 'SecurityError' || msgLower.includes('secure context')) {
@@ -379,6 +416,7 @@ export function useStudioRecorder(maxDurationSec: number) {
     stopStream();
     setPhase('idle');
     setPermissionState('idle');
+    setIsAcquiringStream(false);
     setError(null);
     setMicLive(false);
     if (videoRef.current) {
@@ -414,6 +452,7 @@ export function useStudioRecorder(maxDurationSec: number) {
       });
       setPermissionState('error');
       setPhase('idle');
+      setIsAcquiringStream(false);
       return;
     }
 
@@ -464,6 +503,7 @@ export function useStudioRecorder(maxDurationSec: number) {
       if (videoRef.current) videoRef.current.srcObject = null;
       setPhase('stopped');
       setPermissionState('idle');
+      setIsAcquiringStream(false);
       setLastTake(take);
 
       const resolver = stopResolveRef.current;
@@ -600,6 +640,7 @@ export function useStudioRecorder(maxDurationSec: number) {
     stopStream();
     setPhase('idle');
     setPermissionState('idle');
+    setIsAcquiringStream(false);
     setElapsedSec(0);
     setError(null);
     setMicLive(false);
@@ -614,6 +655,7 @@ export function useStudioRecorder(maxDurationSec: number) {
     videoRef,
     phase,
     permissionState,
+    isAcquiringStream,
     error,
     setError,
     elapsedSec,
