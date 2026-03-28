@@ -37,6 +37,8 @@ export type UploadMetadataFieldsProps = {
   durationSec?: number;
   /** Optional compact preview line under metadata */
   showSummaryLine?: boolean;
+  /** Studio prep: style + rules only; caption/title after record (publish screen). */
+  hideTitleAndCaption?: boolean;
 };
 
 export default function UploadMetadataFields(props: UploadMetadataFieldsProps) {
@@ -61,6 +63,7 @@ export default function UploadMetadataFields(props: UploadMetadataFieldsProps) {
     vocalStyleLabel,
     durationSec = 0,
     showSummaryLine,
+    hideTitleAndCaption = false,
   } = props;
 
   /** Regular upload: no picker needed — single implicit choice is “no challenge”. */
@@ -71,7 +74,7 @@ export default function UploadMetadataFields(props: UploadMetadataFieldsProps) {
   }, [challengeContext, setChallengeId]);
 
   return (
-    <div className="grid md:grid-cols-2 gap-6">
+    <div className={hideTitleAndCaption ? 'grid gap-6' : 'grid md:grid-cols-2 gap-6'}>
       <div className="space-y-4">
         {challengeContext ? (
           <div>
@@ -130,48 +133,52 @@ export default function UploadMetadataFields(props: UploadMetadataFieldsProps) {
           </select>
           <p className="text-[12px] text-text-muted mt-1">Style of your vocal performance</p>
         </div>
-        <div>
-          <label htmlFor="title" className={labelClass}>
-            {titleLabel}
-          </label>
-          <input
-            id="title"
-            type="text"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder={titlePlaceholder}
-            className={inputClass}
-            required
-            disabled={disabled}
-          />
-        </div>
-      </div>
-      <div className="space-y-4">
-        <div>
-          <label htmlFor="description" className={labelClass}>
-            {descriptionLabel}
-          </label>
-          <textarea
-            id="description"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder={descriptionPlaceholder}
-            className={`${inputClass} min-h-[140px] py-3 resize-none`}
-            rows={5}
-            disabled={disabled}
-          />
-        </div>
-        {showSummaryLine && (
-          <div className="glass-panel glass-panel-card p-4 space-y-2">
-            <p className="text-[13px] font-medium text-text-secondary">Preview</p>
-            <p className="text-[13px] text-text-muted">
-              {title || '—'} ·{' '}
-              {styleSlug ? VOCAL_STYLES_UPLOAD.find((s) => s.slug === styleSlug)?.name ?? styleSlug : '—'}
-              {durationSec > 0 && ` · ${durationSec}s`}
-            </p>
+        {!hideTitleAndCaption ? (
+          <div>
+            <label htmlFor="title" className={labelClass}>
+              {titleLabel}
+            </label>
+            <input
+              id="title"
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder={titlePlaceholder}
+              className={inputClass}
+              required
+              disabled={disabled}
+            />
           </div>
-        )}
+        ) : null}
       </div>
+      {!hideTitleAndCaption ? (
+        <div className="space-y-4">
+          <div>
+            <label htmlFor="description" className={labelClass}>
+              {descriptionLabel}
+            </label>
+            <textarea
+              id="description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder={descriptionPlaceholder}
+              className={`${inputClass} min-h-[140px] py-3 resize-none`}
+              rows={5}
+              disabled={disabled}
+            />
+          </div>
+          {showSummaryLine && (
+            <div className="glass-panel glass-panel-card p-4 space-y-2">
+              <p className="text-[13px] font-medium text-text-secondary">Preview</p>
+              <p className="text-[13px] text-text-muted">
+                {title || '—'} ·{' '}
+                {styleSlug ? VOCAL_STYLES_UPLOAD.find((s) => s.slug === styleSlug)?.name ?? styleSlug : '—'}
+                {durationSec > 0 && ` · ${durationSec}s`}
+              </p>
+            </div>
+          )}
+        </div>
+      ) : null}
 
       <div className="md:col-span-2 rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 space-y-3">
         <p className="text-[12px] font-medium text-text-secondary">Platform rules</p>

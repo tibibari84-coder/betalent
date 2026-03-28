@@ -2,40 +2,10 @@
 
 import { useRef, useId, useState, useCallback, useEffect } from 'react';
 import { IconUpload } from '@/components/ui/Icons';
-import { FILE_INPUT_ACCEPT, getMimeTypeForUpload, MAX_VIDEO_FILE_SIZE } from '@/constants/upload';
+import { FILE_INPUT_ACCEPT, MAX_VIDEO_FILE_SIZE } from '@/constants/upload';
+import { processVideoFileWithDuration } from '@/lib/upload-video-file';
 
 const MAX_MB = Math.round(MAX_VIDEO_FILE_SIZE / 1024 / 1024);
-const DURATION_METADATA_TIMEOUT_MS = 5000;
-
-function processFile(f: File, onFileSelect: (file: File, durationSec: number) => void, onDurationLoaded?: (sec: number) => void) {
-  if (!getMimeTypeForUpload(f) || f.size > MAX_VIDEO_FILE_SIZE) {
-    onFileSelect(f, 0);
-    return;
-  }
-  const url = URL.createObjectURL(f);
-  const video = document.createElement('video');
-  video.preload = 'metadata';
-  video.playsInline = true;
-  video.muted = true;
-  let settled = false;
-  const settle = (sec: number) => {
-    if (settled) return;
-    settled = true;
-    URL.revokeObjectURL(url);
-    onFileSelect(f, sec);
-    onDurationLoaded?.(sec);
-  };
-  const timeoutId = window.setTimeout(() => settle(1), DURATION_METADATA_TIMEOUT_MS);
-  video.onloadedmetadata = () => {
-    window.clearTimeout(timeoutId);
-    settle(Math.ceil(video.duration) || 1);
-  };
-  video.onerror = () => {
-    window.clearTimeout(timeoutId);
-    settle(1);
-  };
-  video.src = url;
-}
 
 export type UploadDropzoneProps = {
   file: File | null;
@@ -80,7 +50,7 @@ export default function UploadDropzone({
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
     if (!f) return;
-    processFile(f, onFileSelect, onDurationLoaded);
+    processVideoFileWithDuration(f, onFileSelect, onDurationLoaded);
   };
 
   const handleDrop = useCallback(
@@ -90,7 +60,7 @@ export default function UploadDropzone({
       if (disabled || file) return;
       const f = e.dataTransfer.files?.[0];
       if (!f) return;
-      processFile(f, onFileSelect, onDurationLoaded);
+      processVideoFileWithDuration(f, onFileSelect, onDurationLoaded);
     },
     [disabled, file, onFileSelect, onDurationLoaded]
   );

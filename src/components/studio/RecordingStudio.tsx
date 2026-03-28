@@ -133,9 +133,9 @@ export default function RecordingStudio(props: RecordingStudioProps) {
     return () => URL.revokeObjectURL(u);
   }, [reviewBlob]);
 
+  /** Title/caption are collected on the publish step after capture — not a gate to open camera. */
   const baseSetupValid =
-    title.trim() &&
-    styleSlug &&
+    Boolean(styleSlug) &&
     (!challengeSlug || !challengeContext || challengeContext.status === 'ENTRY_OPEN');
   const setupValid = baseSetupValid && rulesAcknowledged;
 

@@ -24,7 +24,7 @@ export function getStudioModeCopy(mode: RecordingMode): StudioModeCopy {
       prepLabel: 'Live challenge prep',
       prepTitle: 'Prepare your live challenge take',
       prepDescription:
-        'Set your performance details, then step into the live challenge room. Your live take hard-stops at',
+        'Pick vocal style and confirm the rules, then open the camera. Add your caption on the next screen after you record. Your take hard-stops at',
       liveRulesHelper:
         'One authentic take — real vocals (no playback or lip-sync). Stay in frame, watch the timer, and finish before the hard stop. This recording uses the same engine as standard Studio; only the time limit and labels change. Your submission may be reviewed for authenticity.',
       boothLabel: 'Live challenge room',
@@ -39,9 +39,9 @@ export function getStudioModeCopy(mode: RecordingMode): StudioModeCopy {
     liveChallengeBadge: '',
     studioLabel: 'BETALENT Studio',
     prepLabel: 'Session prep',
-    prepTitle: 'Set the stage',
+    prepTitle: 'Record first',
     prepDescription:
-      'Lock in title, style, and rules—then step into a vertical-first live room. Your take hard-stops at',
+      'Choose vocal style and confirm the rules, then open the camera. You’ll add caption and publish after your take. Hard stop at',
     liveRulesHelper: '',
     boothLabel: 'Live room',
     boothDescription: 'Frame your shot, keep your mic live, and record your best take.',

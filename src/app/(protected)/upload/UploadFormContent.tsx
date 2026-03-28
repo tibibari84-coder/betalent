@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import UploadDropzone from '@/components/upload/UploadDropzone';
+import LibraryVideoInlinePicker from '@/components/upload/LibraryVideoInlinePicker';
 import RecordingStudio from '@/components/studio/RecordingStudio';
 import PublishSuccessCard from '@/components/upload/PublishSuccessCard';
 import type { ChallengeContextLite } from '@/components/upload/UploadMetadataFields';
@@ -203,19 +204,27 @@ export default function UploadFormContent(props: Props) {
           </header>
 
           <div className="mx-auto w-full space-y-4 px-3 pb-[calc(9.25rem+env(safe-area-inset-bottom))] pt-1 sm:max-w-md sm:px-4 md:space-y-5 md:pb-[calc(9.75rem+env(safe-area-inset-bottom))]">
-              {uploadSource === UPLOAD_SOURCE_FILE && (
-                <UploadDropzone
-                  composer
-                  file={file}
-                  previewUrl={previewUrlStable}
-                  durationSec={durationSec}
-                  onFileSelect={handleFileSelect}
-                  onClear={handleClearFile}
-                  onDurationLoaded={setDurationSec}
-                  disabled={loading}
-                  error={dropzoneError}
-                />
-              )}
+              {uploadSource === UPLOAD_SOURCE_FILE &&
+                (file ? (
+                  <UploadDropzone
+                    composer
+                    file={file}
+                    previewUrl={previewUrlStable}
+                    durationSec={durationSec}
+                    onFileSelect={handleFileSelect}
+                    onClear={handleClearFile}
+                    onDurationLoaded={setDurationSec}
+                    disabled={loading}
+                    error={dropzoneError}
+                  />
+                ) : (
+                  <LibraryVideoInlinePicker
+                    onFileSelect={handleFileSelect}
+                    onDurationLoaded={setDurationSec}
+                    onBackToStudio={onBackToStudio}
+                    disabled={loading}
+                  />
+                ))}
               {challengeContext ? (
                 <div className="rounded-xl border border-accent/25 bg-accent/[0.08] px-3.5 py-2.5">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-accent/80">Challenge</p>

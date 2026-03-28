@@ -159,6 +159,7 @@ export default function StudioSetupStep(props: StudioSetupStepProps) {
             vocalStyleLabel={t('upload.vocalStyle')}
             durationSec={0}
             showSummaryLine={false}
+            hideTitleAndCaption
           />
         </div>
 
