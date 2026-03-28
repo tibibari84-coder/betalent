@@ -5,6 +5,7 @@ import { useStudioRecorder, isStudioRecordingSupported } from '@/hooks/useStudio
 import type { ChallengeContextLite } from '@/components/upload/UploadMetadataFields';
 import type { RecordingMode } from '@/constants/recording-modes';
 import { createFileForUpload } from '@/lib/upload-client';
+import { logStudioCamera } from '@/lib/studio-camera-log';
 import { normalizeRecorderMime } from './recording-mime';
 import StudioSetupStep from './StudioSetupStep';
 import StudioBoothStep from './StudioBoothStep';
@@ -83,6 +84,7 @@ export default function RecordingStudio(props: RecordingStudioProps) {
   const {
     videoRef,
     phase: recPhase,
+    permissionState: cameraPermissionState,
     error: recError,
     elapsedSec: recElapsedSec,
     pauseSupported,
@@ -99,6 +101,7 @@ export default function RecordingStudio(props: RecordingStudioProps) {
     discardRecording: studioDiscardRecording,
     flipCamera: studioFlipCamera,
     startPreview: studioStartPreview,
+    hardResetCamera: studioHardResetCamera,
     facingMode,
   } = useStudioRecorder(maxDurationSec);
   const reviewVideoRef = useRef<HTMLVideoElement>(null);
@@ -191,9 +194,8 @@ export default function RecordingStudio(props: RecordingStudioProps) {
     }
     if (!result.ok) {
       setLocalError(result.message);
-      studioLeaveBooth();
-      setStep('setup');
       setShowCurtain(false);
+      setBoothReady(false);
       return;
     }
     setBoothReady(true);
@@ -206,10 +208,14 @@ export default function RecordingStudio(props: RecordingStudioProps) {
     setLocalError('');
     const result = await studioFlipCamera();
     setSwitchingLens(false);
-    if (!result.ok) setLocalError(result.message);
+    if (!result.ok) {
+      setLocalError(result.message);
+      setBoothReady(false);
+    }
   }, [studioFlipCamera]);
 
   const handleRetryPreview = useCallback(async () => {
+    logStudioCamera('camera_retry', { action: 'try_again' });
     setLocalError('');
     const result = await studioStartPreview();
     if (!result.ok) {
@@ -220,10 +226,29 @@ export default function RecordingStudio(props: RecordingStudioProps) {
     setBoothReady(true);
   }, [studioStartPreview]);
 
+  const handleHardResetCamera = useCallback(async () => {
+    setLocalError('');
+    const result = await studioHardResetCamera();
+    if (!result.ok) {
+      setLocalError(result.message);
+      setBoothReady(false);
+      return;
+    }
+    setBoothReady(true);
+  }, [studioHardResetCamera]);
+
   useEffect(() => {
     if (step !== 'booth' || !boothReady || showCurtain) return;
     if (recError) setLocalError(recError.message);
   }, [step, boothReady, showCurtain, recError]);
+
+  useEffect(() => {
+    if (step !== 'booth') return;
+    if (recPhase !== 'idle') return;
+    if (cameraPermissionState === 'error' || cameraPermissionState === 'denied') {
+      setBoothReady(false);
+    }
+  }, [step, recPhase, cameraPermissionState]);
 
   useEffect(() => {
     if (step !== 'booth' || !lastTake) return;
@@ -353,6 +378,7 @@ export default function RecordingStudio(props: RecordingStudioProps) {
         mirrorPreview={facingMode === 'user'}
         videoRef={videoRef}
         recPhase={recPhase}
+        cameraPermissionState={cameraPermissionState}
         recElapsedSec={recElapsedSec}
         recError={recError}
         micLive={micLive}
@@ -365,6 +391,8 @@ export default function RecordingStudio(props: RecordingStudioProps) {
         onCancelDuringCurtain={cancelDuringCurtain}
         onCancelPreview={cancelPreview}
         onRetryPreview={() => void handleRetryPreview()}
+        onHardResetCamera={() => void handleHardResetCamera()}
+        onSwitchToDeviceUpload={onSwitchToDeviceUpload}
         onStartRecording={() => void studioStartRecording()}
         onFlipCamera={() => void handleFlipCamera()}
         onPause={() => studioPauseRecording()}

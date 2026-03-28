@@ -1,6 +1,9 @@
 'use client';
 
 import { useRef, useState, useCallback, useEffect } from 'react';
+import { logStudioCamera } from '@/lib/studio-camera-log';
+
+export type StudioCameraPermissionState = 'idle' | 'requesting' | 'granted' | 'denied' | 'error';
 
 export type StudioRecorderErrorCode =
   | 'unsupported'
@@ -121,6 +124,7 @@ export function useStudioRecorder(maxDurationSec: number) {
 
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
   const [phase, setPhase] = useState<StudioRecorderPhase>('idle');
+  const [permissionState, setPermissionState] = useState<StudioCameraPermissionState>('idle');
   const [error, setError] = useState<{ code: StudioRecorderErrorCode; message: string } | null>(null);
   const [elapsedSec, setElapsedSec] = useState(0);
   const [pauseSupported, setPauseSupported] = useState(true);
@@ -151,7 +155,10 @@ export function useStudioRecorder(maxDurationSec: number) {
     streamRef.current = null;
     setMicLive(false);
     if (videoRef.current) {
-      videoRef.current.srcObject = null;
+      const el = videoRef.current;
+      el.srcObject = null;
+      el.onloadedmetadata = null;
+      el.onresize = null;
     }
     setPreviewFraming({ fit: 'cover', objectPosition: '50% 33%', stageAspect: '9 / 16' });
   }, []);
@@ -188,12 +195,15 @@ export function useStudioRecorder(maxDurationSec: number) {
       if (facingOverride !== undefined) setFacingMode(mode);
 
       setError(null);
+      setPermissionState('requesting');
+      setPhase('idle');
       resetRecorderOnly();
       stopStream();
 
       if (!isStudioRecordingSupported()) {
         const message = 'Studio recording is not available on this browser. Use Upload from device.';
         setError({ code: 'unsupported', message });
+        setPermissionState('error');
         return { ok: false, message, code: 'unsupported' };
       }
 
@@ -241,12 +251,16 @@ export function useStudioRecorder(maxDurationSec: number) {
           stream.getTracks().forEach((t) => t.stop());
           const message = 'Microphone not detected. Connect a mic and try again.';
           setError({ code: 'no_microphone', message });
+          setPermissionState('error');
+          setPhase('idle');
           return { ok: false, message, code: 'no_microphone' };
         }
         if (!videoTracks.length) {
           stream.getTracks().forEach((t) => t.stop());
           const message = 'Camera not detected. Connect a camera or use Upload from device.';
           setError({ code: 'no_camera', message });
+          setPermissionState('error');
+          setPhase('idle');
           return { ok: false, message, code: 'no_camera' };
         }
 
@@ -306,46 +320,75 @@ export function useStudioRecorder(maxDurationSec: number) {
           // onresize is supported for HTMLVideoElement and keeps framing stable on stream renegotiation.
           el.onresize = () => applyFramingFromElement();
         }
+        setPermissionState('granted');
         setPhase('preview');
+        logStudioCamera('camera_initialized', { facingMode: mode, isMobile });
         return { ok: true };
       } catch (e) {
         const err = e as DOMException & { message?: string };
         const name = err?.name ?? '';
         const msgLower = (err?.message ?? '').toLowerCase();
+        setPhase('idle');
         // Delayed or non-gesture getUserMedia often reports NotAllowedError even when the user did not choose "Block".
         if (name === 'NotAllowedError' || name === 'PermissionDeniedError') {
           const message =
-            'The browser did not allow camera/mic access (often if the request was not started directly from your tap). Tap “Enter live room” again and allow when prompted — or reset camera/mic permissions for this site in browser settings.';
+            'Camera access is required to record here. Tap “Try again” and allow when prompted, or enable camera and microphone for this site in your browser settings.';
           setError({ code: 'permission_denied', message });
+          setPermissionState('denied');
+          logStudioCamera('camera_permission_denied', { reason: name });
           return { ok: false, message, code: 'permission_denied' };
         }
         if (name === 'SecurityError' || msgLower.includes('secure context')) {
           const message = 'Camera and microphone require a secure connection (HTTPS). Open the site over HTTPS and try again.';
           setError({ code: 'permission_denied', message });
+          setPermissionState('denied');
+          logStudioCamera('camera_permission_denied', { reason: 'security' });
           return { ok: false, message, code: 'permission_denied' };
         }
         if (name === 'NotReadableError' || name === 'TrackStartError') {
           const message = 'Camera or microphone is busy or unavailable. Close other apps using the camera, then try again.';
           setError({ code: 'unknown', message });
+          setPermissionState('error');
           return { ok: false, message, code: 'unknown' };
         }
         if (name === 'OverconstrainedError') {
           const message = 'These camera settings are not supported on this device. Try again or use Upload from device.';
           setError({ code: 'unknown', message });
+          setPermissionState('error');
           return { ok: false, message, code: 'unknown' };
         }
         if (name === 'NotFoundError') {
           const message = 'No suitable camera or microphone was found. Use Upload from device.';
           setError({ code: 'no_camera', message });
+          setPermissionState('error');
           return { ok: false, message, code: 'no_camera' };
         }
         const message = 'We couldn’t open your camera and microphone. Please try again.';
         setError({ code: 'unknown', message });
+        setPermissionState('error');
         return { ok: false, message, code: 'unknown' };
       }
     },
     [facingMode, resetRecorderOnly, stopStream]
   );
+
+  /** Stop tracks, detach video, then open preview again (same as fresh getUserMedia). */
+  const hardResetCamera = useCallback(async (): Promise<StudioPreviewResult> => {
+    logStudioCamera('camera_retry', { action: 'hard_reset' });
+    resetRecorderOnly();
+    stopStream();
+    setPhase('idle');
+    setPermissionState('idle');
+    setError(null);
+    setMicLive(false);
+    if (videoRef.current) {
+      const el = videoRef.current;
+      el.srcObject = null;
+      el.onloadedmetadata = null;
+      el.onresize = null;
+    }
+    return startPreview();
+  }, [resetRecorderOnly, stopStream, startPreview]);
 
   useEffect(() => {
     return () => {
@@ -363,7 +406,16 @@ export function useStudioRecorder(maxDurationSec: number) {
 
   const startRecording = useCallback(() => {
     const stream = streamRef.current;
-    if (!stream || phase !== 'preview') return;
+    if (phase !== 'preview') return;
+    if (!stream) {
+      setError({
+        code: 'unknown',
+        message: 'Camera is not active. Use “Try again” or “Reset camera” below.',
+      });
+      setPermissionState('error');
+      setPhase('idle');
+      return;
+    }
 
     const { mimeType, fileExt } = pickRecorderMime();
     if (!mimeType) {
@@ -411,6 +463,7 @@ export function useStudioRecorder(maxDurationSec: number) {
       stopStream();
       if (videoRef.current) videoRef.current.srcObject = null;
       setPhase('stopped');
+      setPermissionState('idle');
       setLastTake(take);
 
       const resolver = stopResolveRef.current;
@@ -546,6 +599,7 @@ export function useStudioRecorder(maxDurationSec: number) {
     resetRecorderOnly();
     stopStream();
     setPhase('idle');
+    setPermissionState('idle');
     setElapsedSec(0);
     setError(null);
     setMicLive(false);
@@ -559,6 +613,7 @@ export function useStudioRecorder(maxDurationSec: number) {
   return {
     videoRef,
     phase,
+    permissionState,
     error,
     setError,
     elapsedSec,
@@ -578,5 +633,6 @@ export function useStudioRecorder(maxDurationSec: number) {
     discardRecording,
     flipCamera,
     startPreview,
+    hardResetCamera,
   };
 }

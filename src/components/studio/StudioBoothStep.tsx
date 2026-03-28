@@ -2,7 +2,12 @@
 
 import { useState, useEffect, useRef, type LegacyRef, type RefObject } from 'react';
 import type { RecordingMode } from '@/constants/recording-modes';
-import type { StudioPreviewFraming, StudioRecorderErrorCode, StudioRecorderPhase } from '@/hooks/useStudioRecorder';
+import type {
+  StudioCameraPermissionState,
+  StudioPreviewFraming,
+  StudioRecorderErrorCode,
+  StudioRecorderPhase,
+} from '@/hooks/useStudioRecorder';
 import { cn } from '@/lib/utils';
 import {
   IconArrowLeft,
@@ -23,6 +28,7 @@ export type StudioBoothStepProps = {
   mirrorPreview?: boolean;
   videoRef: RefObject<HTMLVideoElement | null>;
   recPhase: StudioRecorderPhase;
+  cameraPermissionState: StudioCameraPermissionState;
   recElapsedSec: number;
   recError: { code: StudioRecorderErrorCode; message: string } | null;
   micLive: boolean;
@@ -36,6 +42,8 @@ export type StudioBoothStepProps = {
   onCancelDuringCurtain: () => void;
   onCancelPreview: () => void;
   onRetryPreview: () => void;
+  onHardResetCamera: () => void;
+  onSwitchToDeviceUpload: () => void;
   onStartRecording: () => void;
   onFlipCamera: () => void;
   onPause: () => void;
@@ -52,12 +60,91 @@ const EFFECT_STRIP = [
   { id: 'y', label: 'Soon' },
 ] as const;
 
+function settingsHelpText(): string {
+  if (typeof navigator === 'undefined') {
+    return 'Open your device or browser settings and allow camera and microphone for this site, then tap Try again.';
+  }
+  const ua = navigator.userAgent;
+  if (/iPhone|iPad|iPod/i.test(ua)) {
+    return 'iOS: Settings → Privacy & Security → Camera and Microphone. If you use Safari, also check Settings → Apps → Safari → Camera / Microphone for this site.';
+  }
+  if (/Android/i.test(ua)) {
+    return 'Android: Settings → Apps → your browser → Permissions — enable Camera and Microphone. On some devices, also check the site permission prompt in the address bar.';
+  }
+  return 'Desktop: click the lock or site icon in the address bar → Site settings → allow Camera and Microphone, then return here and tap Try again.';
+}
+
+type CameraAccessOverlayBlockProps = {
+  title: string;
+  detail: string;
+  showSettingsHelp: boolean;
+  onToggleSettingsHelp: () => void;
+  onTryAgain: () => void;
+  onHardReset: () => void;
+  onUpload: () => void;
+};
+
+function CameraAccessOverlayBlock(props: CameraAccessOverlayBlockProps) {
+  const {
+    title,
+    detail,
+    showSettingsHelp,
+    onToggleSettingsHelp,
+    onTryAgain,
+    onHardReset,
+    onUpload,
+  } = props;
+  return (
+    <div
+      className="flex max-w-[min(100%,22rem)] flex-col items-center gap-4 rounded-2xl border border-white/[0.12] bg-black/88 px-5 py-6 text-center shadow-[0_24px_64px_rgba(0,0,0,0.65)] backdrop-blur-xl"
+      role="alertdialog"
+      aria-modal="true"
+      aria-labelledby="studio-camera-access-title"
+    >
+      <h2 id="studio-camera-access-title" className="font-display text-lg font-bold tracking-tight text-white">
+        {title}
+      </h2>
+      {detail ? (
+        <p className="text-[13px] leading-relaxed text-white/62 sm:text-[14px]">{detail}</p>
+      ) : null}
+      <div className="flex w-full flex-col gap-2.5">
+        <button type="button" onClick={onTryAgain} className={cn(btnPrimary, 'min-h-[48px] w-full justify-center')}>
+          Try again
+        </button>
+        <button
+          type="button"
+          onClick={onToggleSettingsHelp}
+          className={cn(btnSecondary, 'min-h-[48px] w-full justify-center')}
+        >
+          Open browser settings
+        </button>
+        {showSettingsHelp ? (
+          <p className="rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-2.5 text-left text-[12px] leading-relaxed text-white/55">
+            {settingsHelpText()}
+          </p>
+        ) : null}
+        <button type="button" onClick={onHardReset} className={cn(btnGhost, 'min-h-[44px] w-full text-white/70')}>
+          Reset camera
+        </button>
+        <button
+          type="button"
+          onClick={onUpload}
+          className="min-h-[44px] w-full text-[13px] font-medium text-white/45 underline decoration-white/25 underline-offset-4 [@media(hover:hover)]:hover:text-white/75"
+        >
+          Upload video from device
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function StudioBoothStep(props: StudioBoothStepProps) {
   const {
     maxDurationSec,
     mirrorPreview = false,
     videoRef,
     recPhase,
+    cameraPermissionState,
     recElapsedSec,
     recError,
     micLive,
@@ -71,6 +158,8 @@ export default function StudioBoothStep(props: StudioBoothStepProps) {
     onCancelDuringCurtain,
     onCancelPreview,
     onRetryPreview,
+    onHardResetCamera,
+    onSwitchToDeviceUpload,
     onStartRecording,
     onFlipCamera,
     onPause,
@@ -82,6 +171,7 @@ export default function StudioBoothStep(props: StudioBoothStepProps) {
   const [showGrid, setShowGrid] = useState(false);
   const [effectIdx, setEffectIdx] = useState(0);
   const [effectsOpen, setEffectsOpen] = useState(false);
+  const [showSettingsHelp, setShowSettingsHelp] = useState(false);
   const swipeFrom = useRef<{ x: number; y: number; fromTop: boolean } | null>(null);
 
   const durationChips = [...DURATION_PRESETS.filter((s) => s <= maxDurationSec)];
@@ -115,10 +205,29 @@ export default function StudioBoothStep(props: StudioBoothStepProps) {
     return () => mq.removeEventListener?.('change', apply);
   }, []);
 
-  const isPreview = boothReady && recPhase === 'preview';
+  const isPreview =
+    boothReady && recPhase === 'preview' && cameraPermissionState === 'granted';
   const isRecording = recPhase === 'recording' || recPhase === 'paused';
   const canSwitchCamera = isPreview && !switchingLens;
+
+  const accessMessage = localError || recError?.message || '';
+  const showCameraAccessOverlay =
+    !showCurtain &&
+    !boothReady &&
+    !isRecording &&
+    (cameraPermissionState === 'denied' ||
+      cameraPermissionState === 'error' ||
+      (accessMessage.length > 0 && cameraPermissionState !== 'requesting'));
+  const showRequestingBanner =
+    !showCurtain && cameraPermissionState === 'requesting' && !boothReady && !isRecording;
   const showStatusOverlay = isPreview || isRecording;
+
+  useEffect(() => {
+    if (!showCameraAccessOverlay) setShowSettingsHelp(false);
+  }, [showCameraAccessOverlay]);
+
+  const cameraAccessTitle =
+    cameraPermissionState === 'denied' ? 'Camera access required' : 'Camera unavailable';
 
   const videoObjectPosition = previewFraming.objectPosition;
 
@@ -415,6 +524,40 @@ export default function StudioBoothStep(props: StudioBoothStepProps) {
                   </div>
                 ) : null}
 
+                {showCameraAccessOverlay ? (
+                  <div className="absolute inset-0 z-[46] flex items-center justify-center bg-black/78 px-4 backdrop-blur-sm">
+                    <CameraAccessOverlayBlock
+                      title={cameraAccessTitle}
+                      detail={accessMessage}
+                      showSettingsHelp={showSettingsHelp}
+                      onToggleSettingsHelp={() => setShowSettingsHelp((v) => !v)}
+                      onTryAgain={() => {
+                        setShowSettingsHelp(false);
+                        onRetryPreview();
+                      }}
+                      onHardReset={() => {
+                        setShowSettingsHelp(false);
+                        void onHardResetCamera();
+                      }}
+                      onUpload={() => {
+                        setShowSettingsHelp(false);
+                        onSwitchToDeviceUpload();
+                      }}
+                    />
+                  </div>
+                ) : null}
+                {showRequestingBanner ? (
+                  <div className="pointer-events-none absolute left-3 right-3 top-[calc(3.75rem+env(safe-area-inset-top))] z-[46] flex justify-center">
+                    <div
+                      className="rounded-full border border-white/[0.12] bg-black/75 px-4 py-2 text-[12px] font-medium text-white/80 backdrop-blur-md"
+                      role="status"
+                      aria-live="polite"
+                    >
+                      Connecting to camera…
+                    </div>
+                  </div>
+                ) : null}
+
                 <div
                   className="absolute inset-x-0 bottom-0 z-50 flex flex-col pt-8 pb-[max(12px,env(safe-area-inset-bottom))]"
                   style={{
@@ -526,6 +669,17 @@ export default function StudioBoothStep(props: StudioBoothStepProps) {
             ) : (
               <>
                 <section className="relative flex min-h-0 flex-1 flex-col md:items-center md:justify-center md:py-4">
+                  {showRequestingBanner ? (
+                    <div className="mb-3 flex w-full shrink-0 justify-center px-4">
+                      <div
+                        className="rounded-full border border-white/[0.12] bg-black/75 px-4 py-2 text-[12px] font-medium text-white/80 backdrop-blur-md"
+                        role="status"
+                        aria-live="polite"
+                      >
+                        Connecting to camera…
+                      </div>
+                    </div>
+                  ) : null}
                   <div className="mx-auto w-full max-w-[560px]">
                     <ViewfinderFrame corners>
                       <div
@@ -613,6 +767,29 @@ export default function StudioBoothStep(props: StudioBoothStepProps) {
                             <p className="text-[13px] font-medium text-white/85">Switching camera…</p>
                           </div>
                         )}
+
+                        {showCameraAccessOverlay ? (
+                          <div className="absolute inset-0 z-[28] flex items-center justify-center bg-black/78 px-3 backdrop-blur-sm">
+                            <CameraAccessOverlayBlock
+                              title={cameraAccessTitle}
+                              detail={accessMessage}
+                              showSettingsHelp={showSettingsHelp}
+                              onToggleSettingsHelp={() => setShowSettingsHelp((v) => !v)}
+                              onTryAgain={() => {
+                                setShowSettingsHelp(false);
+                                onRetryPreview();
+                              }}
+                              onHardReset={() => {
+                                setShowSettingsHelp(false);
+                                void onHardResetCamera();
+                              }}
+                              onUpload={() => {
+                                setShowSettingsHelp(false);
+                                onSwitchToDeviceUpload();
+                              }}
+                            />
+                          </div>
+                        ) : null}
                       </div>
                     </ViewfinderFrame>
                   </div>
@@ -692,21 +869,34 @@ export default function StudioBoothStep(props: StudioBoothStepProps) {
             )}
           </div>
 
-          {recError && !boothReady && !showCurtain && (
-            <p className="px-2 pt-1 text-center text-[13px] text-red-300/90 sm:text-[14px]">{recError.message}</p>
-          )}
-          {localError && (
+          {!showCameraAccessOverlay && (localError || recError) && !isRecording && (
             <div className="flex flex-col items-center gap-2 pt-1" role="alert">
-              <p className="px-2 text-center text-[13px] text-red-300/90 sm:text-[14px]">{localError}</p>
-              {!isRecording && (
+              <p className="px-2 text-center text-[13px] text-red-300/90 sm:text-[14px]">
+                {localError || recError?.message}
+              </p>
+              <div className="flex flex-wrap items-center justify-center gap-2">
                 <button
                   type="button"
                   onClick={onRetryPreview}
                   className="min-h-[40px] rounded-[10px] border border-white/20 px-4 text-[13px] font-medium text-white/80 transition-colors [@media(hover:hover)]:hover:bg-white/5"
                 >
-                  Retry camera check
+                  Try again
                 </button>
-              )}
+                <button
+                  type="button"
+                  onClick={() => void onHardResetCamera()}
+                  className="min-h-[40px] rounded-[10px] border border-white/20 px-4 text-[13px] font-medium text-white/80 transition-colors [@media(hover:hover)]:hover:bg-white/5"
+                >
+                  Reset camera
+                </button>
+                <button
+                  type="button"
+                  onClick={onSwitchToDeviceUpload}
+                  className="min-h-[40px] px-3 text-[13px] font-medium text-white/45 underline decoration-white/25 underline-offset-4"
+                >
+                  Upload from device
+                </button>
+              </div>
             </div>
           )}
         </div>
