@@ -21,6 +21,8 @@ import {
   LIVE_RECORDING_MAX_DURATION_SEC,
 } from '@/constants/recording-modes';
 import { performDirectUpload } from '@/lib/upload-client';
+import { showBetalentToast } from '@/lib/betalent-toast';
+import { logUploadFlowEvent, writePostPublishHandoff } from '@/lib/upload-flow-log';
 import { useI18n } from '@/contexts/I18nContext';
 import UploadFormContent from './UploadFormContent';
 import type { UploadEntryMode } from './UploadFormContent';
@@ -207,10 +209,12 @@ export default function UploadPage() {
       return;
     }
 
+    logUploadFlowEvent('publish_clicked', { challengeSlug: challengeSlug || undefined });
     setPhase('uploading');
     setUploadProgress(0);
 
     try {
+      logUploadFlowEvent('upload_started', { size: file.size });
       const result = await performDirectUpload(
         file,
         {
@@ -230,12 +234,25 @@ export default function UploadPage() {
 
       if (!result.ok) {
         if (result.message === 'Login required') {
+          logUploadFlowEvent('upload_failed', { reason: 'login_required' });
           const backTo = challengeSlug ? `/upload?challenge=${encodeURIComponent(challengeSlug)}` : '/upload';
           router.push(`/login?from=${encodeURIComponent(backTo)}`);
           return;
         }
+        const msg = toUiUploadError(result.message);
+        logUploadFlowEvent('upload_failed', { reason: result.step ?? 'upload', message: result.message });
         setPhase('failed');
-        setError(toUiUploadError(result.message));
+        setError(msg);
+        showBetalentToast({
+          message: 'Upload failed — tap to retry',
+          durationMs: 0,
+          variant: 'error',
+          actionLabel: 'Retry',
+          onAction: () => {
+            setPhase('idle');
+            setError('');
+          },
+        });
         return;
       }
 
@@ -247,22 +264,57 @@ export default function UploadPage() {
         });
         const enterData = await enterRes.json();
         if (!enterRes.ok || !enterData?.ok) {
+          logUploadFlowEvent('upload_failed', { reason: 'challenge_enter', videoId: result.videoId });
           setPhase('failed');
           setError('Your upload finished, but challenge submission could not be completed. Please try again.');
+          showBetalentToast({
+            message: 'Upload failed — tap to retry',
+            durationMs: 0,
+            variant: 'error',
+            actionLabel: 'Retry',
+            onAction: () => {
+              setPhase('idle');
+              setError('');
+            },
+          });
           return;
         }
       }
 
       setTitle(effectiveTitle);
-      setPhase('success');
-      setSuccessVideoId(result.videoId);
-      setSuccessReady(result.ready);
+      logUploadFlowEvent('upload_completed', { videoId: result.videoId, ready: result.ready });
+      logUploadFlowEvent('upload_background', {
+        videoId: result.videoId,
+        note: 'navigate_while_server_may_finish_processing',
+      });
+      writePostPublishHandoff({
+        videoId: result.videoId,
+        ready: result.ready,
+        at: Date.now(),
+      });
+      showBetalentToast({
+        message: 'Uploading your performance…',
+        durationMs: 4500,
+        variant: 'info',
+      });
+      logUploadFlowEvent('redirected_to_feed', { videoId: result.videoId });
+      router.replace('/feed');
       router.refresh();
     } catch (err) {
-      // Keep details in console for debugging while UI stays clean.
       console.error('[upload] publish failed', err);
+      logUploadFlowEvent('upload_failed', { reason: 'exception' });
       setPhase('failed');
       setError('Upload failed. Please try again.');
+      showBetalentToast({
+        message: 'Upload failed — tap to retry',
+        durationMs: 0,
+        variant: 'error',
+        actionLabel: 'Retry',
+        onAction: () => {
+          setPhase('idle');
+          setError('');
+        },
+      });
     }
   };
 

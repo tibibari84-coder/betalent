@@ -8,6 +8,7 @@ import { ShellProviders } from '@/components/layout/ShellProviders';
 import { ChatPanelProvider } from '@/contexts/ChatPanelContext';
 import { DmSlidingPanel } from '@/components/chat/DmSlidingPanel';
 import GlobalGiftCelebrationHost from '@/components/gift/GlobalGiftCelebrationHost';
+import GlobalAppToastHost from '@/components/shared/GlobalAppToastHost';
 import Navbar from '@/components/layout/Navbar';
 import Sidebar from '@/components/layout/Sidebar';
 import RightPanel from '@/components/layout/RightPanel';
@@ -167,6 +168,7 @@ export function RootShell({
         </RootShellContent>
         <DmSlidingPanel />
         <GlobalGiftCelebrationHost />
+        <GlobalAppToastHost />
       </ChatPanelProvider>
     </ShellProviders>
   );

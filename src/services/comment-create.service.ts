@@ -30,6 +30,7 @@ const commentCreateInclude = {
 
 export type CommentApiPayload = {
   id: string;
+  userId: string;
   body: string;
   isDeleted: boolean;
   likeCount: number;
@@ -47,6 +48,7 @@ export type CommentApiPayload = {
 
 function mapRowToPayload(created: {
   id: string;
+  userId: string;
   body: string;
   isDeleted: boolean;
   likeCount: number;
@@ -72,6 +74,7 @@ function mapRowToPayload(created: {
     : u?.creatorVerification;
   return {
     id: created.id,
+    userId: created.userId,
     body: created.body,
     isDeleted: created.isDeleted,
     likeCount: created.likeCount,

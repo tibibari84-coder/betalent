@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useState, useEffect, useCallback, useMemo } from 'react';
+import Link from 'next/link';
 import FeedTabBar from '@/components/feed/FeedTabBar';
 import { FirstSessionBanner } from '@/components/feed/FirstSessionBanner';
 import { type VideoFeedItem } from '@/components/feed/VideoFeedCard';
@@ -11,6 +12,10 @@ import { fetchFeedWithRetry } from '@/lib/feed-fetch';
 import { useViewer } from '@/contexts/ViewerContext';
 import { mergeForYouWithSuggestions } from '@/lib/feed-merge-suggestions';
 import type { CreatorRecommendationPayload } from '@/types/creator-recommendations';
+import {
+  BETALENT_POST_PUBLISH_HANDOFF_KEY,
+  type PostPublishHandoffPayload,
+} from '@/lib/upload-flow-log';
 
 type TabId = 'for-you' | 'following' | 'trending' | 'new-voices' | 'challenges';
 
@@ -40,6 +45,7 @@ export default function FeedPage() {
 
   const [forYouHasMore, setForYouHasMore] = useState(true);
   const [forYouLoadingMore, setForYouLoadingMore] = useState(false);
+  const [postPublishBanner, setPostPublishBanner] = useState<PostPublishHandoffPayload | null>(null);
   const [followingHasMore, setFollowingHasMore] = useState(true);
   const [followingLoadingMore, setFollowingLoadingMore] = useState(false);
   const [trendingHasMore, setTrendingHasMore] = useState(true);
@@ -85,6 +91,33 @@ export default function FeedPage() {
       setForYouLoadingMore(false);
     }
   }, []);
+
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(BETALENT_POST_PUBLISH_HANDOFF_KEY);
+      if (!raw) return;
+      const p = JSON.parse(raw) as PostPublishHandoffPayload;
+      if (!p?.videoId || typeof p.at !== 'number') return;
+      if (Date.now() - p.at > 86_400_000) {
+        sessionStorage.removeItem(BETALENT_POST_PUBLISH_HANDOFF_KEY);
+        return;
+      }
+      setPostPublishBanner(p);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  const dismissPostPublishBanner = useCallback(() => {
+    try {
+      sessionStorage.removeItem(BETALENT_POST_PUBLISH_HANDOFF_KEY);
+    } catch {
+      /* ignore */
+    }
+    setPostPublishBanner(null);
+    setActiveTab('for-you');
+    void loadForYou();
+  }, [loadForYou]);
 
   const loadFollowing = useCallback(async (append = false) => {
     if (append) setFollowingLoadingMore(true);
@@ -505,8 +538,38 @@ export default function FeedPage() {
 
       {/* Top overlay rail: tabs + optional welcome — full width, no nested page card */}
       <div className="relative z-20 w-full flex-shrink-0 border-b border-white/[0.06] bg-black/45 backdrop-blur-xl">
-        <div className="w-full max-w-none px-2 pt-2 pb-0 md:px-3">
+        <div className="w-full max-w-none px-2 pt-2 pb-0 md:px-3 space-y-2">
           <FirstSessionBanner compact />
+          {postPublishBanner ? (
+            <div
+              className="flex flex-col gap-2 rounded-2xl border border-accent/35 bg-accent/[0.12] px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between"
+              role="status"
+            >
+              <p className="text-[13px] leading-snug text-white/90">
+                <span className="mr-1.5 inline-block rounded-md bg-accent/25 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-accent">
+                  {postPublishBanner.ready ? 'Live' : 'Processing'}
+                </span>
+                {postPublishBanner.ready
+                  ? 'Your video is live — it can appear in For You as the feed refreshes.'
+                  : 'Your performance is processing — it will show in For You when ready.'}
+              </p>
+              <div className="flex shrink-0 flex-wrap items-center gap-2">
+                <Link
+                  href={`/video/${encodeURIComponent(postPublishBanner.videoId)}`}
+                  className="text-[13px] font-semibold text-accent underline-offset-2 hover:underline"
+                >
+                  Open video
+                </Link>
+                <button
+                  type="button"
+                  onClick={dismissPostPublishBanner}
+                  className="rounded-xl border border-white/15 bg-white/[0.06] px-3 py-1.5 text-[12px] font-medium text-white/80"
+                >
+                  Got it
+                </button>
+              </div>
+            </div>
+          ) : null}
         </div>
         <div className="w-full px-1.5 pb-1.5 pt-0 md:px-2 md:pb-2">
           <FeedTabBar activeTab={activeTab} onTabChange={setActiveTab} />

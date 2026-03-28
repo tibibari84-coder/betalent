@@ -18,10 +18,7 @@ export async function checkCommentPermission(
   userId: string
 ): Promise<CommentPermissionResult> {
   const video = await prisma.video.findFirst({
-    where: {
-      id: videoId,
-      ...CANONICAL_PUBLIC_VIDEO_WHERE,
-    },
+    where: { id: videoId },
     select: { creatorId: true, commentPermission: true },
   });
 
@@ -29,15 +26,28 @@ export async function checkCommentPermission(
     return { allowed: false, reason: 'Video not found or not eligible for comments' };
   }
 
-  switch (video.commentPermission) {
-    case 'OFF':
-      return { allowed: false, reason: 'Comments are disabled' };
+  if (video.commentPermission === 'OFF') {
+    return { allowed: false, reason: 'Comments are disabled' };
+  }
 
+  /** Creators can comment on their own performances (FOLLOWERS/FOLLOWING do not apply to self). */
+  if (video.creatorId === userId) {
+    return { allowed: true };
+  }
+
+  const publicVideo = await prisma.video.findFirst({
+    where: { id: videoId, ...CANONICAL_PUBLIC_VIDEO_WHERE },
+    select: { id: true },
+  });
+  if (!publicVideo) {
+    return { allowed: false, reason: 'Video not found or not eligible for comments' };
+  }
+
+  switch (video.commentPermission) {
     case 'EVERYONE':
       return { allowed: true };
 
     case 'FOLLOWERS': {
-      // User must follow the creator (followerId=userId, creatorId=creator)
       const follow = await prisma.follow.findUnique({
         where: {
           followerId_creatorId: {
@@ -53,7 +63,6 @@ export async function checkCommentPermission(
     }
 
     case 'FOLLOWING': {
-      // Creator must follow the commenter (followerId=creator, creatorId=userId)
       const follow = await prisma.follow.findUnique({
         where: {
           followerId_creatorId: {

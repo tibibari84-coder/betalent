@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useEffect, useState, useCallback } from 'react';
+import { useViewer } from '@/contexts/ViewerContext';
 import { IconComment, IconX, IconPaperAirplane } from '@/components/ui/Icons';
 import Link from 'next/link';
 import { CONTENT_REPORT_TYPE_LABELS, type ContentReportTypeKey } from '@/constants/content-report';
@@ -8,6 +9,52 @@ import { CommentRow } from '@/components/comments/CommentRow';
 import type { CommentItem, ApiComment, CommentPatch } from '@/components/comments/comment-types';
 
 export type { CommentItem };
+
+type PostCommentUser = {
+  username: string;
+  displayName: string;
+  avatarUrl: string | null;
+  country: string | null;
+  verified: boolean;
+  verificationLevel: string | null;
+};
+
+function mapPostResponseToApiComment(
+  c: {
+    id: string;
+    userId: string;
+    body: string;
+    isDeleted: boolean;
+    likeCount: number;
+    replyCount: number;
+    createdAt: string;
+    user: PostCommentUser;
+  },
+  videoCreatorId: string | null
+): ApiComment {
+  return {
+    id: c.id,
+    userId: c.userId,
+    parentId: null,
+    username: c.user.username,
+    displayName: c.user.displayName ?? c.user.username,
+    avatarUrl: c.user.avatarUrl ?? undefined,
+    country: c.user.country ?? undefined,
+    timestamp: 'now',
+    body: c.body,
+    isDeleted: c.isDeleted,
+    likeCount: c.likeCount,
+    replyCount: c.replyCount,
+    verified: c.user.verified,
+    verificationLevel: c.user.verificationLevel,
+    isCreator: Boolean(videoCreatorId && videoCreatorId === c.userId),
+    canDelete: true,
+    createdAt: c.createdAt,
+    likedByMe: false,
+    myReaction: null,
+    reactionSummary: {},
+  };
+}
 
 interface CommentsPanelProps {
   isOpen: boolean;
@@ -120,6 +167,7 @@ export default function CommentsPanel({
   isSubmitting: parentSubmitting,
   onCommentsCountChange,
 }: CommentsPanelProps) {
+  const { viewer } = useViewer();
   const inputRef = useRef<HTMLInputElement>(null);
   const [localError, setLocalError] = useState<string | null>(null);
   const [selfList, setSelfList] = useState<ApiComment[]>([]);
@@ -132,12 +180,14 @@ export default function CommentsPanel({
     canComment: boolean;
     isSignedIn: boolean;
     currentUserId: string | null;
+    creatorId: string | null;
   }>({
     commentsCount: 0,
     commentPermission: 'EVERYONE',
     canComment: false,
     isSignedIn: false,
     currentUserId: null,
+    creatorId: null,
   });
   const [submitting, setSubmitting] = useState(false);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
@@ -226,6 +276,7 @@ export default function CommentsPanel({
           canComment: data.canComment,
           isSignedIn: !!data.currentUserId,
           currentUserId: (data.currentUserId as string | null) ?? null,
+          creatorId: (data.creatorId as string | null) ?? null,
         });
         onCommentsCountChange?.(data.commentsCount ?? 0);
         if (isMore) setSelfList((prev) => mergeById(prev, rows));
@@ -308,6 +359,38 @@ export default function CommentsPanel({
     if (!videoId) return;
     setSubmitting(true);
     setLocalError(null);
+    const trimmed = body.trim();
+    const useOptimisticTopLevel = selfFetch && !parentId && viewer?.id && trimmed;
+
+    const pendingId = useOptimisticTopLevel ? `pending-${Date.now()}` : null;
+    if (useOptimisticTopLevel && pendingId) {
+      const optimistic: ApiComment = {
+        id: pendingId,
+        userId: viewer.id,
+        parentId: null,
+        username: viewer.username,
+        displayName: viewer.username,
+        timestamp: 'now',
+        body: trimmed,
+        isDeleted: false,
+        likeCount: 0,
+        replyCount: 0,
+        verified: false,
+        verificationLevel: null,
+        isCreator: meta.creatorId === viewer.id,
+        canDelete: true,
+        likedByMe: false,
+        myReaction: null,
+        reactionSummary: {},
+      };
+      setSelfList((prev) => [optimistic, ...prev]);
+      setMeta((m) => {
+        const next = { ...m, commentsCount: m.commentsCount + 1 };
+        onCommentsCountChange?.(next.commentsCount);
+        return next;
+      });
+    }
+
     try {
       const res = await fetch('/api/comment', {
         method: 'POST',
@@ -316,16 +399,41 @@ export default function CommentsPanel({
       });
       const data = await res.json();
       if (res.status === 401) {
+        if (pendingId) {
+          setSelfList((prev) => prev.filter((c) => c.id !== pendingId));
+          setMeta((m) => {
+            const next = { ...m, commentsCount: Math.max(0, m.commentsCount - 1) };
+            onCommentsCountChange?.(next.commentsCount);
+            return next;
+          });
+        }
         const from =
           typeof window !== 'undefined' ? encodeURIComponent(window.location.pathname || '/') : '/';
         window.location.href = `/login?from=${from}`;
         return;
       }
       if (!res.ok) {
+        if (pendingId) {
+          setSelfList((prev) => prev.filter((c) => c.id !== pendingId));
+          setMeta((m) => {
+            const next = { ...m, commentsCount: Math.max(0, m.commentsCount - 1) };
+            onCommentsCountChange?.(next.commentsCount);
+            return next;
+          });
+        }
         setLocalError(data.message ?? 'Could not post');
         return;
       }
-      await loadTop();
+      if (pendingId && data?.comment?.id && data?.comment?.userId) {
+        const mapped = mapPostResponseToApiComment(data.comment, meta.creatorId);
+        setSelfList((prev) => {
+          const rest = prev.filter((c) => c.id !== pendingId);
+          if (rest.some((c) => c.id === mapped.id)) return rest;
+          return [mapped, ...rest];
+        });
+      } else {
+        await loadTop();
+      }
       if (parentId) {
         setExpanded((e) => ({ ...e, [parentId]: true }));
         await loadReplies(parentId);
