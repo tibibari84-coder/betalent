@@ -10,9 +10,11 @@ const securityHeaders = [
   { key: 'X-Content-Type-Options', value: 'nosniff' },
   { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
   { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+  // Allow first-party studio recording. Empty allowlists (camera=()) block getUserMedia entirely.
+  // Vercel serves these from Next; keep vercel.json minimal so nothing overrides this.
   {
     key: 'Permissions-Policy',
-    value: 'camera=(), microphone=(), geolocation=(), interest-cohort=()',
+    value: 'camera=*, microphone=*, geolocation=(), interest-cohort=()',
   },
   {
     key: 'Cross-Origin-Opener-Policy',

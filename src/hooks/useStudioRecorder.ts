@@ -6,6 +6,11 @@ import { logStudioCamera } from '@/lib/studio-camera-log';
 import { acquireVideoStreamWithFallback, STUDIO_AUDIO_CONSTRAINTS } from '@/lib/studio/studio-camera-constraints';
 import { resolvePreviewFraming } from '@/lib/studio/studio-preview-framing';
 import type { StudioPreviewFraming } from '@/lib/studio/studio-preview-framing';
+import {
+  cameraEnvironmentBlockedMessage,
+  isLikelyEmbeddedInIframe,
+  isPermissionsPolicyMediaError,
+} from '@/lib/studio/studio-camera-environment';
 
 export type { StudioPreviewFraming } from '@/lib/studio/studio-preview-framing';
 
@@ -69,12 +74,32 @@ async function classifyGetUserMediaFailure(
 ): Promise<{
   result: StudioPreviewFailure;
   permissionState: StudioCameraPermissionState;
-  logEvent: 'camera_permission_denied' | 'microphone_permission_denied' | null;
+  logEvent: 'camera_environment_blocked' | 'camera_permission_denied' | 'microphone_permission_denied' | null;
   logFields?: Record<string, unknown>;
 }> {
   const err = e as DOMException & { message?: string };
   const name = err?.name ?? '';
   const msgLower = (err?.message ?? '').toLowerCase();
+
+  if (isPermissionsPolicyMediaError(e)) {
+    const embedded = isLikelyEmbeddedInIframe();
+    return {
+      result: {
+        ok: false,
+        code: 'unknown',
+        message: cameraEnvironmentBlockedMessage(embedded),
+      },
+      permissionState: 'error',
+      logEvent: 'camera_environment_blocked',
+      logFields: {
+        gate,
+        embeddedInIframe: embedded,
+        errorName: name,
+        errorMessagePreview: (err?.message ?? '').slice(0, 240),
+        block: 'permissions_policy_document',
+      },
+    };
+  }
 
   const cameraBlockedMsg =
     'Camera is blocked or not allowed for this site. In Chrome, click the lock or camera icon in the address bar → Site settings → set Camera to Allow. Camera and Microphone are listed separately — the mic can be on while the camera is still blocked.';
@@ -400,7 +425,11 @@ export function useStudioRecorder(maxDurationSec: number) {
       setError(null);
       setIsAcquiringStream(true);
       setPermissionState('requesting');
-      logStudioCamera('camera_permission_requested', { facingMode: mode, isMobile });
+      logStudioCamera('camera_permission_requested', {
+        facingMode: mode,
+        isMobile,
+        embeddedInIframe: isLikelyEmbeddedInIframe(),
+      });
 
       resetRecorderRefsOnly(
         recorderRef,

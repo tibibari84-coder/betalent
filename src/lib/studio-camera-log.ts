@@ -8,6 +8,7 @@ export type StudioCameraLogEvent =
   | 'camera_permission_requested'
   | 'camera_permission_granted'
   | 'camera_permission_denied'
+  | 'camera_environment_blocked'
   | 'microphone_permission_denied'
   | 'camera_retry'
   | 'camera_initialized'
