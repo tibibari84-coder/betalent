@@ -7,13 +7,12 @@ import type { RecordingMode } from '@/constants/recording-modes';
 import { createFileForUpload } from '@/lib/upload-client';
 import { logStudioCamera } from '@/lib/studio-camera-log';
 import { mimeForRecordedStudioBlob } from './recording-mime';
-import StudioSetupStep from './StudioSetupStep';
 import StudioCameraScreen from './StudioCameraScreen';
 import StudioReviewStep from './StudioReviewStep';
 
 function studioDurationOptions(platformMaxSec: number): number[] {
-  const base = [15, 60, 90].filter((s) => s <= platformMaxSec);
-  if (!base.includes(platformMaxSec)) base.push(platformMaxSec);
+  const long = Math.min(600, platformMaxSec);
+  const base = [15, 60, long].filter((s) => s <= platformMaxSec && s >= 1);
   return Array.from(new Set(base)).sort((a, b) => a - b);
 }
 
@@ -23,29 +22,15 @@ function defaultRecordingCap(platformMaxSec: number): number {
   return opts[opts.length - 1] ?? platformMaxSec;
 }
 
-type StudioStep = 'setup' | 'booth' | 'review';
+type StudioStep = 'booth' | 'review';
 
 export type RecordingStudioProps = {
   maxDurationSec: number;
   mode?: RecordingMode;
   challengeSlug: string;
   challengeContext: ChallengeContextLite;
-  title: string;
-  setTitle: (v: string) => void;
-  description: string;
-  setDescription: (v: string) => void;
-  styleSlug: string;
-  setStyleSlug: (v: string) => void;
-  challengeId: string;
-  setChallengeId: (v: string) => void;
-  contentType: 'ORIGINAL' | 'COVER' | 'REMIX';
-  setContentType: (v: 'ORIGINAL' | 'COVER' | 'REMIX') => void;
-  rulesAcknowledged: boolean;
-  setRulesAcknowledged: (v: boolean) => void;
-  t: (key: string) => string;
   onAcceptTake: (file: File, durationSec: number) => void;
   onClose: () => void;
-  loading: boolean;
 };
 
 /** Curtain delay before camera — mobile only (desktop must call getUserMedia in the same gesture). */
@@ -53,33 +38,12 @@ const CURTAIN_MS = 520;
 const RETAKE_CURTAIN_MS = 300;
 
 /**
- * BETALENT Recording Studio v1: session prep → curtain + permissions → live preview → record → review → upload pipeline.
+ * BETALENT Recording Studio: fullscreen camera-first → record → review → upload pipeline.
  */
 export default function RecordingStudio(props: RecordingStudioProps) {
-  const {
-    maxDurationSec,
-    mode = 'standard',
-    challengeSlug,
-    challengeContext,
-    title,
-    setTitle,
-    description,
-    setDescription,
-    styleSlug,
-    setStyleSlug,
-    challengeId,
-    setChallengeId,
-    contentType,
-    setContentType,
-    rulesAcknowledged,
-    setRulesAcknowledged,
-    t,
-    onAcceptTake,
-    onClose,
-    loading,
-  } = props;
+  const { maxDurationSec, mode = 'standard', challengeSlug, challengeContext, onAcceptTake, onClose } = props;
 
-  const [step, setStep] = useState<StudioStep>('setup');
+  const [step, setStep] = useState<StudioStep>('booth');
   const [isMobileStudio, setIsMobileStudio] = useState(false);
   const [boothReady, setBoothReady] = useState(false);
   const [showCurtain, setShowCurtain] = useState(false);
@@ -154,12 +118,6 @@ export default function RecordingStudio(props: RecordingStudioProps) {
     return () => URL.revokeObjectURL(u);
   }, [reviewBlob]);
 
-  /** Title/caption are collected on the publish step after capture — not a gate to open camera. */
-  const baseSetupValid =
-    Boolean(styleSlug) &&
-    (!challengeSlug || !challengeContext || challengeContext.status === 'ENTRY_OPEN');
-  const setupValid = baseSetupValid && rulesAcknowledged;
-
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const mq = window.matchMedia('(max-width: 768px)');
@@ -169,60 +127,66 @@ export default function RecordingStudio(props: RecordingStudioProps) {
     return () => mq.removeEventListener?.('change', apply);
   }, []);
 
+  const enterBoothRef = useRef(studioEnterBooth);
+  const leaveBoothRef = useRef(studioLeaveBooth);
+  enterBoothRef.current = studioEnterBooth;
+  leaveBoothRef.current = studioLeaveBooth;
+
+  /** Boot: open camera once on mount (no prep screen). Refs avoid re-running when hook identities change. */
+  useEffect(() => {
+    let cancelled = false;
+    const run = async () => {
+      if (!isStudioRecordingSupported()) {
+        setLocalError(
+          'In-browser recording isn’t available in this browser. Try Safari or Chrome, or reload the page.'
+        );
+        return;
+      }
+      setShowCurtain(true);
+      setBoothReady(false);
+      setLocalError('');
+      const isMobile =
+        typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches;
+      await new Promise((r) => setTimeout(r, isMobile ? CURTAIN_MS : 0));
+      if (cancelled) return;
+      const result = await enterBoothRef.current();
+      if (cancelled) {
+        leaveBoothRef.current();
+        return;
+      }
+      if (!result.ok) {
+        setLocalError(result.message);
+        setShowCurtain(false);
+        setBoothReady(false);
+        return;
+      }
+      setBoothReady(true);
+      setShowCurtain(false);
+      setLocalError('');
+    };
+    void run();
+    return () => {
+      cancelled = true;
+      leaveBoothRef.current();
+    };
+  }, []);
+
   const cancelDuringCurtain = useCallback(() => {
     prepCancelledRef.current = true;
     studioLeaveBooth();
-    setStep('setup');
     setShowCurtain(false);
     setBoothReady(false);
     setLocalError('');
-  }, [studioLeaveBooth]);
+    onClose();
+  }, [studioLeaveBooth, onClose]);
 
   const cancelPreview = useCallback(() => {
     studioLeaveBooth();
-    setStep('setup');
     setBoothReady(false);
     setShowCurtain(false);
     setLocalError('');
-  }, [studioLeaveBooth]);
-
-  const enterLiveRoom = useCallback(async (opts?: { fromRulesAccept?: boolean }) => {
-    setLocalError('');
-    const isRulesAcceptFlow = opts?.fromRulesAccept === true;
-    const ready = isRulesAcceptFlow ? baseSetupValid : setupValid;
-    if (!ready) {
-      setLocalError('Complete your session details and confirm platform rules before opening the camera.');
-      return;
-    }
-    if (!isStudioRecordingSupported()) {
-      setLocalError('In-browser recording isn’t available in this browser. Try Safari or Chrome, or reload the page.');
-      return;
-    }
-    prepCancelledRef.current = false;
-    setStep('booth');
-    setShowCurtain(true);
-    setBoothReady(false);
-    // Desktop: do not delay — Chrome/Safari treat delayed getUserMedia as non–user-initiated → NotAllowedError.
-    // Mobile: keep short curtain delay (this flow was already working on phones).
-    if (!isRulesAcceptFlow && isMobileStudio) {
-      await new Promise((r) => setTimeout(r, CURTAIN_MS));
-    }
-    if (prepCancelledRef.current) return;
-    const result = await studioEnterBooth();
-    if (prepCancelledRef.current) {
-      studioLeaveBooth();
-      return;
-    }
-    if (!result.ok) {
-      setLocalError(result.message);
-      setShowCurtain(false);
-      setBoothReady(false);
-      return;
-    }
-    setBoothReady(true);
-    setShowCurtain(false);
-    setLocalError('');
-  }, [isMobileStudio, baseSetupValid, setupValid, studioEnterBooth, studioLeaveBooth]);
+    onClose();
+  }, [studioLeaveBooth, onClose]);
 
   const handleFlipCamera = useCallback(async () => {
     setSwitchingLens(true);
@@ -268,7 +232,6 @@ export default function RecordingStudio(props: RecordingStudioProps) {
 
   useEffect(() => {
     if (step !== 'booth' || !lastTake) return;
-    // Auto-stop at configured cap finalizes here as well.
     setReviewBlob(lastTake.blob);
     setReviewExt(lastTake.fileExt);
     setReviewDurationSec(lastTake.durationSec);
@@ -310,8 +273,8 @@ export default function RecordingStudio(props: RecordingStudioProps) {
     if (!result.ok) {
       setLocalError(result.message);
       studioLeaveBooth();
-      setStep('setup');
       setShowCurtain(false);
+      setBoothReady(false);
       return;
     }
     setBoothReady(true);
@@ -329,59 +292,38 @@ export default function RecordingStudio(props: RecordingStudioProps) {
     onAcceptTake(file, dur);
   }, [reviewBlob, reviewExt, maxDurationSec, reviewDurationSec, studioLeaveBooth, onAcceptTake]);
 
-  const handleRulesAccepted = useCallback(() => {
-    // Desktop only: trigger camera entry directly from the checkbox user gesture.
-    if (isMobileStudio) return;
-    if (step !== 'setup') return;
-    if (!title.trim() || !styleSlug) return;
-    void enterLiveRoom({ fromRulesAccept: true });
-  }, [isMobileStudio, step, title, styleSlug, enterLiveRoom]);
-
   const handleClose = useCallback(() => {
     prepCancelledRef.current = true;
     studioLeaveBooth();
     setReviewBlob(null);
-    setStep('setup');
     setBoothReady(false);
     setShowCurtain(false);
     setLocalError('');
     onClose();
   }, [studioLeaveBooth, onClose]);
 
-  const goSetupFromReview = useCallback(() => {
+  const exitFromReview = useCallback(() => {
     setReviewBlob(null);
     setLocalError('');
     studioLeaveBooth();
-    setStep('setup');
-    setBoothReady(false);
-    setShowCurtain(false);
-  }, [studioLeaveBooth]);
+    onClose();
+  }, [studioLeaveBooth, onClose]);
 
-  if (step === 'setup') {
+  const challengeInvalid =
+    Boolean(challengeSlug) &&
+    challengeContext &&
+    challengeContext.status !== 'ENTRY_OPEN';
+
+  if (challengeInvalid) {
     return (
-      <StudioSetupStep
-        title={title}
-        setTitle={setTitle}
-        description={description}
-        setDescription={setDescription}
-        styleSlug={styleSlug}
-        setStyleSlug={setStyleSlug}
-        challengeId={challengeId}
-        setChallengeId={setChallengeId}
-        challengeContext={challengeContext}
-        contentType={contentType}
-        setContentType={setContentType}
-        rulesAcknowledged={rulesAcknowledged}
-        setRulesAcknowledged={setRulesAcknowledged}
-        onRulesAccepted={handleRulesAccepted}
-        t={t}
-        loading={loading}
-        localError={localError}
-        maxDurationSec={maxDurationSec}
-        mode={mode}
-        onEnterBooth={enterLiveRoom}
-        onClose={handleClose}
-      />
+      <div className="fixed inset-0 z-[120] flex flex-col items-center justify-center bg-black px-6 text-center">
+        <p className="max-w-sm text-[15px] text-white/80">
+          This challenge is not accepting entries right now. Close and return to the challenge page.
+        </p>
+        <button type="button" onClick={onClose} className="mt-6 min-h-[48px] rounded-full px-6 text-[15px] font-semibold text-accent">
+          Close
+        </button>
+      </div>
     );
   }
 
@@ -424,7 +366,7 @@ export default function RecordingStudio(props: RecordingStudioProps) {
       previewFraming={previewFraming}
       primaryActionLabel="Continue to publish"
       onRetake={() => void handleRetake()}
-      onEditSession={goSetupFromReview}
+      onEditSession={exitFromReview}
       onUseTake={handleUseTake}
     />
   );

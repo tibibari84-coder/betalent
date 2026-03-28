@@ -322,6 +322,14 @@ export function IconChevronRight({ className = '', ...props }: SVGProps<SVGSVGEl
   );
 }
 
+export function IconChevronDown({ className = '', ...props }: SVGProps<SVGSVGElement>) {
+  return (
+    <svg className={iconClassName(className)} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5} {...props}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+    </svg>
+  );
+}
+
 export function IconArrowLeft({ className = '', ...props }: SVGProps<SVGSVGElement>) {
   return (
     <svg className={iconClassName(className)} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2} {...props}>

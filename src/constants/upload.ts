@@ -24,8 +24,13 @@ export type AllowedVideoMimeType = (typeof ALLOWED_VIDEO_MIME_TYPES)[number];
 
 export const ALLOWED_VIDEO_MIME_SET = new Set<string>(ALLOWED_VIDEO_MIME_TYPES);
 
+/** Strip parameters (e.g. `;codecs=...`) so MediaRecorder `File.type` matches allowed set. */
+export function normalizeVideoMimeType(mime: string): string {
+  return mime.split(';')[0].trim().toLowerCase();
+}
+
 export function isAllowedMimeType(mime: string): boolean {
-  return ALLOWED_VIDEO_MIME_SET.has(mime);
+  return ALLOWED_VIDEO_MIME_SET.has(normalizeVideoMimeType(mime));
 }
 
 /** Allowed video extensions (lowercase). */
@@ -44,7 +49,9 @@ export function mimeFromFilename(name: string): AllowedVideoMimeType | '' {
 
 /** MIME for upload: use file.type if allowed, else infer from filename (iOS-safe). Empty if unsupported. */
 export function getMimeTypeForUpload(file: File): AllowedVideoMimeType | '' {
-  if (file.type && isAllowedMimeType(file.type)) return file.type as AllowedVideoMimeType;
+  if (file.type && isAllowedMimeType(file.type)) {
+    return normalizeVideoMimeType(file.type) as AllowedVideoMimeType;
+  }
   return mimeFromFilename(file.name);
 }
 

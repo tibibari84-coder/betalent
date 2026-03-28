@@ -71,6 +71,79 @@ function normalizeUploadMessage(message: string | undefined, step?: string): str
   return message?.trim() || 'Upload failed. Please try again.';
 }
 
+type InitSuccessBody = {
+  ok: true;
+  uploadUrl: string;
+  videoId: string;
+  storageKey?: string;
+  /** Normalized video MIME from server — must match PUT Content-Type with presigned URL. */
+  contentType?: string;
+};
+
+/**
+ * PUT file bytes to the presigned storage URL. Uses fetch (required for R2/S3 CORS parity).
+ * Progress uses a ReadableStream when supported; otherwise uploads the whole File without byte progress.
+ */
+async function putFileToPresignedUrl(
+  uploadUrl: string,
+  file: File,
+  contentType: string,
+  onProgress?: (percent: number) => void
+): Promise<void> {
+  const canStream = typeof ReadableStream !== 'undefined' && typeof file.stream === 'function';
+
+  if (canStream && onProgress) {
+    try {
+      const reader = file.stream().getReader();
+      const total = Math.max(1, file.size);
+      let loaded = 0;
+      const body = new ReadableStream<Uint8Array>({
+        async pull(controller) {
+          const { done, value } = await reader.read();
+          if (done) {
+            controller.close();
+            return;
+          }
+          loaded += value.byteLength;
+          onProgress(Math.min(99, Math.round((loaded / total) * 100)));
+          controller.enqueue(value);
+        },
+      });
+      const res = await fetch(uploadUrl, {
+        method: 'PUT',
+        body: body as BodyInit,
+        headers: { 'Content-Type': contentType },
+        credentials: 'omit',
+        mode: 'cors',
+        duplex: 'half',
+      } as RequestInit);
+      if (!res.ok) {
+        const errText = await res.text().catch(() => '');
+        throw new Error(`Storage PUT failed (${res.status}): ${errText.slice(0, 240)}`);
+      }
+      onProgress(100);
+      return;
+    } catch (e) {
+      if (typeof console !== 'undefined' && console.warn) {
+        console.warn('[putFileToPresignedUrl] streaming PUT failed, retrying with full body', e);
+      }
+    }
+  }
+
+  const res = await fetch(uploadUrl, {
+    method: 'PUT',
+    body: file,
+    headers: { 'Content-Type': contentType },
+    credentials: 'omit',
+    mode: 'cors',
+  });
+  if (!res.ok) {
+    const errText = await res.text().catch(() => '');
+    throw new Error(`Storage PUT failed (${res.status}): ${errText.slice(0, 240)}`);
+  }
+  onProgress?.(100);
+}
+
 /**
  * Run the full direct upload: POST /api/upload/init, PUT file to presigned URL, POST complete.
  * Accepts `File` from `createFileForUpload(blob, …)` after Recording Studio, or any valid video `File`.
@@ -106,11 +179,7 @@ export async function performDirectUpload(
         : {}),
     }),
   });
-  const initParsed = await interpretApiResponse<{
-    uploadUrl?: string;
-    videoId?: string;
-    contentType?: string;
-  }>(initRes);
+  const initParsed = await interpretApiResponse<InitSuccessBody>(initRes);
 
   if (!initParsed.ok) {
     if (typeof console !== 'undefined' && console.warn) {
@@ -150,31 +219,29 @@ export async function performDirectUpload(
   }
 
   const initData = initParsed.data;
-  const { uploadUrl, videoId, contentType } = initData;
+  const uploadUrl = initData.uploadUrl;
+  const videoId = initData.videoId;
+  /** Must match what was signed in PutObject (server returns normalized MIME). */
+  const putContentType = (initData.contentType || mimeType).trim();
+
   if (!uploadUrl || !videoId) {
     return { ok: false, message: 'Upload could not start. Please try again.' };
   }
 
   options?.onStatus?.('uploading');
+  options?.onProgress?.(0);
   try {
-    await new Promise<void>((resolve, reject) => {
-      const xhr = new XMLHttpRequest();
-      xhr.open('PUT', uploadUrl);
-      xhr.setRequestHeader('Content-Type', contentType || mimeType);
-      xhr.upload.onprogress = (ev) => {
-        if (ev.lengthComputable && options?.onProgress) {
-          options.onProgress(Math.round((ev.loaded / ev.total) * 100));
-        }
-      };
-      xhr.onload = () => {
-        if (xhr.status >= 200 && xhr.status < 300) resolve();
-        else reject(new Error('Upload failed'));
-      };
-      xhr.onerror = () => reject(new Error('Network error'));
-      xhr.send(file);
-    });
-  } catch {
-    return { ok: false, message: 'Network issue while uploading. Check your connection and try again.', step: 'upload' };
+    await putFileToPresignedUrl(uploadUrl, file, putContentType, options?.onProgress);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (typeof console !== 'undefined' && console.warn) {
+      console.warn('[performDirectUpload] PUT failed', { message: msg });
+    }
+    return {
+      ok: false,
+      message: msg.includes('failed') ? msg : `Upload failed: ${msg}`,
+      step: 'upload',
+    };
   }
 
   options?.onStatus?.('processing');

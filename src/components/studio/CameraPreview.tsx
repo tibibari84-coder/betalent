@@ -11,7 +11,8 @@ export type CameraPreviewProps = {
 };
 
 /**
- * Natural preview: `object-contain` — no face crop / fake zoom from `object-cover`.
+ * Full-viewport portrait preview: fills the frame (no floating box / letterbox bands).
+ * Selfie bias keeps face + upper torso in frame without stretching.
  */
 export default function CameraPreview({ videoRef, mirror, className }: CameraPreviewProps) {
   return (
@@ -21,7 +22,7 @@ export default function CameraPreview({ videoRef, mirror, className }: CameraPre
       playsInline
       muted
       className={cn(
-        'absolute inset-0 h-full w-full bg-black object-contain',
+        'absolute inset-0 h-full w-full bg-black object-cover object-[center_30%]',
         mirror && '-scale-x-100',
         className
       )}

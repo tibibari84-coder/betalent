@@ -144,20 +144,6 @@ export default function UploadFormContent(props: Props) {
           mode={studioRecordingMode}
           challengeSlug={challengeSlug}
           challengeContext={challengeLite}
-          title={title}
-          setTitle={setTitle}
-          description={description}
-          setDescription={setDescription}
-          styleSlug={styleSlug}
-          setStyleSlug={setStyleSlug}
-          challengeId={challengeId}
-          setChallengeId={setChallengeId}
-          contentType={contentType}
-          setContentType={setContentType}
-          rulesAcknowledged={rulesAcknowledged}
-          setRulesAcknowledged={setRulesAcknowledged}
-          t={t}
-          loading={loading}
           onClose={onExitCreation}
           onAcceptTake={onStudioAcceptTake}
         />
@@ -194,10 +180,10 @@ export default function UploadFormContent(props: Props) {
 
           <div className="mx-auto w-full space-y-4 px-3 pb-[calc(9.25rem+env(safe-area-inset-bottom))] pt-1 sm:max-w-md sm:px-4 md:space-y-5 md:pb-[calc(9.75rem+env(safe-area-inset-bottom))]">
               {previewUrlStable && file ? (
-                <div className="flex justify-center overflow-hidden rounded-2xl border border-white/[0.1] bg-black">
+                <div className="mx-auto w-full max-w-[420px] overflow-hidden rounded-2xl border border-white/[0.1] bg-black">
                   <video
                     src={previewUrlStable}
-                    className="aspect-[9/16] max-h-[min(52dvh,520px)] w-full max-w-[420px] object-contain"
+                    className="aspect-[9/16] w-full object-cover object-center"
                     controls
                     playsInline
                     preload="metadata"

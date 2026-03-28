@@ -7,6 +7,7 @@ import type {
   StudioRecorderPhase,
 } from '@/lib/studio/studio-recorder-types';
 import { cn } from '@/lib/utils';
+import { IconSparkles } from '@/components/ui/Icons';
 import CameraPreview from '@/components/studio/CameraPreview';
 import StudioTopBar from '@/components/studio/StudioTopBar';
 import StudioSideControls from '@/components/studio/StudioSideControls';
@@ -238,10 +239,10 @@ export default function StudioCameraScreen(props: StudioCameraScreenProps) {
           'fixed inset-0 z-[120] animate-studio-enter bg-black transition-opacity duration-300',
           showCurtain && 'pointer-events-none opacity-40'
         )}
-        style={{ minHeight: '100dvh', maxHeight: '100dvh', overflow: 'hidden', paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+        style={{ minHeight: '100dvh', maxHeight: '100dvh', overflow: 'hidden' }}
       >
         <div
-          className="relative mx-auto h-[100dvh] w-full overflow-hidden bg-black"
+          className="relative mx-auto h-[100dvh] w-full max-w-[100vw] overflow-hidden bg-black"
           onTouchStart={onImmersiveTouchStart}
           onTouchEnd={onImmersiveTouchEnd}
         >
@@ -262,7 +263,7 @@ export default function StudioCameraScreen(props: StudioCameraScreenProps) {
               className="pointer-events-none absolute inset-0 z-[10]"
               style={{
                 background:
-                  'linear-gradient(180deg, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.08) 20%, transparent 45%, transparent 62%, rgba(0,0,0,0.5) 100%)',
+                  'linear-gradient(180deg, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.06) 18%, transparent 42%, transparent 58%, rgba(0,0,0,0.55) 100%)',
               }}
               aria-hidden
             />
@@ -299,7 +300,7 @@ export default function StudioCameraScreen(props: StudioCameraScreenProps) {
                 </div>
                 {recPhase === 'recording' && (
                   <div
-                    className="rounded-full border border-accent/60 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-white"
+                    className="rounded-full border border-red-500/40 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-white"
                     style={{
                       background: 'rgba(24,5,10,0.88)',
                       boxShadow: '0 0 22px rgba(196,18,47,0.28)',
@@ -356,23 +357,42 @@ export default function StudioCameraScreen(props: StudioCameraScreenProps) {
             </div>
           ) : null}
 
-          {!showCurtain && recPhase !== 'recording' && recPhase !== 'paused' ? (
-            <StudioModeSelector
-              platformMaxSec={platformMaxDurationSec}
-              value={recordingCapSec}
-              onChange={onRecordingCapChange}
-              disabled={modeSelectorDisabled}
-            />
-          ) : null}
-
-          <StudioRecordControls
-            recPhase={recPhase}
-            maxDurationSec={recordingCapSec}
-            elapsedMs={recElapsedMs}
-            switchingLens={switchingLens}
-            onStart={onStartRecording}
-            onStop={() => void onStop()}
-          />
+          <div
+            className="pointer-events-auto absolute inset-x-0 bottom-0 z-20 flex flex-col items-center gap-1 pb-[max(10px,env(safe-area-inset-bottom))] pt-2"
+            style={{
+              paddingBottom: 'max(12px, env(safe-area-inset-bottom, 0px))',
+            }}
+          >
+            {!showCurtain && recPhase !== 'recording' && recPhase !== 'paused' ? (
+              <StudioModeSelector
+                platformMaxSec={platformMaxDurationSec}
+                value={recordingCapSec}
+                onChange={onRecordingCapChange}
+                disabled={modeSelectorDisabled}
+                className="relative z-[1]"
+              />
+            ) : null}
+            <div className="relative z-[1] mt-1 flex w-full max-w-md items-end justify-center gap-8 px-5">
+              <button
+                type="button"
+                disabled
+                className="mb-3 flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-white/20 bg-black/45 text-white/50 backdrop-blur-md"
+                aria-label="Effects"
+                title="Coming soon"
+              >
+                <IconSparkles className="h-6 w-6" />
+              </button>
+              <StudioRecordControls
+                recPhase={recPhase}
+                maxDurationSec={recordingCapSec}
+                elapsedMs={recElapsedMs}
+                switchingLens={switchingLens}
+                onStart={onStartRecording}
+                onStop={() => void onStop()}
+              />
+              <div className="mb-3 h-12 w-12 shrink-0" aria-hidden />
+            </div>
+          </div>
 
           {!showCameraAccessOverlay &&
             (localError || recError) &&
@@ -380,7 +400,7 @@ export default function StudioCameraScreen(props: StudioCameraScreenProps) {
             !isAcquiringStream &&
             cameraPermissionState !== 'requesting' && (
               <div
-                className="absolute bottom-[max(100px,env(safe-area-inset-bottom))] left-0 right-0 z-[35] flex flex-col items-center gap-2 px-4"
+                className="absolute bottom-[max(120px,env(safe-area-inset-bottom))] left-0 right-0 z-[35] flex flex-col items-center gap-2 px-4"
                 role="alert"
               >
                 <p className="px-2 text-center text-[13px] text-red-300/90 sm:text-[14px]">

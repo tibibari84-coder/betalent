@@ -16,6 +16,7 @@ import {
   isAllowedMimeType,
   MAX_PLATFORM_UPLOAD_DURATION_SEC,
   MAX_VIDEO_FILE_SIZE,
+  normalizeVideoMimeType,
   UPLOAD_PRESIGN_EXPIRES_SEC,
 } from '@/constants/upload';
 import { getLiveChallengeRecordingCapSec } from '@/constants/recording-modes';
@@ -60,8 +61,9 @@ export async function POST(req: Request) {
 
     const body = await req.json();
     const parsed = initSchema.parse(body);
+    const mimeTypeNorm = normalizeVideoMimeType(parsed.mimeType);
 
-    if (!isAllowedMimeType(parsed.mimeType)) {
+    if (!isAllowedMimeType(mimeTypeNorm)) {
       return NextResponse.json(
         { ok: false, message: 'Invalid file type. Use MP4, MOV, M4V, or WebM.' },
         { status: 400 }
@@ -125,7 +127,7 @@ export async function POST(req: Request) {
         publicId,
         durationSec: parsed.durationSec,
         fileSize: parsed.fileSize,
-        mimeType: parsed.mimeType,
+        mimeType: mimeTypeNorm,
         performanceStyle: parsed.performanceStyle ?? null,
         contentType,
         commentPermission,
@@ -137,7 +139,7 @@ export async function POST(req: Request) {
       },
     });
 
-    const ext = getExtensionFromMime(parsed.mimeType);
+    const ext = getExtensionFromMime(mimeTypeNorm);
     const storageKey = buildVideoStorageKey(user.id, video.id, ext);
 
     await prisma.video.update({
@@ -150,7 +152,7 @@ export async function POST(req: Request) {
     try {
       const presigned = await getPresignedUploadUrl(
         storageKey,
-        parsed.mimeType,
+        mimeTypeNorm,
         UPLOAD_PRESIGN_EXPIRES_SEC
       );
       uploadUrl = presigned.uploadUrl;
@@ -178,7 +180,7 @@ export async function POST(req: Request) {
     logOpsEvent('upload_started', {
       userId: user.id,
       videoId: video.id,
-      mimeType: parsed.mimeType,
+      mimeType: mimeTypeNorm,
       durationSec: parsed.durationSec,
     });
     logOpsEvent('publish_started', {
@@ -192,7 +194,7 @@ export async function POST(req: Request) {
       uploadUrl,
       storageKey,
       expiresAt,
-      contentType: parsed.mimeType,
+      contentType: mimeTypeNorm,
     });
   } catch (e) {
     if (e instanceof Error && e.message === 'Unauthorized') {

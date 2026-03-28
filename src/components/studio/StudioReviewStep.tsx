@@ -185,10 +185,10 @@ export default function StudioReviewStep(props: StudioReviewStepProps) {
               <button
                 type="button"
                 onClick={onEditSession}
-                title="Returns to session prep and discards this take"
+                title="Leave studio"
                 className={`${btnGhost} min-h-[48px] flex-1 justify-center border-white/[0.08] bg-transparent text-white/45`}
               >
-                Edit session
+                Exit
               </button>
             </div>
             <p className="pb-1 text-center text-[10px] text-white/30">
@@ -260,10 +260,10 @@ export default function StudioReviewStep(props: StudioReviewStepProps) {
                   <button
                     type="button"
                     onClick={onEditSession}
-                    title="Returns to session prep and discards this take"
+                    title="Leave studio"
                     className={`${btnGhost} min-h-[50px] w-full justify-center text-white/55 sm:w-auto`}
                   >
-                    Edit session
+                    Exit
                   </button>
                   <button
                     type="button"
