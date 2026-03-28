@@ -13,7 +13,7 @@ import type { UploadProgressStep } from '@/lib/upload-client';
 import type { RecordingMode } from '@/constants/recording-modes';
 
 const inputClass =
-  'w-full h-12 px-4 rounded-[12px] bg-canvas-tertiary border border-[rgba(255,255,255,0.08)] text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent/40 text-[15px] min-h-[48px]';
+  'w-full h-12 px-4 rounded-[12px] bg-canvas-tertiary border border-[rgba(255,255,255,0.08)] text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent/40 text-[16px] min-h-[48px]';
 
 const labelClass = 'block text-[14px] font-medium text-text-primary mb-2';
 
@@ -71,7 +71,7 @@ export type Props = {
   challengeSlug: string;
   onBackToStudio: () => void;
   onExitCreation: () => void;
-  onStudioAcceptTake: (file: File, durationSec: number) => void;
+  onStudioAcceptTake: (file: File, durationSec: number, meta?: { caption?: string }) => void;
 };
 
 export default function UploadFormContent(props: Props) {
@@ -141,7 +141,7 @@ export default function UploadFormContent(props: Props) {
 
   if (!showSuccess && uploadEntryMode === 'studio') {
     return (
-      <div className="fixed inset-0 z-[100] min-h-0 w-full overflow-y-auto overflow-x-hidden overscroll-y-contain bg-black [-webkit-overflow-scrolling:touch]">
+      <div className="fixed inset-0 z-[100] h-[100dvh] min-h-0 w-full overflow-hidden overscroll-none bg-black">
         <RecordingStudio
           maxDurationSec={maxStudioDurationSec}
           mode={studioRecordingMode}
@@ -420,7 +420,7 @@ export default function UploadFormContent(props: Props) {
                 type="submit"
                 disabled={!canSubmit || loading}
                 aria-describedby={!canSubmit && !loading && publishGateHints.length > 0 ? 'publish-gate-hints' : undefined}
-                className="btn-primary flex h-[52px] w-full items-center justify-center gap-2 rounded-2xl text-[15px] font-semibold disabled:pointer-events-none disabled:opacity-45"
+                className="btn-primary flex h-[52px] w-full touch-manipulation items-center justify-center gap-2 rounded-2xl text-[16px] font-semibold disabled:pointer-events-none disabled:opacity-45"
               >
                 <IconUpload className="h-5 w-5 shrink-0" aria-hidden />
                 {loading ? progressLabel || t('upload.uploading') : t('upload.publish')}

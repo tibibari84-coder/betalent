@@ -11,12 +11,9 @@ export function buildStudioVideoConstraintsPrimary(params: {
 }): MediaTrackConstraints {
   const { facing, isMobile } = params;
   if (isMobile) {
-    /** Portrait 9:16 — height > width; avoid wide max width that encourages 16:9 landscape buffers. */
+    /** No fixed resolution — let the device/driver choose; preview size follows the container. */
     return {
       facingMode: facing,
-      width: { ideal: 1080, max: 1080 },
-      height: { ideal: 1920, max: 2560 },
-      aspectRatio: { ideal: 9 / 16 },
       frameRate: { ideal: 30, max: 60 },
     };
   }
@@ -29,14 +26,13 @@ export function buildStudioVideoConstraintsPrimary(params: {
   };
 }
 
-/** Secondary: drop aspectRatio (some drivers reject it). */
+/** Secondary: optional portrait hint without forcing a resolution. */
 export function buildStudioVideoConstraintsRelaxed(params: { facing: Facing; isMobile: boolean }): MediaTrackConstraints {
   const { facing, isMobile } = params;
   if (isMobile) {
     return {
       facingMode: facing,
-      width: { ideal: 720, max: 1080 },
-      height: { ideal: 1280, max: 2560 },
+      aspectRatio: { ideal: 9 / 16 },
       frameRate: { ideal: 30, max: 60 },
     };
   }

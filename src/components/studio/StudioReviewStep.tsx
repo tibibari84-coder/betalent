@@ -7,6 +7,7 @@ import type { StudioPreviewFraming } from '@/hooks/useStudioRecorder';
 import { cn } from '@/lib/utils';
 import { btnGhost, btnPrimary, studioIconBtn, studioPanel } from './studio-tokens';
 import ViewfinderFrame from './ViewfinderFrame';
+import StudioPublishSheet from './StudioPublishSheet';
 
 export type StudioReviewStepProps = {
   reviewUrl: string | null;
@@ -17,7 +18,7 @@ export type StudioReviewStepProps = {
   primaryActionLabel?: string;
   onRetake: () => void;
   onEditSession: () => void;
-  onUseTake: () => void;
+  onUseTake: (meta?: { caption?: string }) => void;
 };
 
 export default function StudioReviewStep(props: StudioReviewStepProps) {
@@ -27,13 +28,14 @@ export default function StudioReviewStep(props: StudioReviewStepProps) {
     reviewDurationSec,
     mode: _mode,
     previewFraming: _previewFraming,
-    primaryActionLabel = 'Publish performance',
+    primaryActionLabel = 'Next',
     onRetake,
     onEditSession,
     onUseTake,
   } = props;
 
   const [narrow, setNarrow] = useState(false);
+  const [publishOpen, setPublishOpen] = useState(false);
   const [progress, setProgress] = useState(0);
   const swipeFrom = useRef<{ x: number; y: number; fromTop: boolean; fromBottom: boolean } | null>(null);
 
@@ -87,14 +89,18 @@ export default function StudioReviewStep(props: StudioReviewStepProps) {
       return;
     }
     if (s.fromBottom && dy < -72 && Math.abs(dy) > dx * 1.25) {
-      onUseTake();
+      setPublishOpen(true);
     }
   };
 
   return (
+    <>
     <div
-      className={cn('fixed inset-0 z-[120] animate-studio-enter', narrow ? 'bg-black' : studioPanel)}
-      style={{ minHeight: '100dvh', maxHeight: '100dvh', overflow: 'hidden' }}
+      className={cn(
+        'fixed inset-0 z-[120] h-screen w-full overflow-hidden animate-studio-enter',
+        narrow ? 'bg-black' : studioPanel
+      )}
+      style={{ minHeight: '100dvh', maxHeight: '100dvh' }}
     >
       {narrow ? (
         <div
@@ -167,8 +173,8 @@ export default function StudioReviewStep(props: StudioReviewStepProps) {
           >
             <button
               type="button"
-              onClick={onUseTake}
-              className="btn-primary flex h-[54px] w-full items-center justify-center gap-2 rounded-2xl text-[16px] font-semibold shadow-[0_8px_32px_rgba(196,18,47,0.35)]"
+              onClick={() => setPublishOpen(true)}
+              className="btn-primary flex h-[54px] w-full touch-manipulation items-center justify-center gap-2 rounded-2xl text-[16px] font-semibold shadow-[0_8px_32px_rgba(196,18,47,0.35)]"
             >
               {primaryActionLabel}
               <IconChevronRight className="h-5 w-5 opacity-90" aria-hidden />
@@ -191,7 +197,7 @@ export default function StudioReviewStep(props: StudioReviewStepProps) {
               </button>
             </div>
             <p className="pb-1 text-center text-[10px] text-white/30">
-              Swipe down to re-record · swipe up to continue to publish
+              Swipe down to re-record · swipe up to add caption
             </p>
           </div>
         </div>
@@ -266,8 +272,8 @@ export default function StudioReviewStep(props: StudioReviewStepProps) {
                   </button>
                   <button
                     type="button"
-                    onClick={onUseTake}
-                    className={`${btnPrimary} inline-flex min-h-[56px] w-full items-center justify-center gap-2 sm:w-auto sm:min-w-[220px]`}
+                    onClick={() => setPublishOpen(true)}
+                    className={`${btnPrimary} inline-flex min-h-[56px] w-full touch-manipulation items-center justify-center gap-2 sm:w-auto sm:min-w-[220px]`}
                   >
                     <IconUpload className="h-5 w-5 shrink-0 opacity-95" aria-hidden />
                     {primaryActionLabel}
@@ -279,5 +285,14 @@ export default function StudioReviewStep(props: StudioReviewStepProps) {
         </div>
       )}
     </div>
+    <StudioPublishSheet
+      open={publishOpen}
+      onClose={() => setPublishOpen(false)}
+      onContinue={(caption) => {
+        setPublishOpen(false);
+        onUseTake({ caption });
+      }}
+    />
+    </>
   );
 }

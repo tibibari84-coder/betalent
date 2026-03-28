@@ -9,18 +9,18 @@ export const studioHeaderBg =
   'border-b border-white/[0.06] bg-[linear-gradient(105deg,rgba(196,18,47,0.2)_0%,rgba(196,18,47,0.04)_38%,transparent_65%)]';
 
 export const btnGhost =
-  'min-h-[48px] px-4 sm:px-5 rounded-[14px] text-[13px] sm:text-sm font-medium text-white/65 border border-white/[0.12] bg-white/[0.03] backdrop-blur-md hover:text-white hover:bg-white/[0.07] hover:border-white/[0.18] transition-colors duration-150 ease-out';
+  'touch-manipulation min-h-[48px] px-4 sm:px-5 rounded-[14px] text-[13px] sm:text-sm font-medium text-white/65 border border-white/[0.12] bg-white/[0.03] backdrop-blur-md hover:text-white hover:bg-white/[0.07] hover:border-white/[0.18] transition-colors duration-150 ease-out';
 
 export const btnPrimary =
-  'group min-h-[52px] px-7 sm:px-9 rounded-[16px] text-[15px] font-semibold text-white bg-accent hover:bg-accent-hover shadow-[0_12px_48px_rgba(196,18,47,0.35),inset_0_1px_0_rgba(255,255,255,0.12)] disabled:opacity-40 disabled:shadow-none transition-colors duration-150 ease-out';
+  'touch-manipulation group min-h-[52px] px-7 sm:px-9 rounded-[16px] text-[15px] font-semibold text-white bg-accent hover:bg-accent-hover shadow-[0_12px_48px_rgba(196,18,47,0.35),inset_0_1px_0_rgba(255,255,255,0.12)] disabled:opacity-40 disabled:shadow-none transition-colors duration-150 ease-out';
 
 export const btnSecondary =
-  'min-h-[52px] px-6 sm:px-8 rounded-[16px] text-[15px] font-semibold bg-white text-neutral-950 hover:bg-white/92 shadow-[inset_0_-1px_0_rgba(0,0,0,0.08)] transition-colors duration-150 ease-out';
+  'touch-manipulation min-h-[52px] px-6 sm:px-8 rounded-[16px] text-[15px] font-semibold bg-white text-neutral-950 hover:bg-white/92 shadow-[inset_0_-1px_0_rgba(0,0,0,0.08)] transition-colors duration-150 ease-out';
 
 /** Floating circular control (TikTok-style rail) — glass, no heavy box */
 export const studioIconBtn =
-  'flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-white/[0.14] bg-black/35 text-white/88 backdrop-blur-md transition-transform active:scale-[0.92] disabled:pointer-events-none disabled:opacity-35 [@media(hover:hover)]:hover:bg-white/[0.08]';
+  'touch-manipulation flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-white/[0.14] bg-black/35 text-white/88 backdrop-blur-md transition-transform active:scale-[0.92] disabled:pointer-events-none disabled:opacity-35 [@media(hover:hover)]:hover:bg-white/[0.08]';
 
 /** Larger rail targets — thumb reach (immersive mobile studio) */
 export const studioRailBtn =
-  'flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-full border border-white/[0.14] bg-black/45 text-white/90 backdrop-blur-md transition-transform active:scale-[0.93] disabled:pointer-events-none disabled:opacity-35 [@media(hover:hover)]:hover:bg-white/[0.1]';
+  'touch-manipulation flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-full border border-white/[0.14] bg-black/45 text-white/90 backdrop-blur-md transition-transform active:scale-[0.93] disabled:pointer-events-none disabled:opacity-35 [@media(hover:hover)]:hover:bg-white/[0.1]';

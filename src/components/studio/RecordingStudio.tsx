@@ -29,7 +29,7 @@ export type RecordingStudioProps = {
   mode?: RecordingMode;
   challengeSlug: string;
   challengeContext: ChallengeContextLite;
-  onAcceptTake: (file: File, durationSec: number) => void;
+  onAcceptTake: (file: File, durationSec: number, meta?: { caption?: string }) => void;
   onClose: () => void;
 };
 
@@ -282,15 +282,18 @@ export default function RecordingStudio(props: RecordingStudioProps) {
     setLocalError('');
   }, [isMobileStudio, studioDiscardRecording, studioLeaveBooth]);
 
-  const handleUseTake = useCallback(() => {
-    if (!reviewBlob) return;
-    const mime = mimeForRecordedStudioBlob(reviewBlob, reviewExt);
-    const name = `betalent-studio-${Date.now()}.${reviewExt}`;
-    const file = createFileForUpload(reviewBlob, name, mime);
-    const dur = Math.max(1, Math.min(maxDurationSec, reviewDurationSec));
-    studioLeaveBooth();
-    onAcceptTake(file, dur);
-  }, [reviewBlob, reviewExt, maxDurationSec, reviewDurationSec, studioLeaveBooth, onAcceptTake]);
+  const handleUseTake = useCallback(
+    (meta?: { caption?: string }) => {
+      if (!reviewBlob) return;
+      const mime = mimeForRecordedStudioBlob(reviewBlob, reviewExt);
+      const name = `betalent-studio-${Date.now()}.${reviewExt}`;
+      const file = createFileForUpload(reviewBlob, name, mime);
+      const dur = Math.max(1, Math.min(maxDurationSec, reviewDurationSec));
+      studioLeaveBooth();
+      onAcceptTake(file, dur, meta);
+    },
+    [reviewBlob, reviewExt, maxDurationSec, reviewDurationSec, studioLeaveBooth, onAcceptTake]
+  );
 
   const handleClose = useCallback(() => {
     prepCancelledRef.current = true;
@@ -320,7 +323,11 @@ export default function RecordingStudio(props: RecordingStudioProps) {
         <p className="max-w-sm text-[15px] text-white/80">
           This challenge is not accepting entries right now. Close and return to the challenge page.
         </p>
-        <button type="button" onClick={onClose} className="mt-6 min-h-[48px] rounded-full px-6 text-[15px] font-semibold text-accent">
+        <button
+          type="button"
+          onClick={onClose}
+          className="mt-6 min-h-[48px] touch-manipulation rounded-full px-6 text-[15px] font-semibold text-accent"
+        >
           Close
         </button>
       </div>
@@ -364,7 +371,6 @@ export default function RecordingStudio(props: RecordingStudioProps) {
       reviewDurationSec={reviewDurationSec}
       mode={mode}
       previewFraming={previewFraming}
-      primaryActionLabel="Continue to publish"
       onRetake={() => void handleRetake()}
       onEditSession={exitFromReview}
       onUseTake={handleUseTake}

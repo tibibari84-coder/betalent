@@ -1,13 +1,13 @@
 'use client';
 
-import { useState, useEffect, useRef, type RefObject } from 'react';
+import { useEffect, useRef, useState, type RefObject } from 'react';
 import type {
   StudioCameraPermissionState,
   StudioRecorderErrorCode,
   StudioRecorderPhase,
 } from '@/lib/studio/studio-recorder-types';
 import { cn } from '@/lib/utils';
-import { IconSparkles } from '@/components/ui/Icons';
+import { IconSparkles, IconUpload } from '@/components/ui/Icons';
 import CameraPreview from '@/components/studio/CameraPreview';
 import StudioTopBar from '@/components/studio/StudioTopBar';
 import StudioSideControls from '@/components/studio/StudioSideControls';
@@ -87,13 +87,17 @@ function CameraAccessOverlayBlock(props: CameraAccessOverlayBlockProps) {
         <p className="text-[13px] leading-relaxed text-white/62 sm:text-[14px]">{detail}</p>
       ) : null}
       <div className="flex w-full flex-col gap-2.5">
-        <button type="button" onClick={onTryAgain} className={cn(btnPrimary, 'min-h-[48px] w-full justify-center')}>
+        <button
+          type="button"
+          onClick={onTryAgain}
+          className={cn(btnPrimary, 'min-h-[48px] w-full touch-manipulation justify-center')}
+        >
           Try again
         </button>
         <button
           type="button"
           onClick={onToggleSettingsHelp}
-          className={cn(btnSecondary, 'min-h-[48px] w-full justify-center')}
+          className={cn(btnSecondary, 'min-h-[48px] w-full touch-manipulation justify-center')}
         >
           Open browser settings
         </button>
@@ -102,7 +106,11 @@ function CameraAccessOverlayBlock(props: CameraAccessOverlayBlockProps) {
             {settingsHelpText()}
           </p>
         ) : null}
-        <button type="button" onClick={onHardReset} className={cn(btnGhost, 'min-h-[44px] w-full text-white/70')}>
+        <button
+          type="button"
+          onClick={onHardReset}
+          className={cn(btnGhost, 'min-h-[44px] w-full touch-manipulation text-white/70')}
+        >
           Reset camera
         </button>
       </div>
@@ -137,7 +145,6 @@ export default function StudioCameraScreen(props: StudioCameraScreenProps) {
     onStop,
   } = props;
 
-  const [showGrid, setShowGrid] = useState(false);
   const [showSettingsHelp, setShowSettingsHelp] = useState(false);
   const swipeFrom = useRef<{ x: number; y: number; fromTop: boolean } | null>(null);
 
@@ -165,6 +172,10 @@ export default function StudioCameraScreen(props: StudioCameraScreenProps) {
   const isRecording = recPhase === 'recording' || recPhase === 'paused';
   const modeSelectorDisabled = recPhase === 'recording' || recPhase === 'paused';
   const canSwitchCamera = isPreview && !switchingLens;
+  const recordingProgress =
+    recPhase === 'recording' || recPhase === 'paused'
+      ? Math.min(1, recElapsedMs / Math.max(1, recordingCapSec * 1000))
+      : 0;
 
   const accessMessage = (localError || recError?.message || '').trim();
   const terminalCameraFailure =
@@ -226,7 +237,7 @@ export default function StudioCameraScreen(props: StudioCameraScreenProps) {
             <button
               type="button"
               onClick={onCancelDuringCurtain}
-              className="min-h-[44px] px-4 text-[13px] font-medium text-white/45 underline decoration-white/20 underline-offset-4 hover:text-white/80"
+              className="min-h-[44px] touch-manipulation px-4 text-[13px] font-medium text-white/45 underline decoration-white/20 underline-offset-4 hover:text-white/80"
             >
               Cancel
             </button>
@@ -236,29 +247,36 @@ export default function StudioCameraScreen(props: StudioCameraScreenProps) {
 
       <div
         className={cn(
-          'fixed inset-0 z-[120] animate-studio-enter bg-black transition-opacity duration-300',
+          'fixed inset-0 z-[120] h-screen w-full animate-studio-enter overflow-hidden bg-black transition-opacity duration-300',
           showCurtain && 'pointer-events-none opacity-40'
         )}
-        style={{ minHeight: '100dvh', maxHeight: '100dvh', overflow: 'hidden' }}
+        style={{ minHeight: '100dvh', maxHeight: '100dvh' }}
       >
         <div
-          className="relative mx-auto h-[100dvh] w-full max-w-[100vw] overflow-hidden bg-black"
+          className="relative m-0 h-full w-full max-w-[100vw] overflow-hidden bg-black p-0 touch-manipulation"
           onTouchStart={onImmersiveTouchStart}
           onTouchEnd={onImmersiveTouchEnd}
         >
+          {isRecording ? (
+            <div
+              className="pointer-events-none absolute inset-x-0 top-0 z-[135] pt-[env(safe-area-inset-top)]"
+              role="progressbar"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={Math.round(recordingProgress * 100)}
+              aria-label="Recording progress"
+            >
+              <div className="h-[3px] w-full bg-white/12">
+                <div
+                  className="h-full bg-accent shadow-[0_0_12px_rgba(196,18,47,0.45)] transition-[width] duration-150"
+                  style={{ width: `${recordingProgress * 100}%` }}
+                />
+              </div>
+            </div>
+          ) : null}
+
           <div className="absolute inset-0 z-0">
             <CameraPreview videoRef={videoRef} mirror={mirrorPreview} />
-            {showGrid ? (
-              <div
-                className="pointer-events-none absolute inset-0 z-[12] opacity-[0.22]"
-                style={{
-                  backgroundImage:
-                    'linear-gradient(rgba(255,255,255,0.14) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.14) 1px, transparent 1px)',
-                  backgroundSize: '33.33% 33.33%',
-                }}
-                aria-hidden
-              />
-            ) : null}
             <div
               className="pointer-events-none absolute inset-0 z-[10]"
               style={{
@@ -313,12 +331,7 @@ export default function StudioCameraScreen(props: StudioCameraScreenProps) {
             </div>
           ) : null}
 
-          <StudioSideControls
-            canFlip={canSwitchCamera}
-            onFlip={onFlipCamera}
-            gridOn={showGrid}
-            onToggleGrid={() => setShowGrid((g) => !g)}
-          />
+          <StudioSideControls canFlip={canSwitchCamera} onFlip={onFlipCamera} />
 
           {switchingLens && boothReady ? (
             <div className="absolute inset-0 z-[60] flex items-center justify-center bg-black/75 backdrop-blur-sm">
@@ -357,12 +370,7 @@ export default function StudioCameraScreen(props: StudioCameraScreenProps) {
             </div>
           ) : null}
 
-          <div
-            className="pointer-events-auto absolute inset-x-0 bottom-0 z-20 flex flex-col items-center gap-1 pb-[max(10px,env(safe-area-inset-bottom))] pt-2"
-            style={{
-              paddingBottom: 'max(12px, env(safe-area-inset-bottom, 0px))',
-            }}
-          >
+          <div className="pointer-events-auto absolute inset-x-0 bottom-0 z-20 flex flex-col items-center gap-1 pb-[max(12px,env(safe-area-inset-bottom))] pt-2">
             {!showCurtain && recPhase !== 'recording' && recPhase !== 'paused' ? (
               <StudioModeSelector
                 platformMaxSec={platformMaxDurationSec}
@@ -376,11 +384,11 @@ export default function StudioCameraScreen(props: StudioCameraScreenProps) {
               <button
                 type="button"
                 disabled
-                className="mb-3 flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-white/20 bg-black/45 text-white/50 backdrop-blur-md"
+                className="mb-3 flex h-12 w-12 shrink-0 touch-manipulation items-center justify-center rounded-full border border-white/20 bg-black/45 text-white/50 shadow-[0_4px_16px_rgba(0,0,0,0.35)] backdrop-blur-md"
                 aria-label="Effects"
                 title="Coming soon"
               >
-                <IconSparkles className="h-6 w-6" />
+                <IconSparkles className="h-6 w-6 drop-shadow-[0_1px_2px_rgba(0,0,0,0.65)]" />
               </button>
               <StudioRecordControls
                 recPhase={recPhase}
@@ -390,7 +398,15 @@ export default function StudioCameraScreen(props: StudioCameraScreenProps) {
                 onStart={onStartRecording}
                 onStop={() => void onStop()}
               />
-              <div className="mb-3 h-12 w-12 shrink-0" aria-hidden />
+              <button
+                type="button"
+                disabled
+                className="mb-3 flex h-12 w-12 shrink-0 touch-manipulation items-center justify-center rounded-xl border border-white/22 bg-black/50 text-white/40 shadow-[0_4px_16px_rgba(0,0,0,0.35)] backdrop-blur-md"
+                aria-label="Gallery"
+                title="Device upload coming soon"
+              >
+                <IconUpload className="h-6 w-6 drop-shadow-[0_1px_2px_rgba(0,0,0,0.65)]" />
+              </button>
             </div>
           </div>
 

@@ -10,7 +10,7 @@ export type StudioModeSelectorProps = {
   className?: string;
 };
 
-/** Longest slot: up to 10m when platform allows; label matches real cap (no fake 10m when max is 90s). */
+/** Longest slot: up to 10m when platform allows. */
 function longCapSec(platformMaxSec: number): number {
   return Math.min(600, platformMaxSec);
 }
@@ -29,27 +29,45 @@ export default function StudioModeSelector({
   className,
 }: StudioModeSelectorProps) {
   const long = longCapSec(platformMaxSec);
-  const recordingSlots: { sec: number; label: string }[] = [
-    { sec: long, label: formatLongLabel(long) },
-    { sec: 60, label: '60s' },
-    { sec: 15, label: '15s' },
-  ].filter((slot) => slot.sec <= platformMaxSec && slot.sec >= 1);
-
-  const uniq = recordingSlots.filter(
-    (slot, i, arr) => arr.findIndex((s) => s.sec === slot.sec) === i
-  );
+  const durationSlots: { sec: number; label: string }[] = [];
+  if (15 <= platformMaxSec) durationSlots.push({ sec: 15, label: '15s' });
+  if (60 <= platformMaxSec) durationSlots.push({ sec: 60, label: '60s' });
+  if (long >= 1 && long !== 15 && long !== 60 && long <= platformMaxSec) {
+    durationSlots.push({ sec: long, label: formatLongLabel(long) });
+  }
 
   return (
     <div
       className={cn(
-        'flex w-full max-w-[min(100%,24rem)] flex-col gap-2 px-3',
+        'flex w-full max-w-[min(100%,22rem)] flex-col gap-2 px-2',
         className
       )}
       role="group"
       aria-label="Recording mode"
     >
-      <div className="flex items-center justify-center gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {uniq.map((slot) => {
+      <div
+        className={cn(
+          'flex snap-x snap-mandatory items-center justify-start gap-2 overflow-x-auto pb-1',
+          '[-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
+        )}
+      >
+        <button
+          type="button"
+          disabled
+          className="snap-center shrink-0 touch-manipulation rounded-full border border-white/15 bg-white/[0.06] px-4 py-2 text-[15px] font-semibold text-white/40"
+          title="Coming soon"
+        >
+          Text
+        </button>
+        <button
+          type="button"
+          disabled
+          className="snap-center shrink-0 touch-manipulation rounded-full border border-white/15 bg-white/[0.06] px-4 py-2 text-[15px] font-semibold text-white/40"
+          title="Coming soon"
+        >
+          Photo
+        </button>
+        {durationSlots.map((slot) => {
           const active = slot.sec === value;
           return (
             <button
@@ -58,8 +76,8 @@ export default function StudioModeSelector({
               disabled={disabled}
               onClick={() => onChange(slot.sec)}
               className={cn(
-                'shrink-0 rounded-full px-4 py-2 text-[15px] font-semibold transition-transform active:scale-[0.98]',
-                active ? 'bg-white text-black' : 'bg-transparent text-white',
+                'snap-center shrink-0 touch-manipulation rounded-full px-4 py-2 text-[15px] font-semibold transition-transform active:scale-[0.98]',
+                active ? 'bg-white text-black shadow-[0_4px_20px_rgba(255,255,255,0.12)]' : 'bg-transparent text-white',
                 disabled && 'pointer-events-none opacity-35'
               )}
             >
@@ -67,30 +85,6 @@ export default function StudioModeSelector({
             </button>
           );
         })}
-        <button
-          type="button"
-          disabled
-          className="shrink-0 rounded-full px-4 py-2 text-[15px] font-semibold text-white/45 opacity-50"
-          title="Coming soon"
-        >
-          PHOTO
-        </button>
-        <button
-          type="button"
-          disabled
-          className="shrink-0 rounded-full px-4 py-2 text-[15px] font-semibold text-white/45 opacity-50"
-          title="Coming soon"
-        >
-          TEXT
-        </button>
-        <button
-          type="button"
-          disabled
-          className="shrink-0 rounded-full px-4 py-2 text-[13px] font-semibold uppercase tracking-wide text-white/35 opacity-50"
-          title="Coming soon"
-        >
-          LIVE
-        </button>
       </div>
     </div>
   );

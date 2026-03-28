@@ -328,9 +328,10 @@ export default function UploadPage() {
     router.back();
   }, [router]);
 
-  const onStudioAcceptTake = useCallback((accepted: File, sec: number) => {
+  const onStudioAcceptTake = useCallback((accepted: File, sec: number, meta?: { caption?: string }) => {
     setFile(accepted);
     setDurationSec(sec);
+    if (meta?.caption) setDescription(meta.caption);
     setUploadEntryMode('publish');
     setError('');
   }, []);

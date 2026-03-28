@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { headers, cookies } from 'next/headers';
 import { Playfair_Display } from 'next/font/google';
 import './globals.css';
@@ -22,6 +22,13 @@ import hu from '@/i18n/translations/hu.json';
 export const metadata: Metadata = {
   title: 'BETALENT – Show the World Your Talent',
   description: 'Global digital talent stage',
+};
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
 };
 
 const allMessages = {

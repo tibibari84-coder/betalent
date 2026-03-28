@@ -12,16 +12,12 @@ function isMobileViewport(): boolean {
   return window.matchMedia('(max-width: 768px)').matches;
 }
 
-/**
- * Legacy portrait tier (720×1280 + 9:16) — kept after shared primary/relaxed for drivers that prefer it.
- */
+/** Portrait hint without width/height caps (avoids locking a fixed capture size). */
 function constraintsIdealPortrait(facing: StudioFacing): MediaTrackConstraints {
   return {
     facingMode: facing,
-    width: { ideal: 720, max: 1080 },
-    height: { ideal: 1280, max: 2560 },
     aspectRatio: { ideal: 9 / 16 },
-    frameRate: { ideal: 30, max: 30 },
+    frameRate: { ideal: 30, max: 60 },
   };
 }
 
@@ -47,8 +43,8 @@ function buildConstraintTiers(facing: StudioFacing): MediaStreamConstraints[] {
 }
 
 /**
- * Portrait-first getUserMedia. Mobile uses shared constraints (9:16 ideals) before generic fallbacks
- * so the track aspect is closer to the screen — pairs with preview `object-cover` (no letterbox bands).
+ * Portrait-first getUserMedia with resolution fallbacks. Preview uses full-bleed `object-cover`
+ * so framing matches the device screen; capture size is not forced up front on mobile.
  */
 export async function acquireStudioMedia(facing: StudioFacing): Promise<MediaStream> {
   const tiers = buildConstraintTiers(facing);
