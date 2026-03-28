@@ -8,6 +8,7 @@ export type StudioCameraPermissionState = 'idle' | 'requesting' | 'granted' | 'd
 export type StudioRecorderErrorCode =
   | 'unsupported'
   | 'permission_denied'
+  | 'microphone_permission_denied'
   | 'no_microphone'
   | 'no_camera'
   | 'recorder_not_supported'
@@ -19,6 +20,9 @@ export type StudioRecorderPhase = 'idle' | 'preview' | 'recording' | 'paused' | 
 export type StudioPreviewResult =
   | { ok: true }
   | { ok: false; message: string; code: StudioRecorderErrorCode };
+
+
+type StudioPreviewFailure = Extract<StudioPreviewResult, { ok: false }>;
 
 export type StudioTakeResult = {
   blob: Blob;
@@ -85,6 +89,184 @@ async function queryCameraPermissionState(): Promise<'granted' | 'denied' | 'pro
   } catch {
     return 'unknown';
   }
+}
+
+async function queryMicrophonePermissionState(): Promise<'granted' | 'denied' | 'prompt' | 'unknown'> {
+  try {
+    if (typeof navigator === 'undefined' || !navigator.permissions?.query) return 'unknown';
+    const r = await navigator.permissions.query({ name: 'microphone' as PermissionName });
+    if (r.state === 'granted' || r.state === 'denied' || r.state === 'prompt') return r.state;
+    return 'unknown';
+  } catch {
+    return 'unknown';
+  }
+}
+
+type MediaPermissionGate = 'video' | 'audio';
+
+/** Map DOMException from a single getUserMedia (video-only or audio-only) into UI + permission state. */
+async function classifyGetUserMediaFailure(
+  e: unknown,
+  gate: MediaPermissionGate
+): Promise<{
+  result: StudioPreviewFailure;
+  permissionState: StudioCameraPermissionState;
+  logEvent: 'camera_permission_denied' | 'microphone_permission_denied' | null;
+  logFields?: Record<string, unknown>;
+}> {
+  const err = e as DOMException & { message?: string };
+  const name = err?.name ?? '';
+  const msgLower = (err?.message ?? '').toLowerCase();
+
+  const cameraBlockedMsg =
+    'Camera is blocked or not allowed for this site. In Chrome, click the lock or camera icon in the address bar → Site settings → set Camera to Allow. Camera and Microphone are listed separately — the mic can be on while the camera is still blocked.';
+  const micBlockedMsg =
+    'Microphone is blocked or not allowed for this site. In Chrome, open Site settings (lock icon) and set Microphone to Allow — it is separate from Camera — then tap Try again.';
+
+  if (name === 'NotAllowedError' || name === 'PermissionDeniedError') {
+    if (gate === 'audio') {
+      const perm = await queryMicrophonePermissionState();
+      if (perm === 'granted') {
+        return {
+          result: {
+            ok: false,
+            code: 'unknown',
+            message:
+              'Microphone could not start even though permission is on. Try “Reset camera”, close other apps using the mic, or reload the page.',
+          },
+          permissionState: 'error',
+          logEvent: 'microphone_permission_denied',
+          logFields: { reason: name, note: 'api_says_granted' },
+        };
+      }
+      // Chrome site toggles can show Allow while Permissions API still returns prompt/unknown.
+      // Only treat as a hard “blocked in settings” when the API reports denied.
+      if (perm === 'denied') {
+        return {
+          result: { ok: false, code: 'microphone_permission_denied', message: micBlockedMsg },
+          permissionState: 'denied',
+          logEvent: 'microphone_permission_denied',
+          logFields: { reason: name, permissionQuery: perm },
+        };
+      }
+      return {
+        result: {
+          ok: false,
+          code: 'unknown',
+          message:
+            'Could not start the microphone. Tap Try again, or reload the page. If access is already allowed for this site, another app may be using the mic.',
+        },
+        permissionState: 'error',
+        logEvent: 'microphone_permission_denied',
+        logFields: { reason: name, permissionQuery: perm, note: 'not_explicit_denied' },
+      };
+    }
+    const perm = await queryCameraPermissionState();
+    if (perm === 'granted') {
+      return {
+        result: {
+          ok: false,
+          code: 'unknown',
+          message:
+            'Camera could not start even though permission is on. Try “Reset camera”, close other apps using the camera, or reload the page.',
+        },
+        permissionState: 'error',
+        logEvent: 'camera_permission_denied',
+        logFields: { reason: name, note: 'api_says_granted' },
+      };
+    }
+    if (perm === 'denied') {
+      return {
+        result: { ok: false, code: 'permission_denied', message: cameraBlockedMsg },
+        permissionState: 'denied',
+        logEvent: 'camera_permission_denied',
+        logFields: { reason: name, permissionQuery: perm },
+      };
+    }
+    return {
+      result: {
+        ok: false,
+        code: 'unknown',
+        message:
+          'Could not start the camera. Tap Try again once. If Chrome already shows Camera Allow for this site, the request may still fail while another app uses the camera, or before a reload — try closing other tabs that use the camera, then reload this page.',
+      },
+      permissionState: 'error',
+      logEvent: 'camera_permission_denied',
+      logFields: { reason: name, permissionQuery: perm, note: 'not_explicit_denied' },
+    };
+  }
+
+  if (name === 'SecurityError' || msgLower.includes('secure context')) {
+    return {
+      result: {
+        ok: false,
+        code: gate === 'audio' ? 'microphone_permission_denied' : 'permission_denied',
+        message:
+          'Camera and microphone require a secure connection (HTTPS). Open the site over HTTPS and try again.',
+      },
+      permissionState: 'denied',
+      logEvent: gate === 'audio' ? 'microphone_permission_denied' : 'camera_permission_denied',
+      logFields: { reason: 'security' },
+    };
+  }
+
+  if (name === 'NotReadableError' || name === 'TrackStartError') {
+    return {
+      result: {
+        ok: false,
+        code: 'unknown',
+        message:
+          gate === 'video'
+            ? 'Camera is busy or unavailable. Close other apps using the camera, then try again.'
+            : 'Microphone is busy or unavailable. Close other apps using the mic, then try again.',
+      },
+      permissionState: 'error',
+      logEvent: null,
+    };
+  }
+
+  if (name === 'OverconstrainedError') {
+    return {
+      result: {
+        ok: false,
+        code: 'unknown',
+        message:
+          gate === 'video'
+            ? 'These camera settings are not supported on this device. Try again or use Upload from device.'
+            : 'These microphone settings are not supported. Try again or use Upload from device.',
+      },
+      permissionState: 'error',
+      logEvent: null,
+    };
+  }
+
+  if (name === 'NotFoundError') {
+    return {
+      result: {
+        ok: false,
+        code: gate === 'video' ? 'no_camera' : 'no_microphone',
+        message:
+          gate === 'video'
+            ? 'No suitable camera was found. Connect a camera or use Upload from device.'
+            : 'No microphone was found. Connect a mic and try again.',
+      },
+      permissionState: 'error',
+      logEvent: null,
+    };
+  }
+
+  return {
+    result: {
+      ok: false,
+      code: 'unknown',
+      message:
+        gate === 'video'
+          ? 'We couldn’t open the camera. Please try again.'
+          : 'We couldn’t open the microphone. Please try again.',
+    },
+    permissionState: 'error',
+    logEvent: null,
+  };
 }
 
 function pickRecorderMime(): { mimeType: string; fileExt: 'mp4' | 'webm' } {
@@ -239,13 +421,62 @@ export function useStudioRecorder(maxDurationSec: number) {
               frameRate: { ideal: 30, max: 60 },
             };
 
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: videoConstraints,
-          audio: {
-            echoCancellation: true,
-            noiseSuppression: true,
-          },
-        });
+        // Chrome lists Camera and Microphone separately in site settings. Requesting them in one call can fail
+        // the whole prompt when only one side is blocked; split so each gate matches the failing device.
+        const audioConstraints = {
+          echoCancellation: true,
+          noiseSuppression: true,
+        } as const;
+
+        let videoStream: MediaStream;
+        try {
+          videoStream = await navigator.mediaDevices.getUserMedia({
+            video: videoConstraints,
+          });
+        } catch (ve) {
+          setPhase('idle');
+          setIsAcquiringStream(false);
+          const verr = ve as DOMException & { message?: string };
+          console.error('[useStudioRecorder] getUserMedia (video) failed', {
+            name: verr?.name,
+            message: verr?.message,
+            code: (verr as DOMException)?.code,
+            error: ve,
+          });
+          const mapped = await classifyGetUserMediaFailure(ve, 'video');
+          setError({ code: mapped.result.code, message: mapped.result.message });
+          setPermissionState(mapped.permissionState);
+          if (mapped.logEvent) logStudioCamera(mapped.logEvent, mapped.logFields);
+          return mapped.result;
+        }
+
+        let audioStream: MediaStream;
+        try {
+          audioStream = await navigator.mediaDevices.getUserMedia({
+            audio: audioConstraints,
+          });
+        } catch (ae) {
+          videoStream.getTracks().forEach((t) => t.stop());
+          setPhase('idle');
+          setIsAcquiringStream(false);
+          const aerr = ae as DOMException & { message?: string };
+          console.error('[useStudioRecorder] getUserMedia (audio) failed', {
+            name: aerr?.name,
+            message: aerr?.message,
+            code: (aerr as DOMException)?.code,
+            error: ae,
+          });
+          const mapped = await classifyGetUserMediaFailure(ae, 'audio');
+          setError({ code: mapped.result.code, message: mapped.result.message });
+          setPermissionState(mapped.permissionState);
+          if (mapped.logEvent) logStudioCamera(mapped.logEvent, mapped.logFields);
+          return mapped.result;
+        }
+
+        const stream = new MediaStream([
+          ...videoStream.getVideoTracks(),
+          ...audioStream.getAudioTracks(),
+        ]);
 
         // Reset digital zoom to 1× when supported (Android). Avoid a second width/aspect apply — it often re-crops.
         try {
@@ -344,63 +575,11 @@ export function useStudioRecorder(maxDurationSec: number) {
         logStudioCamera('camera_initialized', { facingMode: mode, isMobile });
         return { ok: true };
       } catch (e) {
-        const err = e as DOMException & { message?: string };
-        const name = err?.name ?? '';
-        const msgLower = (err?.message ?? '').toLowerCase();
+        stopStream();
         setPhase('idle');
         setIsAcquiringStream(false);
-
-        console.error('[useStudioRecorder] getUserMedia failed', {
-          name,
-          message: err?.message,
-          code: (err as DOMException)?.code,
-          error: e,
-        });
-
-        // Delayed or non-gesture getUserMedia often reports NotAllowedError even when the user did not choose "Block".
-        if (name === 'NotAllowedError' || name === 'PermissionDeniedError') {
-          const perm = await queryCameraPermissionState();
-          if (perm === 'granted') {
-            const message =
-              'Camera could not start even though permission is on. Try “Reset camera”, close other apps using the camera, or reload the page.';
-            setError({ code: 'unknown', message });
-            setPermissionState('error');
-            logStudioCamera('camera_permission_denied', { reason: name, note: 'api_says_granted' });
-            return { ok: false, message, code: 'unknown' };
-          }
-          const message =
-            'Camera access is required to record here. Tap “Try again” and allow when prompted, or enable camera and microphone for this site in your browser settings.';
-          setError({ code: 'permission_denied', message });
-          setPermissionState('denied');
-          logStudioCamera('camera_permission_denied', { reason: name, permissionQuery: perm });
-          return { ok: false, message, code: 'permission_denied' };
-        }
-        if (name === 'SecurityError' || msgLower.includes('secure context')) {
-          const message = 'Camera and microphone require a secure connection (HTTPS). Open the site over HTTPS and try again.';
-          setError({ code: 'permission_denied', message });
-          setPermissionState('denied');
-          logStudioCamera('camera_permission_denied', { reason: 'security' });
-          return { ok: false, message, code: 'permission_denied' };
-        }
-        if (name === 'NotReadableError' || name === 'TrackStartError') {
-          const message = 'Camera or microphone is busy or unavailable. Close other apps using the camera, then try again.';
-          setError({ code: 'unknown', message });
-          setPermissionState('error');
-          return { ok: false, message, code: 'unknown' };
-        }
-        if (name === 'OverconstrainedError') {
-          const message = 'These camera settings are not supported on this device. Try again or use Upload from device.';
-          setError({ code: 'unknown', message });
-          setPermissionState('error');
-          return { ok: false, message, code: 'unknown' };
-        }
-        if (name === 'NotFoundError') {
-          const message = 'No suitable camera or microphone was found. Use Upload from device.';
-          setError({ code: 'no_camera', message });
-          setPermissionState('error');
-          return { ok: false, message, code: 'no_camera' };
-        }
-        const message = 'We couldn’t open your camera and microphone. Please try again.';
+        console.error('[useStudioRecorder] preview pipeline failed after tracks acquired', { error: e });
+        const message = 'We couldn’t finish opening the camera preview. Please try again or use Upload from device.';
         setError({ code: 'unknown', message });
         setPermissionState('error');
         return { ok: false, message, code: 'unknown' };

@@ -235,9 +235,12 @@ export default function StudioBoothStep(props: StudioBoothStepProps) {
   }, [showCameraAccessOverlay]);
 
   const cameraAccessTitle =
-    cameraPermissionState === 'denied' || recError?.code === 'permission_denied'
-      ? 'Camera access required'
-      : 'Camera unavailable';
+    recError?.code === 'microphone_permission_denied'
+      ? 'Microphone access required'
+      : cameraPermissionState === 'denied' ||
+          recError?.code === 'permission_denied'
+        ? 'Camera access required'
+        : 'Camera unavailable';
 
   const videoObjectPosition = previewFraming.objectPosition;
 
