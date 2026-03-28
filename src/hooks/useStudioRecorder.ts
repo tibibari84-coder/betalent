@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useState, useCallback, useEffect } from 'react';
+import type { MutableRefObject, RefObject } from 'react';
 import { logStudioCamera } from '@/lib/studio-camera-log';
 
 export type StudioCameraPermissionState = 'idle' | 'requesting' | 'granted' | 'denied' | 'error';
@@ -269,6 +270,54 @@ async function classifyGetUserMediaFailure(
   };
 }
 
+/**
+ * Release MediaStream tracks and detach video without React setState — call immediately before
+ * getUserMedia in the same user-gesture tick so Chrome does not drop user activation.
+ */
+function releaseTracksOnlySync(
+  streamRef: MutableRefObject<MediaStream | null>,
+  videoRef: RefObject<HTMLVideoElement | null>
+): void {
+  streamRef.current?.getTracks().forEach((t) => t.stop());
+  streamRef.current = null;
+  if (videoRef.current) {
+    const el = videoRef.current;
+    el.srcObject = null;
+    el.onloadedmetadata = null;
+    el.onresize = null;
+  }
+}
+
+/** Same as resetRecorderOnly but no setState — keeps user activation for getUserMedia. */
+function resetRecorderRefsOnly(
+  recorderRef: MutableRefObject<MediaRecorder | null>,
+  chunksRef: MutableRefObject<Blob[]>,
+  clearTimer: () => void,
+  lastElapsedSecRef: MutableRefObject<number>,
+  lastElapsedMsRef: MutableRefObject<number>,
+  pauseStartedAtRef: MutableRefObject<number | null>,
+  pausedMsAccumRef: MutableRefObject<number>,
+  recordSegmentStartRef: MutableRefObject<number>,
+  autoStopRequestedRef: MutableRefObject<boolean>
+): void {
+  try {
+    if (recorderRef.current && recorderRef.current.state !== 'inactive') {
+      recorderRef.current.stop();
+    }
+  } catch {
+    /* ignore */
+  }
+  recorderRef.current = null;
+  chunksRef.current = [];
+  clearTimer();
+  lastElapsedSecRef.current = 0;
+  lastElapsedMsRef.current = 0;
+  pauseStartedAtRef.current = null;
+  pausedMsAccumRef.current = 0;
+  recordSegmentStartRef.current = 0;
+  autoStopRequestedRef.current = false;
+}
+
 function pickRecorderMime(): { mimeType: string; fileExt: 'mp4' | 'webm' } {
   if (typeof MediaRecorder === 'undefined') {
     return { mimeType: '', fileExt: 'webm' };
@@ -388,14 +437,25 @@ export function useStudioRecorder(maxDurationSec: number) {
         window.matchMedia?.('(max-width: 768px)')?.matches === true;
       const mode: 'user' | 'environment' =
         facingOverride !== undefined ? facingOverride : isMobile ? 'user' : facingMode;
-      if (facingOverride !== undefined) setFacingMode(mode);
 
-      setIsAcquiringStream(true);
+      // Minimal React updates before getUserMedia: avoid stopStream()/resetRecorderOnly() here — they
+      // call setState and can cause Chrome to drop user activation before the first media prompt.
       setError(null);
+      setIsAcquiringStream(true);
       setPermissionState('requesting');
-      setPhase('idle');
-      resetRecorderOnly();
-      stopStream();
+
+      resetRecorderRefsOnly(
+        recorderRef,
+        chunksRef,
+        clearTimer,
+        lastElapsedSecRef,
+        lastElapsedMsRef,
+        pauseStartedAtRef,
+        pausedMsAccumRef,
+        recordSegmentStartRef,
+        autoStopRequestedRef
+      );
+      releaseTracksOnlySync(streamRef, videoRef);
 
       if (!isStudioRecordingSupported()) {
         const message = 'Studio recording is not available on this browser. Try Safari or Chrome.';
@@ -547,7 +607,9 @@ export function useStudioRecorder(maxDurationSec: number) {
         }
 
         streamRef.current = stream;
+        if (facingOverride !== undefined) setFacingMode(mode);
         setMicLive(true);
+        setElapsedSec(0);
         const el = videoRef.current;
         if (el) {
           el.srcObject = stream;
@@ -585,27 +647,26 @@ export function useStudioRecorder(maxDurationSec: number) {
         return { ok: false, message, code: 'unknown' };
       }
     },
-    [facingMode, resetRecorderOnly, stopStream]
+    [facingMode, stopStream, clearTimer]
   );
 
   /** Stop tracks, detach video, then open preview again (same as fresh getUserMedia). */
   const hardResetCamera = useCallback(async (): Promise<StudioPreviewResult> => {
     logStudioCamera('camera_retry', { action: 'hard_reset' });
-    resetRecorderOnly();
-    stopStream();
-    setPhase('idle');
-    setPermissionState('idle');
-    setIsAcquiringStream(false);
-    setError(null);
-    setMicLive(false);
-    if (videoRef.current) {
-      const el = videoRef.current;
-      el.srcObject = null;
-      el.onloadedmetadata = null;
-      el.onresize = null;
-    }
+    resetRecorderRefsOnly(
+      recorderRef,
+      chunksRef,
+      clearTimer,
+      lastElapsedSecRef,
+      lastElapsedMsRef,
+      pauseStartedAtRef,
+      pausedMsAccumRef,
+      recordSegmentStartRef,
+      autoStopRequestedRef
+    );
+    releaseTracksOnlySync(streamRef, videoRef);
     return startPreview();
-  }, [resetRecorderOnly, stopStream, startPreview]);
+  }, [startPreview]);
 
   useEffect(() => {
     return () => {
@@ -796,10 +857,20 @@ export function useStudioRecorder(maxDurationSec: number) {
   }, [clearTimer]);
 
   const discardRecording = useCallback(async (): Promise<StudioPreviewResult> => {
-    resetRecorderOnly();
-    setPhase('idle');
+    resetRecorderRefsOnly(
+      recorderRef,
+      chunksRef,
+      clearTimer,
+      lastElapsedSecRef,
+      lastElapsedMsRef,
+      pauseStartedAtRef,
+      pausedMsAccumRef,
+      recordSegmentStartRef,
+      autoStopRequestedRef
+    );
+    releaseTracksOnlySync(streamRef, videoRef);
     return startPreview();
-  }, [resetRecorderOnly, startPreview]);
+  }, [startPreview]);
 
   const flipCamera = useCallback(async (): Promise<StudioPreviewResult> => {
     if (phase === 'recording') {

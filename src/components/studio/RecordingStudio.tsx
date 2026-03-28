@@ -216,7 +216,6 @@ export default function RecordingStudio(props: RecordingStudioProps) {
   const handleRetryPreview = useCallback(async () => {
     logStudioCamera('camera_retry', { action: 'try_again' });
     setLocalError('');
-    setBoothReady(false);
     const result = await studioStartPreview();
     if (!result.ok) {
       setLocalError(result.message);
@@ -228,7 +227,6 @@ export default function RecordingStudio(props: RecordingStudioProps) {
 
   const handleHardResetCamera = useCallback(async () => {
     setLocalError('');
-    setBoothReady(false);
     const result = await studioHardResetCamera();
     if (!result.ok) {
       setLocalError(result.message);
