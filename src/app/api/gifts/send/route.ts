@@ -9,6 +9,8 @@ import type { SendGiftErrorCode } from '@/services/gift.service';
 import { getClientIp } from '@/lib/rate-limit';
 import { stampApiResponse } from '@/lib/api-route-observe';
 import { isDatabaseUnavailableError } from '@/lib/db-errors';
+import { logger } from '@/lib/logger';
+import { logOpsAbuse, logOpsEvent } from '@/lib/ops-events';
 
 const ROUTE_KEY = 'POST /api/gifts/send';
 
@@ -60,6 +62,14 @@ export async function POST(req: Request) {
     const deviceId = req.headers.get('x-device-id');
     const fingerprint = req.headers.get('x-device-fingerprint') ?? req.headers.get('user-agent');
 
+    logOpsEvent('gift_attempt', {
+      userId: user.id,
+      videoId: videoId || undefined,
+      giftId: giftId || undefined,
+      context,
+      hasIdempotencyKey: Boolean(idempotencyKey),
+    });
+
     const video = videoId
       ? await prisma.video.findUnique({ where: { id: videoId }, select: { creatorId: true } })
       : null;
@@ -75,6 +85,13 @@ export async function POST(req: Request) {
         fingerprint,
       });
       if (!giftValidation.allowed) {
+        logOpsEvent('gift_failed', {
+          userId: user.id,
+          videoId,
+          giftId,
+          errorCode: giftValidation.code,
+          latencyMs: Math.round(performance.now() - startedAt),
+        });
         const status = giftValidation.code === 'FRAUD_RISK_BLOCK' ? 403 : 429;
         return giftRes(
           NextResponse.json({ ok: false, message: giftValidation.reason, code: giftValidation.code }, { status }),
@@ -105,6 +122,13 @@ export async function POST(req: Request) {
       }
       upsertVideoRankingStats(videoId).catch(() => {});
       if ('idempotencyReplay' in result && result.idempotencyReplay) {
+        logOpsEvent('gift_success', {
+          userId: user.id,
+          videoId,
+          giftId,
+          idempotencyReplay: true,
+          latencyMs: Math.round(performance.now() - startedAt),
+        });
         try {
           const parsed = JSON.parse(result.responseBody) as object;
           return giftRes(NextResponse.json(parsed), req, startedAt);
@@ -113,6 +137,13 @@ export async function POST(req: Request) {
         }
       }
       if ('giftTransactionId' in result) {
+        logOpsEvent('gift_success', {
+          userId: user.id,
+          videoId,
+          giftId,
+          latencyMs: Math.round(performance.now() - startedAt),
+          giftTransactionId: result.giftTransactionId,
+        });
         return giftRes(
           NextResponse.json({
             ok: true,
@@ -136,6 +167,21 @@ export async function POST(req: Request) {
 
     if (!result.success) {
       const status = ERROR_STATUS[result.code] ?? 400;
+      logOpsEvent('gift_failed', {
+        userId: user.id,
+        videoId,
+        giftId,
+        errorCode: result.code,
+        latencyMs: Math.round(performance.now() - startedAt),
+      });
+      if (result.code === 'DUPLICATE_ATTEMPT') {
+        logOpsAbuse('gift_duplicate_attempt', { userId: user.id, videoId, giftId });
+        logOpsEvent('gift_duplicate_attempt', { userId: user.id, videoId, giftId });
+      }
+      if (result.code === 'IDEMPOTENCY_CONFLICT') {
+        logOpsAbuse('gift_idempotency_conflict', { userId: user.id, videoId, giftId });
+        logOpsEvent('gift_idempotency_conflict', { userId: user.id, videoId, giftId });
+      }
       return giftRes(
         NextResponse.json({ ok: false, code: result.code, message: result.message }, { status }),
         req,
@@ -168,7 +214,7 @@ export async function POST(req: Request) {
         startedAt
       );
     }
-    console.error('[gifts/send]', e);
+    logger.error('gifts_send_unhandled', { error: e instanceof Error ? e.message : String(e) });
     return giftRes(apiError(500, 'Gift send failed', { code: 'GIFT_FAILED' }), req, startedAt);
   }
 }

@@ -11,6 +11,8 @@ import { MAX_BODY_LENGTH } from '@/lib/comment-service';
 import { createCommentOnVideo } from '@/services/comment-create.service';
 import { z } from 'zod';
 import { isSchemaDriftError } from '@/lib/runtime-config';
+import { logger } from '@/lib/logger';
+import { logOpsEvent } from '@/lib/ops-events';
 
 const bodySchema = z.object({
   videoId: z.string().min(1, 'videoId required'),
@@ -19,6 +21,7 @@ const bodySchema = z.object({
 });
 
 export async function POST(req: Request) {
+  const startedAt = performance.now();
   try {
     const user = await requireAuth();
     const body = await req.json();
@@ -41,6 +44,13 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, message: result.message }, { status: result.status });
     }
 
+    logOpsEvent('comment_created', {
+      userId: user.id,
+      videoId,
+      commentId: result.comment.id,
+      parentId: parentId ?? null,
+      latencyMs: Math.round(performance.now() - startedAt),
+    });
     return NextResponse.json({ ok: true, comment: result.comment });
   } catch (e) {
     if (e instanceof Error && e.message === 'Unauthorized') {
@@ -58,6 +68,9 @@ export async function POST(req: Request) {
         { status: 503 }
       );
     }
-    return NextResponse.json({ ok: false, message: 'Comment failed' }, { status: 500 });
+    logger.error('comment_route_unhandled', {
+      error: e instanceof Error ? e.message : String(e),
+    });
+    return NextResponse.json({ ok: false, message: 'Comment failed', code: 'COMMENT_FAILED' }, { status: 500 });
   }
 }

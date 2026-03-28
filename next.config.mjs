@@ -1,3 +1,5 @@
+import { withSentryConfig } from '@sentry/nextjs';
+
 /** @type {import('next').NextConfig} */
 const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
 
@@ -50,4 +52,15 @@ const nextConfig = {
   ...(basePath && { basePath }),
 };
 
-export default nextConfig;
+const sentryEnabled = Boolean(process.env.NEXT_PUBLIC_SENTRY_DSN?.trim());
+
+export default sentryEnabled
+  ? withSentryConfig(nextConfig, {
+      silent: !process.env.CI,
+      org: process.env.SENTRY_ORG,
+      project: process.env.SENTRY_PROJECT,
+      authToken: process.env.SENTRY_AUTH_TOKEN,
+      hideSourceMaps: true,
+      automaticVercelMonitors: true,
+    })
+  : nextConfig;

@@ -4,7 +4,19 @@ import { useEffect } from 'react';
 
 export default function Error({ error, reset }: { error: Error; reset: () => void }) {
   useEffect(() => {
-    console.error(error);
+    if (process.env.NEXT_PUBLIC_SENTRY_DSN) {
+      void import('@sentry/nextjs').then((Sentry) => Sentry.captureException(error));
+    } else {
+      void fetch('/api/ops/client-error', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: error.message,
+          stack: error.stack,
+          url: typeof window !== 'undefined' ? window.location.href : undefined,
+        }),
+      }).catch(() => {});
+    }
   }, [error]);
 
   return (

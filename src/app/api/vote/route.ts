@@ -15,6 +15,8 @@ import {
 } from '@/constants/api-rate-limits';
 import { z } from 'zod';
 import { submitTalentVote } from '@/services/video-vote.service';
+import { logger } from '@/lib/logger';
+import { logOpsAbuse, logOpsEvent } from '@/lib/ops-events';
 
 const bodySchema = z.object({
   videoId: z.string().min(1, 'videoId required'),
@@ -22,6 +24,7 @@ const bodySchema = z.object({
 });
 
 export async function POST(req: Request) {
+  const startedAt = performance.now();
   try {
     const user = await requireAuth();
     const ip = getClientIp(req);
@@ -34,6 +37,8 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { videoId, value } = bodySchema.parse(body);
 
+    logOpsEvent('vote_attempt', { userId: user.id, videoId, value });
+
     const result = await submitTalentVote({
       userId: user.id,
       videoId,
@@ -44,10 +49,17 @@ export async function POST(req: Request) {
         return apiError(403, 'This creator has turned off talent votes on performances', { code: result.code });
       }
       if (result.code === 'CANNOT_VOTE_OWN_VIDEO') {
+        logOpsAbuse('vote_self_attempt', { userId: user.id, videoId });
+        logOpsEvent('vote_blocked_self', { userId: user.id, videoId });
         return apiError(403, 'You cannot vote on your own performance', { code: result.code });
       }
       return apiError(404, 'Video not found', { code: 'VIDEO_NOT_FOUND' });
     }
+    logOpsEvent('vote_success', {
+      userId: user.id,
+      videoId,
+      latencyMs: Math.round(performance.now() - startedAt),
+    });
     return NextResponse.json({
       ok: true,
       userVote: result.userVote,
@@ -61,6 +73,9 @@ export async function POST(req: Request) {
     if (e instanceof z.ZodError) {
       return apiError(400, 'Invalid body (videoId, value 1–10)', { code: 'VALIDATION_ERROR', errors: e.flatten() });
     }
+    logger.error('vote_route_unhandled', {
+      error: e instanceof Error ? e.message : String(e),
+    });
     return apiError(500, 'Vote failed', { code: 'VOTE_FAILED' });
   }
 }

@@ -20,6 +20,7 @@ import { runThumbnailPipelineStep } from '@/services/thumbnail.service';
 import { runAudioProcessingPipelineStep } from '@/services/audio-processing.service';
 import { runPostUploadIntegrityAnalysis } from '@/services/media-integrity.service';
 import { RATE_LIMIT_UPLOAD_COMPLETE_PER_HOUR } from '@/constants/api-rate-limits';
+import { logOpsEvent } from '@/lib/ops-events';
 
 const completeSchema = z.object({
   /** Prisma @default(cuid()) — allow full id string (avoid z.cuid() mismatch with cuid2). */
@@ -74,8 +75,14 @@ export async function POST(req: Request) {
         60 * 60 * 1000
       ))
     ) {
+      logOpsEvent('upload_failed', { userId: user.id, errorCode: 'RATE_LIMIT_UPLOAD_COMPLETE' });
       return NextResponse.json(
-        { ok: false, message: 'Too many upload completion attempts. Please try again later.', step: 'upload' },
+        {
+          ok: false,
+          message: 'Too many upload completion attempts. Please try again later.',
+          step: 'upload',
+          code: 'RATE_LIMIT_UPLOAD_COMPLETE',
+        },
         { status: 429 }
       );
     }
@@ -115,6 +122,8 @@ export async function POST(req: Request) {
     if (!video.storageKey) {
       return NextResponse.json({ ok: false, message: 'Missing storage key', step: 'save' }, { status: 400 });
     }
+
+    logOpsEvent('processing_started', { videoId, userId: user.id });
 
     const storageKey = video.storageKey;
 
@@ -159,11 +168,15 @@ export async function POST(req: Request) {
           data: { uploadStatus: 'FAILED' },
         });
         await logVideoDbRow(videoId, 'after uploadStatus FAILED (playback URL resolution threw)');
+        logOpsEvent('processing_failed', { videoId, userId: user.id, errorCode: 'PLAYBACK_URL_FAILED' });
+        logOpsEvent('upload_failed', { videoId, userId: user.id, errorCode: 'PLAYBACK_URL_FAILED' });
+        logOpsEvent('publish_failed', { videoId, userId: user.id, errorCode: 'PLAYBACK_URL_FAILED' });
         return NextResponse.json(
           {
             ok: false,
             message: 'Failed to get playback URL',
             step: 'storage',
+            code: 'PLAYBACK_URL_FAILED',
             detail: message,
           },
           { status: 500 }
@@ -327,6 +340,10 @@ export async function POST(req: Request) {
       ready,
     });
 
+    logOpsEvent('upload_completed', { videoId, userId: user.id, ready });
+    logOpsEvent('processing_ready', { videoId, userId: user.id, ready });
+    logOpsEvent('publish_success', { videoId, userId: user.id, ready });
+
     return NextResponse.json({ ok: true, video: { id: videoId }, ready });
   } catch (e) {
     if (e instanceof Error && e.message === 'Unauthorized') {
@@ -342,6 +359,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, message: 'Invalid input', step: 'upload', errors: e.errors }, { status: 400 });
     }
     logComplete('error', 'complete failed', { error: e instanceof Error ? e.message : String(e) });
-    return NextResponse.json({ ok: false, message: 'Complete failed', step: 'process' }, { status: 500 });
+    logOpsEvent('publish_failed', { errorCode: 'COMPLETE_UNHANDLED' });
+    logOpsEvent('processing_failed', { errorCode: 'COMPLETE_UNHANDLED' });
+    logOpsEvent('upload_failed', { errorCode: 'COMPLETE_UNHANDLED' });
+    return NextResponse.json(
+      { ok: false, message: 'Complete failed', step: 'process', code: 'UPLOAD_COMPLETE_FAILED' },
+      { status: 500 }
+    );
   }
 }

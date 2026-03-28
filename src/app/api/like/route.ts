@@ -10,6 +10,7 @@ import { Prisma } from '@prisma/client';
 import { requireAuth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { CANONICAL_PUBLIC_VIDEO_WHERE } from '@/lib/video-moderation';
+import { logOpsAbuse, logOpsEvent } from '@/lib/ops-events';
 
 async function getVideoLikesCount(videoId: string): Promise<number> {
   const v = await prisma.video.findUnique({
@@ -55,18 +56,21 @@ export async function POST(req: Request) {
       ]);
     } catch (e) {
       if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
+        logOpsAbuse('like_duplicate_race', { userId: user.id, videoId });
+        logOpsEvent('like_duplicate_collision', { userId: user.id, videoId });
         const likesCount = await getVideoLikesCount(videoId);
         return NextResponse.json({ ok: true, liked: true, likesCount });
       }
       throw e;
     }
     const likesCount = await getVideoLikesCount(videoId);
+    logOpsEvent('like_success', { userId: user.id, videoId, action: 'add' });
     return NextResponse.json({ ok: true, liked: true, likesCount });
   } catch (e) {
     if (e instanceof Error && e.message === 'Unauthorized') {
-      return NextResponse.json({ ok: false, message: 'Login required' }, { status: 401 });
+      return NextResponse.json({ ok: false, message: 'Login required', code: 'UNAUTHORIZED' }, { status: 401 });
     }
-    return NextResponse.json({ ok: false }, { status: 500 });
+    return NextResponse.json({ ok: false, message: 'Like failed', code: 'LIKE_FAILED' }, { status: 500 });
   }
 }
 
@@ -109,11 +113,12 @@ export async function DELETE(req: Request) {
       }),
     ]);
     const likesCount = await getVideoLikesCount(videoId);
+    logOpsEvent('like_success', { userId: user.id, videoId, action: 'remove' });
     return NextResponse.json({ ok: true, liked: false, likesCount });
   } catch (e) {
     if (e instanceof Error && e.message === 'Unauthorized') {
-      return NextResponse.json({ ok: false, message: 'Login required' }, { status: 401 });
+      return NextResponse.json({ ok: false, message: 'Login required', code: 'UNAUTHORIZED' }, { status: 401 });
     }
-    return NextResponse.json({ ok: false }, { status: 500 });
+    return NextResponse.json({ ok: false, message: 'Unlike failed', code: 'UNLIKE_FAILED' }, { status: 500 });
   }
 }

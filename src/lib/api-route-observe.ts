@@ -1,11 +1,11 @@
 /**
- * Load-test / observability helpers for API routes.
- * Enable JSON timing logs with OBSERVE_API_TIMING=1 (stdout; aggregate in your log stack / APM).
+ * API response stamping + optional structured latency logs (BT_OPS_LOG=1 or OBSERVE_API_TIMING=1).
  *
  * Correlation: middleware sets x-request-id on /api/*; this stamps the same id on JSON responses.
  */
 
 import { NextResponse } from 'next/server';
+import { logger } from '@/lib/logger';
 
 export function getRequestId(req: Request): string {
   return req.headers.get('x-request-id')?.trim() || crypto.randomUUID();
@@ -39,17 +39,25 @@ export function stampApiResponse(
   for (const [k, v] of Object.entries(CACHE_HEADERS[options.cachePolicy])) {
     res.headers.set(k, v);
   }
-  const ms = Math.round(performance.now() - options.startedAt);
-  if (process.env.OBSERVE_API_TIMING === '1') {
-    console.log(
-      JSON.stringify({
-        type: 'api_timing',
-        route: options.routeKey,
-        requestId: rid,
-        status: res.status,
-        ms,
-      })
-    );
+  const latencyMs = Math.round(performance.now() - options.startedAt);
+  const structuredApi =
+    process.env.BT_OPS_LOG === '1' || process.env.OBSERVE_API_TIMING === '1';
+  if (structuredApi) {
+    logger.info('api_request', {
+      route: options.routeKey,
+      requestId: rid,
+      status: res.status,
+      latencyMs,
+      result: res.status >= 500 ? 'error' : res.status >= 400 ? 'client_error' : 'ok',
+    });
+  }
+  if (res.status >= 500) {
+    logger.error('api_route_5xx', {
+      route: options.routeKey,
+      requestId: rid,
+      status: res.status,
+      latencyMs,
+    });
   }
   return res;
 }

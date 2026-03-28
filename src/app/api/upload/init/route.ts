@@ -20,6 +20,8 @@ import {
 } from '@/constants/upload';
 import { getLiveChallengeRecordingCapSec } from '@/constants/recording-modes';
 import { checkRateLimit } from '@/lib/rate-limit';
+import { logger } from '@/lib/logger';
+import { logOpsEvent } from '@/lib/ops-events';
 
 const PERFORMANCE_STYLES = ['pop', 'rnb', 'soul', 'gospel', 'jazz', 'acoustic', 'rock', 'latin', 'afrobeat', 'classical', 'worship'] as const;
 const CONTENT_TYPES = ['ORIGINAL', 'COVER', 'REMIX'] as const;
@@ -43,8 +45,9 @@ export async function POST(req: Request) {
   try {
     const user = await requireVerifiedUser();
     if (!(await checkRateLimit('upload-init-user', user.id, RATE_LIMIT_UPLOAD_INIT_PER_HOUR, 60 * 60 * 1000))) {
+      logOpsEvent('upload_failed', { userId: user.id, errorCode: 'RATE_LIMIT_UPLOAD_INIT' });
       return NextResponse.json(
-        { ok: false, message: 'Too many upload starts. Please try again later.' },
+        { ok: false, message: 'Too many upload starts. Please try again later.', code: 'RATE_LIMIT_UPLOAD_INIT' },
         { status: 429 }
       );
     }
@@ -153,18 +156,35 @@ export async function POST(req: Request) {
       uploadUrl = presigned.uploadUrl;
       expiresAt = presigned.expiresAt;
     } catch (error) {
-      console.error('[upload.init] failed to presign upload URL, removing created video', {
+      logger.error('upload_init_presign_failed', {
         videoId: video.id,
+        userId: user.id,
         error: error instanceof Error ? error.message : String(error),
       });
+      logOpsEvent('upload_failed', {
+        userId: user.id,
+        videoId: video.id,
+        errorCode: 'PRESIGN_FAILED',
+      });
       await prisma.video.delete({ where: { id: video.id } }).catch((deleteError) => {
-        console.error('[upload.init] failed to cleanup created video after presign error', {
+        logger.error('upload_init_cleanup_failed', {
           videoId: video.id,
           error: deleteError instanceof Error ? deleteError.message : String(deleteError),
         });
       });
       throw error;
     }
+
+    logOpsEvent('upload_started', {
+      userId: user.id,
+      videoId: video.id,
+      mimeType: parsed.mimeType,
+      durationSec: parsed.durationSec,
+    });
+    logOpsEvent('publish_started', {
+      userId: user.id,
+      videoId: video.id,
+    });
 
     return NextResponse.json({
       ok: true,
@@ -188,6 +208,8 @@ export async function POST(req: Request) {
       const msg = e.errors[0]?.message ?? 'Invalid input';
       return NextResponse.json({ ok: false, message: msg, errors: e.errors }, { status: 400 });
     }
-    return NextResponse.json({ ok: false, message: 'Upload init failed' }, { status: 500 });
+    logger.error('upload_init_unhandled', { error: e instanceof Error ? e.message : String(e) });
+    logOpsEvent('upload_failed', { errorCode: 'UPLOAD_INIT_UNHANDLED' });
+    return NextResponse.json({ ok: false, message: 'Upload init failed', code: 'UPLOAD_INIT_FAILED' }, { status: 500 });
   }
 }
