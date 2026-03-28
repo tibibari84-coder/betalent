@@ -5,8 +5,10 @@ import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { IconDotsVertical } from '@/components/ui/Icons';
 import { useViewer } from '@/contexts/ViewerContext';
+import { logVideoAction } from '@/lib/video-actions-log';
 import DeleteVideoConfirmModal from '@/components/video/DeleteVideoConfirmModal';
 import ReportVideoModal from '@/components/video/ReportVideoModal';
+import VideoActionsSheet from '@/components/video/VideoActionsSheet';
 
 export type VideoActionsMenuProps = {
   videoId: string;
@@ -14,9 +16,7 @@ export type VideoActionsMenuProps = {
   creatorId: string;
   visibility?: 'PUBLIC' | 'PRIVATE';
   commentPermission?: 'EVERYONE' | 'FOLLOWERS' | 'FOLLOWING' | 'OFF';
-  /** Called after successful delete so lists can update */
   onRemoved?: (videoId: string) => void;
-  /** Smaller hit target for dense feed rail */
   compact?: boolean;
   className?: string;
 };
@@ -26,12 +26,29 @@ function toastMessage(msg: string) {
   const el = document.createElement('div');
   el.setAttribute('role', 'status');
   el.className =
-    'fixed bottom-24 left-1/2 -translate-x-1/2 z-[300] px-4 py-2.5 rounded-full text-[13px] font-medium text-white shadow-lg border border-white/10';
-  el.style.background = 'rgba(18,22,31,0.95)';
+    'fixed bottom-[max(5.5rem,env(safe-area-inset-bottom,0px)+4.5rem)] left-1/2 z-[300] max-w-[min(100%,20rem)] -translate-x-1/2 px-4 py-2.5 text-center text-[13px] font-medium text-white shadow-lg border border-white/10 rounded-full';
+  el.style.background = 'rgba(18,22,31,0.96)';
   el.textContent = msg;
   document.body.appendChild(el);
   setTimeout(() => el.remove(), 2200);
 }
+
+function useMobileSheetLayout() {
+  const [mobile, setMobile] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 767px)');
+    const apply = () => setMobile(mq.matches);
+    apply();
+    mq.addEventListener?.('change', apply);
+    return () => mq.removeEventListener?.('change', apply);
+  }, []);
+  return mobile;
+}
+
+const sheetBtn =
+  'mb-1.5 flex w-full min-h-[48px] items-center rounded-xl border border-white/[0.08] bg-white/[0.05] px-4 py-3 text-left text-[15px] font-medium text-white/90 transition-transform active:scale-[0.98] disabled:opacity-45';
+const sheetBtnDanger =
+  'mb-1.5 flex w-full min-h-[48px] items-center rounded-xl border border-red-500/35 bg-red-500/[0.12] px-4 py-3 text-left text-[15px] font-medium text-red-200 transition-transform active:scale-[0.98]';
 
 export default function VideoActionsMenu({
   videoId,
@@ -45,6 +62,7 @@ export default function VideoActionsMenu({
 }: VideoActionsMenuProps) {
   const router = useRouter();
   const { viewer, refresh } = useViewer();
+  const useSheet = useMobileSheetLayout();
   const [open, setOpen] = useState(false);
   const [menuPos, setMenuPos] = useState<{ top: number; left: number; width: number } | null>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -106,7 +124,7 @@ export default function VideoActionsMenu({
   }, [open, isOwner, localCommentPermission, videoId]);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open || useSheet) return;
     updateMenuPosition();
     const onScroll = () => updateMenuPosition();
     window.addEventListener('scroll', onScroll, true);
@@ -115,7 +133,7 @@ export default function VideoActionsMenu({
       window.removeEventListener('scroll', onScroll, true);
       window.removeEventListener('resize', onScroll);
     };
-  }, [open, updateMenuPosition]);
+  }, [open, useSheet, updateMenuPosition]);
 
   useEffect(() => {
     if (!open) return;
@@ -127,7 +145,7 @@ export default function VideoActionsMenu({
   }, [open]);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open || useSheet) return;
     const onDoc = (e: MouseEvent) => {
       const t = e.target as Node;
       if (triggerRef.current?.contains(t)) return;
@@ -136,7 +154,9 @@ export default function VideoActionsMenu({
     };
     document.addEventListener('mousedown', onDoc);
     return () => document.removeEventListener('mousedown', onDoc);
-  }, [open]);
+  }, [open, useSheet]);
+
+  const closeMenu = () => setOpen(false);
 
   const copyLink = async () => {
     if (!canCopyPublicLink || !shareUrl) {
@@ -149,7 +169,36 @@ export default function VideoActionsMenu({
     } catch {
       toastMessage('Could not copy');
     }
-    setOpen(false);
+    closeMenu();
+  };
+
+  const shareVideo = async () => {
+    if (!shareUrl) return;
+    try {
+      if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
+        await navigator.share({
+          title: title || 'BETALENT',
+          text: 'Watch this performance on BETALENT',
+          url: shareUrl,
+        });
+        toastMessage('Shared');
+        closeMenu();
+        return;
+      }
+      await copyLink();
+    } catch (e) {
+      if ((e as Error)?.name === 'AbortError') {
+        closeMenu();
+        return;
+      }
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+        toastMessage('Link copied');
+      } catch {
+        toastMessage('Could not share');
+      }
+      closeMenu();
+    }
   };
 
   const toggleVisibility = async () => {
@@ -174,13 +223,11 @@ export default function VideoActionsMenu({
       toastMessage('Network error');
     } finally {
       setVisBusy(false);
-      setOpen(false);
+      closeMenu();
     }
   };
 
-  const setCommentPermission = async (
-    next: 'EVERYONE' | 'FOLLOWERS' | 'FOLLOWING' | 'OFF'
-  ) => {
+  const setCommentPermission = async (next: 'EVERYONE' | 'FOLLOWERS' | 'FOLLOWING' | 'OFF') => {
     setVisBusy(true);
     try {
       const res = await fetch(`/api/videos/${videoId}`, {
@@ -207,27 +254,36 @@ export default function VideoActionsMenu({
       toastMessage('Network error');
     } finally {
       setVisBusy(false);
-      setOpen(false);
+      closeMenu();
     }
   };
 
   const confirmDelete = async () => {
+    logVideoAction('video_delete_started', { videoId });
     setDeleting(true);
+    onRemoved?.(videoId);
+    setDeleteOpen(false);
+    closeMenu();
     try {
       const res = await fetch(`/api/videos/${videoId}`, { method: 'DELETE', credentials: 'include' });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
+        logVideoAction('video_delete_failed', {
+          videoId,
+          status: res.status,
+          message: typeof data?.message === 'string' ? data.message : undefined,
+        });
         toastMessage(typeof data?.message === 'string' ? data.message : 'Could not delete');
+        void router.refresh();
         return;
       }
-      /* Close modals before refresh — avoids fixed overlay fighting re-renders (flicker / “vibration”). */
-      setDeleteOpen(false);
-      setOpen(false);
-      onRemoved?.(videoId);
+      logVideoAction('video_deleted', { videoId });
       await refresh();
       router.refresh();
     } catch {
+      logVideoAction('video_delete_failed', { videoId, error: 'network' });
       toastMessage('Network error');
+      void router.refresh();
     } finally {
       setDeleting(false);
     }
@@ -236,16 +292,148 @@ export default function VideoActionsMenu({
   const showReport = Boolean(viewer?.id && !isOwner);
   const showOwnerActions = isOwner;
 
-  const menuContent =
-    open && menuPos && typeof document !== 'undefined'
+  const ownerCommentBlock = (layout: 'sheet' | 'dropdown') => {
+    if (!showOwnerActions || !localCommentPermission) return null;
+    if (layout === 'sheet') {
+      return (
+        <div className="mb-3 rounded-xl border border-white/[0.08] bg-white/[0.04] p-3">
+          <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-white/50">
+            Comment permission
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            {(
+              [
+                ['EVERYONE', 'Everyone'],
+                ['FOLLOWERS', 'Followers'],
+                ['FOLLOWING', 'Following'],
+                ['OFF', 'Off'],
+              ] as const
+            ).map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                disabled={visBusy}
+                onClick={() => void setCommentPermission(value)}
+                className={`min-h-[44px] rounded-lg px-2 py-2 text-left text-[13px] transition-colors disabled:opacity-50 ${
+                  localCommentPermission === value
+                    ? 'border border-accent/40 bg-accent/20 text-white'
+                    : 'border border-white/[0.08] bg-white/[0.04] text-white/85'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+      );
+    }
+    return (
+      <div className="border-t border-white/[0.06] px-4 pt-3 pb-2">
+        <p className="mb-2 text-[12px] uppercase tracking-wide text-white/60">Comment permission</p>
+        <div className="grid grid-cols-2 gap-1.5">
+          {(
+            [
+              ['EVERYONE', 'Everyone'],
+              ['FOLLOWERS', 'Followers'],
+              ['FOLLOWING', 'Following'],
+              ['OFF', 'Off'],
+            ] as const
+          ).map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              role="menuitemradio"
+              aria-checked={localCommentPermission === value}
+              disabled={visBusy}
+              onClick={() => void setCommentPermission(value)}
+              className={`rounded-lg px-2.5 py-2 text-left text-[12px] transition-colors disabled:opacity-50 ${
+                localCommentPermission === value
+                  ? 'border border-accent/40 bg-accent/20 text-white'
+                  : 'border border-white/[0.08] bg-white/[0.04] text-[#e2e8f0] hover:bg-white/[0.08]'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  const sheetBody = (
+    <>
+      {!isOwner && (
+        <>
+          {showReport && (
+            <button
+              type="button"
+              className={sheetBtn}
+              onClick={() => {
+                closeMenu();
+                setReportOpen(true);
+              }}
+            >
+              Report
+            </button>
+          )}
+          <button type="button" className={sheetBtn} onClick={() => void shareVideo()}>
+            Share
+          </button>
+          {canCopyPublicLink && (
+            <button type="button" className={sheetBtn} onClick={() => void copyLink()}>
+              Copy link
+            </button>
+          )}
+        </>
+      )}
+      {showOwnerActions && (
+        <>
+          {canCopyPublicLink && (
+            <button type="button" className={sheetBtn} onClick={() => void copyLink()}>
+              Copy link
+            </button>
+          )}
+          <button type="button" className={sheetBtn + ' text-white/45'} disabled aria-disabled>
+            Edit (coming soon)
+          </button>
+          {ownerCommentBlock('sheet')}
+          <button
+            type="button"
+            className={sheetBtn}
+            disabled={visBusy}
+            onClick={() => void toggleVisibility()}
+          >
+            {visBusy
+              ? 'Updating…'
+              : localVisibility === 'PRIVATE'
+                ? 'Make public'
+                : 'Make private'}
+          </button>
+          <button
+            type="button"
+            className={sheetBtnDanger}
+            onClick={() => {
+              closeMenu();
+              setDeleteOpen(true);
+            }}
+          >
+            Delete video
+          </button>
+        </>
+      )}
+    </>
+  );
+
+  const dropdownPortal =
+    open && !useSheet && menuPos && typeof document !== 'undefined'
       ? createPortal(
           <>
-            <div className="fixed inset-0 z-[150] bg-transparent" aria-hidden onClick={() => setOpen(false)} />
+            <div className="fixed inset-0 z-[150] bg-transparent" aria-hidden onClick={closeMenu} />
             <div
               ref={menuRef}
               id={menuId}
               role="menu"
-              className="fixed z-[160] rounded-[14px] border border-white/[0.12] py-1 shadow-2xl overflow-hidden"
+              className="fixed z-[160] overflow-hidden rounded-[14px] border border-white/[0.12] py-1 shadow-2xl"
               style={{
                 top: menuPos.top,
                 left: menuPos.left,
@@ -254,69 +442,67 @@ export default function VideoActionsMenu({
                 backdropFilter: 'blur(16px)',
               }}
             >
-              {canCopyPublicLink && (
-                <button
-                  type="button"
-                  role="menuitem"
-                  className="w-full text-left px-4 py-3 text-[14px] text-[#f1f5f9] hover:bg-white/[0.06] transition-colors"
-                  onClick={() => void copyLink()}
-                >
-                  Copy link
-                </button>
-              )}
-              {showReport && (
-                <button
-                  type="button"
-                  role="menuitem"
-                  className="w-full text-left px-4 py-3 text-[14px] text-[#f1f5f9] hover:bg-white/[0.06] transition-colors"
-                  onClick={() => {
-                    setOpen(false);
-                    setReportOpen(true);
-                  }}
-                >
-                  Report
-                </button>
-              )}
-              {showOwnerActions && (
+              {!isOwner && (
                 <>
-                  {localCommentPermission && (
-                    <div className="px-4 pt-3 pb-2 border-t border-white/[0.06]">
-                      <p className="text-[12px] text-white/60 mb-2 uppercase tracking-wide">
-                        Comment permission
-                      </p>
-                      <div className="grid grid-cols-2 gap-1.5">
-                        {(
-                          [
-                            ['EVERYONE', 'Everyone'],
-                            ['FOLLOWERS', 'Followers'],
-                            ['FOLLOWING', 'Following'],
-                            ['OFF', 'Off'],
-                          ] as const
-                        ).map(([value, label]) => (
-                          <button
-                            key={value}
-                            type="button"
-                            role="menuitemradio"
-                            aria-checked={localCommentPermission === value}
-                            disabled={visBusy}
-                            onClick={() => void setCommentPermission(value)}
-                            className={`px-2.5 py-2 rounded-lg text-[12px] text-left transition-colors disabled:opacity-50 ${
-                              localCommentPermission === value
-                                ? 'bg-accent/20 text-white border border-accent/40'
-                                : 'bg-white/[0.04] text-[#e2e8f0] border border-white/[0.08] hover:bg-white/[0.08]'
-                            }`}
-                          >
-                            {label}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
+                  {showReport && (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="w-full px-4 py-3 text-left text-[14px] text-[#f1f5f9] transition-colors hover:bg-white/[0.06]"
+                      onClick={() => {
+                        closeMenu();
+                        setReportOpen(true);
+                      }}
+                    >
+                      Report
+                    </button>
                   )}
                   <button
                     type="button"
                     role="menuitem"
+                    className="w-full px-4 py-3 text-left text-[14px] text-[#f1f5f9] transition-colors hover:bg-white/[0.06]"
+                    onClick={() => void shareVideo()}
+                  >
+                    Share
+                  </button>
+                  {canCopyPublicLink && (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="w-full px-4 py-3 text-left text-[14px] text-[#f1f5f9] transition-colors hover:bg-white/[0.06]"
+                      onClick={() => void copyLink()}
+                    >
+                      Copy link
+                    </button>
+                  )}
+                </>
+              )}
+              {showOwnerActions && (
+                <>
+                  {canCopyPublicLink && (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="w-full px-4 py-3 text-left text-[14px] text-[#f1f5f9] transition-colors hover:bg-white/[0.06]"
+                      onClick={() => void copyLink()}
+                    >
+                      Copy link
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    role="menuitem"
+                    disabled
+                    className="w-full cursor-not-allowed px-4 py-3 text-left text-[14px] text-white/35"
+                  >
+                    Edit (coming soon)
+                  </button>
+                  {ownerCommentBlock('dropdown')}
+                  <button
+                    type="button"
+                    role="menuitem"
                     disabled={visBusy}
-                    className="w-full text-left px-4 py-3 text-[14px] text-[#f1f5f9] hover:bg-white/[0.06] transition-colors disabled:opacity-50"
+                    className="w-full px-4 py-3 text-left text-[14px] text-[#f1f5f9] transition-colors hover:bg-white/[0.06] disabled:opacity-50"
                     onClick={() => void toggleVisibility()}
                   >
                     {visBusy
@@ -328,9 +514,9 @@ export default function VideoActionsMenu({
                   <button
                     type="button"
                     role="menuitem"
-                    className="w-full text-left px-4 py-3 text-[14px] text-red-400 hover:bg-red-500/10 transition-colors"
+                    className="w-full px-4 py-3 text-left text-[14px] text-red-400 transition-colors hover:bg-red-500/10"
                     onClick={() => {
-                      setOpen(false);
+                      closeMenu();
                       setDeleteOpen(true);
                     }}
                   >
@@ -349,8 +535,10 @@ export default function VideoActionsMenu({
       <button
         ref={triggerRef}
         type="button"
-        className={`inline-flex items-center justify-center rounded-full border border-white/15 bg-black/50 text-white/90 hover:bg-white/10 hover:text-white transition-colors ${
-          compact ? 'w-8 h-8 min-w-[32px] min-h-[32px]' : 'w-9 h-9 min-w-[36px] min-h-[36px]'
+        className={`inline-flex touch-manipulation items-center justify-center rounded-full border border-white/20 bg-black/55 text-white/95 transition-colors hover:bg-white/15 active:scale-95 ${
+          compact
+            ? 'h-11 w-11 min-h-[44px] min-w-[44px] md:h-9 md:w-9 md:min-h-[36px] md:min-w-[36px]'
+            : 'h-11 w-11 min-h-[44px] min-w-[44px]'
         }`}
         aria-expanded={open}
         aria-haspopup="menu"
@@ -361,10 +549,18 @@ export default function VideoActionsMenu({
           setOpen((o) => !o);
         }}
       >
-        <IconDotsVertical className={compact ? 'w-4 h-4' : 'w-5 h-5'} aria-hidden />
+        <IconDotsVertical className={compact ? 'h-5 w-5 md:h-4 md:w-4' : 'h-5 w-5'} aria-hidden />
         <span className="sr-only">Video actions</span>
       </button>
-      {menuContent}
+
+      {open && useSheet && (
+        <VideoActionsSheet open={open} onClose={closeMenu} title="Video">
+          {sheetBody}
+        </VideoActionsSheet>
+      )}
+
+      {dropdownPortal}
+
       <DeleteVideoConfirmModal
         open={deleteOpen}
         title={title}

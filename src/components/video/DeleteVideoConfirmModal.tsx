@@ -62,14 +62,10 @@ export default function DeleteVideoConfirmModal({ open, title, onClose, onConfir
         onClick={(e) => e.stopPropagation()}
       >
         <h2 id="delete-video-title" className="text-[18px] font-semibold text-white mb-2">
-          Delete this performance?
+          Delete this video?
         </h2>
-        <p className="text-[14px] text-[#9ba7b8] mb-6 leading-relaxed">
-          <span className="text-white/90 font-medium line-clamp-2 break-words">{title}</span>
-          <span className="block mt-2">
-            This removes the video from BETALENT and public feeds. This cannot be undone.
-          </span>
-        </p>
+        <p className="text-[14px] text-[#9ba7b8] mb-4 leading-relaxed">This action cannot be undone.</p>
+        <p className="text-[13px] text-white/55 mb-6 line-clamp-2 break-words">{title}</p>
         <div className="flex flex-col-reverse sm:flex-row gap-2 sm:justify-end">
           <button
             type="button"

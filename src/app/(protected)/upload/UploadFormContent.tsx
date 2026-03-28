@@ -178,7 +178,7 @@ export default function UploadFormContent(props: Props) {
   return (
     <>
       {showSuccess ? (
-        <div className="w-full min-w-0 px-4 py-6 md:mx-auto md:max-w-lg md:px-6 md:py-10">
+        <div className="w-full min-w-0 px-3 py-6 sm:px-4 md:mx-auto md:max-w-lg md:px-6 md:py-10">
           <PublishSuccessCard
             successReady={successReady}
             successVideoId={successVideoId}
@@ -202,7 +202,7 @@ export default function UploadFormContent(props: Props) {
             </button>
           </header>
 
-          <div className="mx-auto w-full max-w-md space-y-4 px-4 pb-[calc(9.25rem+env(safe-area-inset-bottom))] pt-1 md:space-y-5 md:pb-[calc(9.75rem+env(safe-area-inset-bottom))]">
+          <div className="mx-auto w-full space-y-4 px-3 pb-[calc(9.25rem+env(safe-area-inset-bottom))] pt-1 sm:max-w-md sm:px-4 md:space-y-5 md:pb-[calc(9.75rem+env(safe-area-inset-bottom))]">
               {uploadSource === UPLOAD_SOURCE_FILE && (
                 <UploadDropzone
                   composer
@@ -385,7 +385,7 @@ export default function UploadFormContent(props: Props) {
               backdropFilter: 'blur(20px)',
             }}
           >
-            <div className="mx-auto w-full max-w-md">
+            <div className="mx-auto w-full sm:max-w-md">
               {phase === 'uploading' ? (
                 <div className="mb-3" role="region" aria-label="Upload progress">
                   <div

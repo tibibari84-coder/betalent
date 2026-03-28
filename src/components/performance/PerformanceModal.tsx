@@ -11,6 +11,7 @@ import { usePerformanceModal } from '@/contexts/PerformanceModalContext';
 import GiftModal from '@/components/shared/GiftModal';
 import SuperVoteModal from '@/components/shared/SuperVoteModal';
 import ReportModal from '@/components/shared/ReportModal';
+import VideoActionsMenu from '@/components/video/VideoActionsMenu';
 import FollowButton from '@/components/profile/FollowButton';
 import LikeButton from '@/components/video/LikeButton';
 import VoteButton from '@/components/video/VoteButton';
@@ -46,6 +47,7 @@ type VideoPayload = {
     followersCount: number;
   };
   category: { id: string; name: string; slug: string };
+  visibility?: 'PUBLIC' | 'PRIVATE';
   comments: Array<{
     id: string;
     body: string;
@@ -253,6 +255,22 @@ export default function PerformanceModal({ videoId, isOpen, onClose }: Performan
     >
       {/* Left: Video — hero, cinematic focus */}
       <div className="relative flex-1 min-w-0 flex flex-col bg-black">
+        {video?.id ? (
+          <div
+            className="pointer-events-auto absolute left-2 top-[max(8px,env(safe-area-inset-top))] z-30 md:left-3"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <VideoActionsMenu
+              videoId={video.id}
+              title={video.title}
+              creatorId={video.creator.id}
+              visibility={video.visibility ?? 'PUBLIC'}
+              onRemoved={(removedId) => {
+                if (removedId === videoId) handleClose();
+              }}
+            />
+          </div>
+        ) : null}
         <ModalVideoPlayer
           videoId={video?.id ?? ''}
           videoUrl={video?.videoUrl ?? ''}

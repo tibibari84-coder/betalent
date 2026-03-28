@@ -38,6 +38,21 @@
   }
 }
 
+/* Video ••• menu — mobile bottom sheet */
+@keyframes video-actions-sheet-enter {
+  from {
+    transform: translateY(100%);
+    opacity: 0.65;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+.video-actions-sheet-enter {
+  animation: video-actions-sheet-enter 0.32s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+}
+
 /* Premium auth surfaces — subtle entry, no distraction */
 @keyframes auth-card-enter {
   from {

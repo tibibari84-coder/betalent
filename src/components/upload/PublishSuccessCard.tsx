@@ -70,8 +70,8 @@ export default function PublishSuccessCard(props: Props) {
   const viewHref = successReady && successVideoId ? `/video/${successVideoId}` : '/my-videos';
 
   return (
-    <div className="flex min-h-[min(100dvh,720px)] flex-col animate-studio-enter">
-      <div className="relative mx-auto w-full max-w-sm overflow-hidden rounded-2xl bg-black">
+    <div className="flex w-full min-h-[min(100dvh,720px)] flex-col animate-studio-enter px-1 sm:px-0">
+      <div className="relative w-full overflow-hidden rounded-2xl bg-black sm:mx-auto sm:max-w-sm">
         {previewUrl ? (
           <video
             src={previewUrl}

@@ -41,6 +41,18 @@ function normalizeUploadMessage(message: string | undefined, step?: string): str
   if (step === 'storage' || raw.includes('storage') || raw.includes('direct upload is not configured')) {
     return 'Upload service is temporarily unavailable. Please try again.';
   }
+  if (raw.includes('playback url') || raw.includes('failed to get playback')) {
+    return 'Playback is not ready yet (or storage URL is missing). Wait a minute and check My videos, or try uploading again.';
+  }
+  if (raw.includes('complete failed') || raw.includes('upload_complete_failed')) {
+    return 'We could not finish processing your video after upload. Try again or use another file.';
+  }
+  if (raw.includes('upload not in progress')) {
+    return 'This upload session expired. Please start a new upload.';
+  }
+  if (raw.includes('forbidden')) {
+    return 'You are not allowed to complete this upload. Check that you are signed in as the right account.';
+  }
   if (raw.includes('invalid file type')) {
     return 'Unsupported file type. Use MP4, MOV, M4V, WebM, or a supported audio file.';
   }
@@ -52,6 +64,9 @@ function normalizeUploadMessage(message: string | undefined, step?: string): str
   }
   if (raw.includes('network')) {
     return 'Network issue while uploading. Check your connection and try again.';
+  }
+  if (raw.includes('too many') && raw.includes('completion')) {
+    return 'Too many finish attempts. Please wait a few minutes and try again.';
   }
   return message?.trim() || 'Upload failed. Please try again.';
 }
