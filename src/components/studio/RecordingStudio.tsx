@@ -33,7 +33,6 @@ export type RecordingStudioProps = {
   t: (key: string) => string;
   onAcceptTake: (file: File, durationSec: number) => void;
   onClose: () => void;
-  onSwitchToDeviceUpload: () => void;
   loading: boolean;
 };
 
@@ -65,7 +64,6 @@ export default function RecordingStudio(props: RecordingStudioProps) {
     t,
     onAcceptTake,
     onClose,
-    onSwitchToDeviceUpload,
     loading,
   } = props;
 
@@ -175,7 +173,7 @@ export default function RecordingStudio(props: RecordingStudioProps) {
       return;
     }
     if (!isStudioRecordingSupported()) {
-      setLocalError('In-browser capture isn’t available here. Use Upload from device for a file-based take.');
+      setLocalError('In-browser recording isn’t available in this browser. Try Safari or Chrome, or reload the page.');
       return;
     }
     prepCancelledRef.current = false;
@@ -363,7 +361,6 @@ export default function RecordingStudio(props: RecordingStudioProps) {
         mode={mode}
         onEnterBooth={enterLiveRoom}
         onClose={handleClose}
-        onSwitchToDeviceUpload={onSwitchToDeviceUpload}
       />
     );
   }
@@ -391,7 +388,6 @@ export default function RecordingStudio(props: RecordingStudioProps) {
         onCancelPreview={cancelPreview}
         onRetryPreview={() => void handleRetryPreview()}
         onHardResetCamera={() => void handleHardResetCamera()}
-        onSwitchToDeviceUpload={onSwitchToDeviceUpload}
         onStartRecording={() => void studioStartRecording()}
         onFlipCamera={() => void handleFlipCamera()}
         onPause={() => studioPauseRecording()}

@@ -232,8 +232,8 @@ async function classifyGetUserMediaFailure(
         code: 'unknown',
         message:
           gate === 'video'
-            ? 'These camera settings are not supported on this device. Try again or use Upload from device.'
-            : 'These microphone settings are not supported. Try again or use Upload from device.',
+            ? 'These camera settings are not supported on this device. Try again.'
+            : 'These microphone settings are not supported. Try again.',
       },
       permissionState: 'error',
       logEvent: null,
@@ -247,7 +247,7 @@ async function classifyGetUserMediaFailure(
         code: gate === 'video' ? 'no_camera' : 'no_microphone',
         message:
           gate === 'video'
-            ? 'No suitable camera was found. Connect a camera or use Upload from device.'
+            ? 'No suitable camera was found. Connect a camera or try another device.'
             : 'No microphone was found. Connect a mic and try again.',
       },
       permissionState: 'error',
@@ -398,7 +398,7 @@ export function useStudioRecorder(maxDurationSec: number) {
       stopStream();
 
       if (!isStudioRecordingSupported()) {
-        const message = 'Studio recording is not available on this browser. Use Upload from device.';
+        const message = 'Studio recording is not available on this browser. Try Safari or Chrome.';
         setError({ code: 'unsupported', message });
         setPermissionState('error');
         setIsAcquiringStream(false);
@@ -505,7 +505,7 @@ export function useStudioRecorder(maxDurationSec: number) {
         }
         if (!videoTracks.length) {
           stream.getTracks().forEach((t) => t.stop());
-          const message = 'Camera not detected. Connect a camera or use Upload from device.';
+          const message = 'Camera not detected. Connect a camera and try again.';
           setError({ code: 'no_camera', message });
           setPermissionState('error');
           setPhase('idle');
@@ -579,7 +579,7 @@ export function useStudioRecorder(maxDurationSec: number) {
         setPhase('idle');
         setIsAcquiringStream(false);
         console.error('[useStudioRecorder] preview pipeline failed after tracks acquired', { error: e });
-        const message = 'We couldn’t finish opening the camera preview. Please try again or use Upload from device.';
+        const message = 'We couldn’t finish opening the camera preview. Please try again.';
         setError({ code: 'unknown', message });
         setPermissionState('error');
         return { ok: false, message, code: 'unknown' };
@@ -639,7 +639,7 @@ export function useStudioRecorder(maxDurationSec: number) {
     if (!mimeType) {
       setError({
         code: 'recorder_not_supported',
-        message: 'This browser cannot start studio recording. Try another browser or upload from device.',
+        message: 'This browser cannot start studio recording. Try another browser.',
       });
       return;
     }
@@ -654,7 +654,7 @@ export function useStudioRecorder(maxDurationSec: number) {
     } catch {
       setError({
         code: 'recorder_not_supported',
-        message: 'Studio recorder could not start. Use Upload from device.',
+        message: 'Studio recorder could not start. Try again or reload the page.',
       });
       return;
     }
@@ -697,7 +697,7 @@ export function useStudioRecorder(maxDurationSec: number) {
     } catch {
       setError({
         code: 'recorder_not_supported',
-        message: 'Recording could not start. Please try again or use Upload from device.',
+        message: 'Recording could not start. Please try again.',
       });
       recorderRef.current = null;
       return;

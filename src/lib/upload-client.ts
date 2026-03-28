@@ -1,7 +1,7 @@
 /**
  * Client-side direct video upload: init → PUT to presigned URL → complete.
  *
- * Phase 1: File from device storage (Photos, Files, folder) — current.
+ * Client direct upload: presigned PUT from browser (Studio `File` or internal callers).
  * Phase 2: Same pipeline for File from camera capture or MediaRecorder (camera+mic).
  * Do not change this pipeline for Phase 2; only pass a File from the new source.
  */
@@ -73,7 +73,7 @@ function normalizeUploadMessage(message: string | undefined, step?: string): str
 
 /**
  * Run the full direct upload: POST /api/upload/init, PUT file to presigned URL, POST complete.
- * Accepts File from device upload or createFileForUpload(blob, filename, mimeType) after Recording Studio.
+ * Accepts `File` from `createFileForUpload(blob, …)` after Recording Studio, or any valid video `File`.
  */
 export async function performDirectUpload(
   file: File,

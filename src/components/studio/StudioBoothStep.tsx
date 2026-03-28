@@ -45,7 +45,6 @@ export type StudioBoothStepProps = {
   onCancelPreview: () => void;
   onRetryPreview: () => void;
   onHardResetCamera: () => void;
-  onSwitchToDeviceUpload: () => void;
   onStartRecording: () => void;
   onFlipCamera: () => void;
   onPause: () => void;
@@ -83,7 +82,6 @@ type CameraAccessOverlayBlockProps = {
   onToggleSettingsHelp: () => void;
   onTryAgain: () => void;
   onHardReset: () => void;
-  onUpload: () => void;
 };
 
 function CameraAccessOverlayBlock(props: CameraAccessOverlayBlockProps) {
@@ -94,7 +92,6 @@ function CameraAccessOverlayBlock(props: CameraAccessOverlayBlockProps) {
     onToggleSettingsHelp,
     onTryAgain,
     onHardReset,
-    onUpload,
   } = props;
   return (
     <div
@@ -128,13 +125,6 @@ function CameraAccessOverlayBlock(props: CameraAccessOverlayBlockProps) {
         <button type="button" onClick={onHardReset} className={cn(btnGhost, 'min-h-[44px] w-full text-white/70')}>
           Reset camera
         </button>
-        <button
-          type="button"
-          onClick={onUpload}
-          className="min-h-[44px] w-full text-[13px] font-medium text-white/45 underline decoration-white/25 underline-offset-4 [@media(hover:hover)]:hover:text-white/75"
-        >
-          Upload video from device
-        </button>
       </div>
     </div>
   );
@@ -162,7 +152,6 @@ export default function StudioBoothStep(props: StudioBoothStepProps) {
     onCancelPreview,
     onRetryPreview,
     onHardResetCamera,
-    onSwitchToDeviceUpload,
     onStartRecording,
     onFlipCamera,
     onPause,
@@ -552,10 +541,6 @@ export default function StudioBoothStep(props: StudioBoothStepProps) {
                         setShowSettingsHelp(false);
                         void onHardResetCamera();
                       }}
-                      onUpload={() => {
-                        setShowSettingsHelp(false);
-                        onSwitchToDeviceUpload();
-                      }}
                     />
                   </div>
                 ) : null}
@@ -796,10 +781,6 @@ export default function StudioBoothStep(props: StudioBoothStepProps) {
                                 setShowSettingsHelp(false);
                                 void onHardResetCamera();
                               }}
-                              onUpload={() => {
-                                setShowSettingsHelp(false);
-                                onSwitchToDeviceUpload();
-                              }}
                             />
                           </div>
                         ) : null}
@@ -905,13 +886,6 @@ export default function StudioBoothStep(props: StudioBoothStepProps) {
                   className="min-h-[40px] rounded-[10px] border border-white/20 px-4 text-[13px] font-medium text-white/80 transition-colors [@media(hover:hover)]:hover:bg-white/5"
                 >
                   Reset camera
-                </button>
-                <button
-                  type="button"
-                  onClick={onSwitchToDeviceUpload}
-                  className="min-h-[40px] px-3 text-[13px] font-medium text-white/45 underline decoration-white/25 underline-offset-4"
-                >
-                  Upload from device
                 </button>
               </div>
             </div>

@@ -159,7 +159,7 @@ export default function PublishSuccessCard(props: Props) {
           onClick={onUploadAnother}
           className="mt-1 min-h-[48px] text-[14px] font-medium text-white/40 underline decoration-white/15 underline-offset-4 [@media(hover:hover)]:hover:text-white/65"
         >
-          Upload another
+          Record another
         </button>
       </div>
 

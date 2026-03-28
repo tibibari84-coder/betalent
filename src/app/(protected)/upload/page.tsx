@@ -1,19 +1,14 @@
 'use client';
 
 /**
- * Upload Performance: device file and in-app Recording Studio (same File → performDirectUpload).
+ * Creator publish: Recording Studio → File from blob → performDirectUpload (camera-first only).
  * Uses mounted state to defer searchParams read and avoid hydration mismatch.
  */
 
 import React, { useState, useCallback, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import type { UploadProgressStep } from '@/lib/upload-client';
-import {
-  ENABLED_UPLOAD_SOURCES,
-  getMimeTypeForUpload,
-  MAX_VIDEO_FILE_SIZE,
-  UPLOAD_SOURCE_FILE,
-} from '@/constants/upload';
+import { getMimeTypeForUpload, MAX_VIDEO_FILE_SIZE } from '@/constants/upload';
 import type { RecordingMode } from '@/constants/recording-modes';
 import {
   getLiveChallengeRecordingCapSec,
@@ -74,8 +69,6 @@ export default function UploadPage() {
   // Defer searchParams until mounted to avoid hydration mismatch (server has no URL)
   useEffect(() => setMounted(true), []);
   const challengeSlug = mounted ? (searchParams?.get('challenge')?.trim() ?? '') : '';
-
-  const uploadSource = ENABLED_UPLOAD_SOURCES.includes(UPLOAD_SOURCE_FILE) ? UPLOAD_SOURCE_FILE : ENABLED_UPLOAD_SOURCES[0];
 
   const previewUrlStable = file && previewUrl ? previewUrl : null;
   const hasChallengeSlug = Boolean(challengeSlug);
@@ -143,18 +136,6 @@ export default function UploadPage() {
     setPreviewUrl(url);
     return () => URL.revokeObjectURL(url);
   }, [file]);
-
-  const handleFileSelect = useCallback((f: File, sec: number) => {
-    setFile(f);
-    setDurationSec(sec);
-    setError('');
-  }, []);
-
-  const handleClearFile = useCallback(() => {
-    setFile(null);
-    setDurationSec(0);
-    setError('');
-  }, []);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -329,13 +310,6 @@ export default function UploadPage() {
     setUploadEntryMode('studio');
   }, []);
 
-  const onSwitchToDeviceUpload = useCallback(() => {
-    setUploadEntryMode('device');
-    setFile(null);
-    setDurationSec(0);
-    setError('');
-  }, []);
-
   const onBackToStudio = useCallback(() => {
     setUploadEntryMode('studio');
     setFile(null);
@@ -350,7 +324,7 @@ export default function UploadPage() {
   const onStudioAcceptTake = useCallback((accepted: File, sec: number) => {
     setFile(accepted);
     setDurationSec(sec);
-    setUploadEntryMode('device');
+    setUploadEntryMode('publish');
     setError('');
   }, []);
 
@@ -370,7 +344,7 @@ export default function UploadPage() {
       .trim() ||
     '';
   const canSubmit =
-    uploadEntryMode === 'device' &&
+    uploadEntryMode === 'publish' &&
     !loading &&
     file &&
     Boolean(derivedTitleForGate) &&
@@ -427,9 +401,6 @@ export default function UploadPage() {
       file,
       previewUrlStable,
       durationSec,
-      uploadSource,
-      handleFileSelect,
-      handleClearFile,
       setDurationSec,
       uploadStep,
       uploadProgress,
@@ -437,7 +408,6 @@ export default function UploadPage() {
       maxStudioDurationSec,
       studioRecordingMode,
       challengeSlug,
-      onSwitchToDeviceUpload,
       onBackToStudio,
       onExitCreation,
       onStudioAcceptTake,

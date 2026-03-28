@@ -67,34 +67,15 @@ export const LIVE_CHALLENGE_MAX_DURATION_SEC_FUTURE = getRecordingMaxDurationSec
 export const UPLOAD_PRESIGN_EXPIRES_SEC = 60 * 60; // 1 hour
 
 /**
- * How the user provides the video. Creation is record-first; device upload is secondary.
- *
- * - `file`: device/library upload (UploadDropzone)
- * - `record`: in-app Recording Studio (MediaRecorder)
- *
- * Both paths produce a `File` and use the same `performDirectUpload()` pipeline.
+ * How video bytes enter the direct-upload pipeline (API / validation).
+ * Product UI is camera-first only; the resulting `File` still tags as `record` where used.
  */
 export type UploadSourceType = 'file' | 'camera' | 'record';
 
-/**
- * Source identifiers used by the upload page.
- *
- * - `file`: device/library upload
- * - `record`: in-app Studio recording (MediaRecorder) -> converted to a `File`
- * - `camera`: reserved for future raw camera capture UI
- */
+/** Legacy identifier — manual file picker removed from creator UI. */
 export const UPLOAD_SOURCE_FILE: UploadSourceType = 'file';
 export const UPLOAD_SOURCE_CAMERA: UploadSourceType = 'camera';
 export const UPLOAD_SOURCE_RECORD: UploadSourceType = 'record';
 
-/**
- * Which sources are enabled in this build.
- *
- * - `file`: device storage upload is enabled
- * - `record`: Studio recording is enabled
- * - `camera`: intentionally not enabled yet (no upload page UI path)
- */
-export const ENABLED_UPLOAD_SOURCES: readonly UploadSourceType[] = [
-  UPLOAD_SOURCE_FILE,
-  UPLOAD_SOURCE_RECORD,
-];
+/** Enabled sources for this build (creator flow = studio / record only). */
+export const ENABLED_UPLOAD_SOURCES: readonly UploadSourceType[] = [UPLOAD_SOURCE_RECORD];

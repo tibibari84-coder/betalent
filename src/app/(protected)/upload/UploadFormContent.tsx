@@ -1,15 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import UploadDropzone from '@/components/upload/UploadDropzone';
-import LibraryVideoInlinePicker from '@/components/upload/LibraryVideoInlinePicker';
 import RecordingStudio from '@/components/studio/RecordingStudio';
 import PublishSuccessCard from '@/components/upload/PublishSuccessCard';
 import type { ChallengeContextLite } from '@/components/upload/UploadMetadataFields';
 import { IconArrowLeft, IconUpload } from '@/components/ui/Icons';
 import { cn } from '@/lib/utils';
 import { VOCAL_STYLES_UPLOAD } from '@/constants/categories';
-import { getMimeTypeForUpload, MAX_VIDEO_FILE_SIZE, UPLOAD_SOURCE_FILE } from '@/constants/upload';
+import { getMimeTypeForUpload, MAX_VIDEO_FILE_SIZE } from '@/constants/upload';
 import { CONTENT_TYPE_LABELS, CONTENT_TYPE_DESCRIPTIONS, PLATFORM_RULES_ACKNOWLEDGMENT } from '@/constants/platform-rules';
 import type { UploadProgressStep } from '@/lib/upload-client';
 import type { RecordingMode } from '@/constants/recording-modes';
@@ -29,7 +27,7 @@ type ChallengeContext = {
   status: string;
 };
 
-export type UploadEntryMode = 'studio' | 'device';
+export type UploadEntryMode = 'studio' | 'publish';
 
 export type Props = {
   showSuccess: boolean;
@@ -61,9 +59,6 @@ export type Props = {
   file: File | null;
   previewUrlStable: string | null;
   durationSec: number;
-  uploadSource: string;
-  handleFileSelect: (f: File, sec: number) => void;
-  handleClearFile: () => void;
   setDurationSec: (value: number) => void;
   uploadStep: UploadProgressStep;
   uploadProgress: number;
@@ -72,7 +67,6 @@ export type Props = {
   /** Standard (90s cap) vs live challenge (platform/challenge cap). */
   studioRecordingMode: RecordingMode;
   challengeSlug: string;
-  onSwitchToDeviceUpload: () => void;
   onBackToStudio: () => void;
   onExitCreation: () => void;
   onStudioAcceptTake: (file: File, durationSec: number) => void;
@@ -109,9 +103,6 @@ export default function UploadFormContent(props: Props) {
     file,
     previewUrlStable,
     durationSec,
-    uploadSource,
-    handleFileSelect,
-    handleClearFile,
     setDurationSec,
     uploadStep,
     uploadProgress,
@@ -119,7 +110,6 @@ export default function UploadFormContent(props: Props) {
     maxStudioDurationSec,
     studioRecordingMode,
     challengeSlug,
-    onSwitchToDeviceUpload,
     onBackToStudio,
     onExitCreation,
     onStudioAcceptTake,
@@ -137,13 +127,13 @@ export default function UploadFormContent(props: Props) {
 
   const [moreOpen, setMoreOpen] = useState(false);
 
-  const dropzoneError =
+  const publishVideoError =
     file && durationSec > maxStudioDurationSec
-      ? `Video is ${durationSec}s — maximum allowed is ${maxStudioDurationSec}s.`
+      ? `This take is ${durationSec}s — maximum allowed is ${maxStudioDurationSec}s. Record again with a shorter take.`
       : file && !getMimeTypeForUpload(file)
-        ? 'Use MP4, MOV, M4V, or WebM'
+        ? 'This recording could not be read for upload. Try recording again.'
         : file && file.size > MAX_VIDEO_FILE_SIZE
-          ? `Max ${Math.round(MAX_VIDEO_FILE_SIZE / 1024 / 1024)} MB`
+          ? `Recording is too large (max ${Math.round(MAX_VIDEO_FILE_SIZE / 1024 / 1024)} MB). Record a shorter take.`
           : null;
 
   if (!showSuccess && uploadEntryMode === 'studio') {
@@ -169,7 +159,6 @@ export default function UploadFormContent(props: Props) {
           t={t}
           loading={loading}
           onClose={onExitCreation}
-          onSwitchToDeviceUpload={onSwitchToDeviceUpload}
           onAcceptTake={onStudioAcceptTake}
         />
       </div>
@@ -204,27 +193,25 @@ export default function UploadFormContent(props: Props) {
           </header>
 
           <div className="mx-auto w-full space-y-4 px-3 pb-[calc(9.25rem+env(safe-area-inset-bottom))] pt-1 sm:max-w-md sm:px-4 md:space-y-5 md:pb-[calc(9.75rem+env(safe-area-inset-bottom))]">
-              {uploadSource === UPLOAD_SOURCE_FILE &&
-                (file ? (
-                  <UploadDropzone
-                    composer
-                    file={file}
-                    previewUrl={previewUrlStable}
-                    durationSec={durationSec}
-                    onFileSelect={handleFileSelect}
-                    onClear={handleClearFile}
-                    onDurationLoaded={setDurationSec}
-                    disabled={loading}
-                    error={dropzoneError}
+              {previewUrlStable && file ? (
+                <div className="overflow-hidden rounded-2xl border border-white/[0.1] bg-black">
+                  <video
+                    src={previewUrlStable}
+                    className="aspect-[9/16] max-h-[min(52dvh,520px)] w-full object-cover"
+                    controls
+                    playsInline
+                    preload="metadata"
                   />
-                ) : (
-                  <LibraryVideoInlinePicker
-                    onFileSelect={handleFileSelect}
-                    onDurationLoaded={setDurationSec}
-                    onBackToStudio={onBackToStudio}
-                    disabled={loading}
-                  />
-                ))}
+                  <p className="border-t border-white/[0.06] px-3 py-2 text-center text-[12px] text-white/45">
+                    {durationSec >= 1 ? `${durationSec}s` : '—'} · preview
+                  </p>
+                </div>
+              ) : null}
+              {publishVideoError ? (
+                <div className="rounded-xl border border-amber-500/30 bg-amber-500/[0.08] px-3 py-2.5 text-[13px] text-amber-100/95" role="alert">
+                  {publishVideoError}
+                </div>
+              ) : null}
               {challengeContext ? (
                 <div className="rounded-xl border border-accent/25 bg-accent/[0.08] px-3.5 py-2.5">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-accent/80">Challenge</p>
@@ -353,14 +340,16 @@ export default function UploadFormContent(props: Props) {
                           type="button"
                           disabled={loading}
                           onClick={() => {
-                            handleClearFile();
                             setMoreOpen(false);
+                            onBackToStudio();
                           }}
                           className="min-h-[44px] w-full rounded-xl border border-red-500/35 bg-red-500/[0.08] px-4 py-2.5 text-left text-[13px] font-medium text-red-300/95 transition-colors enabled:[@media(hover:hover)]:hover:border-red-500/50 enabled:[@media(hover:hover)]:hover:bg-red-500/[0.12] disabled:opacity-45"
                         >
-                          {t('upload.deleteVideo')}
+                          Discard take & re-record
                         </button>
-                        <p className="mt-2 text-[11px] leading-relaxed text-white/35">{t('upload.deleteVideoHint')}</p>
+                        <p className="mt-2 text-[11px] leading-relaxed text-white/35">
+                          You’ll return to the studio to record again. Nothing is published yet.
+                        </p>
                       </div>
                     ) : null}
                     <p className="text-[11px] leading-relaxed text-white/35">

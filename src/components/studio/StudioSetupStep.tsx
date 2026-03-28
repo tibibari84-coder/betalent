@@ -33,7 +33,6 @@ export type StudioSetupStepProps = {
   mode: RecordingMode;
   onEnterBooth: () => void;
   onClose: () => void;
-  onSwitchToDeviceUpload: () => void;
 };
 
 export default function StudioSetupStep(props: StudioSetupStepProps) {
@@ -59,7 +58,6 @@ export default function StudioSetupStep(props: StudioSetupStepProps) {
     mode,
     onEnterBooth,
     onClose,
-    onSwitchToDeviceUpload,
   } = props;
   const copy = getStudioModeCopy(mode);
 
@@ -183,19 +181,11 @@ export default function StudioSetupStep(props: StudioSetupStepProps) {
             Cancel
           </button>
         </div>
-        <p className="max-w-lg text-[12px] leading-relaxed text-white/50 md:text-[13px]">
-          {!recordingSupported ? (
-            <>This environment doesn&apos;t support in-browser capture. </>
-          ) : null}
-          <button
-            type="button"
-            onClick={onSwitchToDeviceUpload}
-            disabled={loading}
-            className="font-medium text-accent/90 hover:text-accent underline underline-offset-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 rounded"
-          >
-            Upload from library instead
-          </button>
-        </p>
+        {!recordingSupported ? (
+          <p className="max-w-lg text-[12px] leading-relaxed text-white/50 md:text-[13px]">
+            This browser doesn&apos;t support in-browser recording. Try Safari or Chrome on a phone or desktop, or update your browser.
+          </p>
+        ) : null}
       </div>
 
     </div>

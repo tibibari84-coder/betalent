@@ -47,6 +47,6 @@ export function getStudioModeCopy(mode: RecordingMode): StudioModeCopy {
     boothDescription: 'Frame your shot, keep your mic live, and record your best take.',
     reviewLabel: 'Playback review',
     reviewTitle: 'Ship this performance?',
-    reviewDescription: 'Listen back once—if it’s clean, send it down the same publish pipeline as a device upload.',
+    reviewDescription: 'Listen back once—if it’s clean, continue to caption and publish.',
   };
 }
