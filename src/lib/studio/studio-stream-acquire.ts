@@ -18,8 +18,8 @@ function isMobileViewport(): boolean {
 function constraintsIdealPortrait(facing: StudioFacing): MediaTrackConstraints {
   return {
     facingMode: facing,
-    width: { ideal: 720 },
-    height: { ideal: 1280 },
+    width: { ideal: 720, max: 1080 },
+    height: { ideal: 1280, max: 2560 },
     aspectRatio: { ideal: 9 / 16 },
     frameRate: { ideal: 30, max: 30 },
   };
