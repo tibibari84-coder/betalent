@@ -116,18 +116,6 @@ export function useCameraStream(): UseCameraStreamResult {
       }
 
       try {
-        try {
-          const vt = stream.getVideoTracks()[0];
-          if (vt) {
-            const caps = (vt.getCapabilities?.() ?? {}) as { zoom?: { min: number; max: number } };
-            if (caps.zoom) {
-              await vt.applyConstraints({ advanced: [{ zoom: 1 }] } as unknown as MediaTrackConstraints);
-            }
-          }
-        } catch {
-          /* non-fatal */
-        }
-
         const audioTracks = stream.getAudioTracks().filter((t) => t.readyState !== 'ended');
         const videoTracks = stream.getVideoTracks().filter((t) => t.readyState !== 'ended');
         if (!audioTracks.length) {
