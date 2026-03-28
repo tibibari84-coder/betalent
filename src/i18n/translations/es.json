@@ -103,6 +103,8 @@
   "upload.preparing": "Preparando subida…",
   "upload.processing": "Procesando…",
   "upload.tryAgainHint": "Puedes cambiar el archivo o los detalles e intentar de nuevo.",
+  "upload.deleteVideo": "Eliminar vídeo",
+  "upload.deleteVideoHint": "Quita este clip del editor para elegir otro archivo o usar el estudio.",
   "feed.views": "vistas",
   "feed.likes": "me gusta",
   "feed.comments": "comentarios",

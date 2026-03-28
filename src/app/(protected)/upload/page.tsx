@@ -338,7 +338,8 @@ export default function UploadPage() {
 
   const formProps = {
     onSubmit: handleSubmit,
-    className: 'block w-full min-h-[calc(100vh-60px)] md:min-h-[calc(100vh-72px)] pb-40 md:pb-28 min-w-0 overflow-x-hidden',
+    className:
+      'block w-full min-h-0 min-w-0 overflow-x-hidden pb-[calc(7.75rem+env(safe-area-inset-bottom,0px))] scroll-pb-[calc(7.75rem+env(safe-area-inset-bottom,0px))] md:pb-32 md:scroll-pb-28 min-h-[calc(100dvh_-_var(--topbar-height)_-_var(--shell-content-gap-mobile))] md:min-h-[calc(100dvh_-_var(--topbar-height)_-_var(--shell-content-gap-desktop))]',
     style: { backgroundColor: '#0D0D0E' },
   };
   return React.createElement(

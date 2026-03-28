@@ -99,6 +99,8 @@
   "upload.preparing": "Preparing upload…",
   "upload.processing": "Processing…",
   "upload.tryAgainHint": "You can change the file or details and try again.",
+  "upload.deleteVideo": "Delete video",
+  "upload.deleteVideoHint": "Removes this clip from the composer so you can pick another file or use the studio.",
   "feed.views": "views",
   "feed.likes": "likes",
   "feed.comments": "comments",

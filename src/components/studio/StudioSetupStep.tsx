@@ -82,7 +82,7 @@ export default function StudioSetupStep(props: StudioSetupStepProps) {
         'max-md:mb-0 max-md:rounded-none max-md:border-0 max-md:shadow-none max-md:bg-black'
       )}
     >
-      <div className={cn('px-4 py-4 md:px-9 md:py-7', studioHeaderBg)}>
+      <div className={cn('px-4 py-3 md:px-9 md:py-7', studioHeaderBg)}>
         <div className="flex flex-wrap items-center gap-2 mb-3">
           {mode === 'live' && copy.liveChallengeBadge && (
             <span className="text-[10px] sm:text-[11px] uppercase tracking-[0.2em] font-bold px-2.5 py-1 rounded-full border border-accent/45 bg-accent/15 text-accent">
@@ -103,7 +103,7 @@ export default function StudioSetupStep(props: StudioSetupStepProps) {
         </p>
       </div>
 
-      <div className="space-y-6 px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-2 md:space-y-8 md:p-9 md:pb-9 md:pt-0">
+      <div className="space-y-5 px-4 pb-[max(2rem,env(safe-area-inset-bottom))] pt-2 md:space-y-8 md:p-9 md:pb-9 md:pt-0">
         {mode === 'live' && copy.liveRulesHelper && (
           <div
             className="rounded-[16px] border border-white/[0.08] bg-white/[0.03] px-4 py-3.5 sm:px-5 sm:py-4"

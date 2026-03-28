@@ -103,6 +103,8 @@
   "upload.preparing": "Préparation de l'envoi…",
   "upload.processing": "Traitement…",
   "upload.tryAgainHint": "Vous pouvez modifier le fichier ou les détails et réessayer.",
+  "upload.deleteVideo": "Supprimer la vidéo",
+  "upload.deleteVideoHint": "Retire ce clip de l’éditeur pour en choisir un autre ou utiliser le studio.",
   "feed.views": "vues",
   "feed.likes": "j'aime",
   "feed.comments": "commentaires",

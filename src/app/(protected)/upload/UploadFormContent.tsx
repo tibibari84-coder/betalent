@@ -147,7 +147,7 @@ export default function UploadFormContent(props: Props) {
 
   if (!showSuccess && uploadEntryMode === 'studio') {
     return (
-      <div className="fixed inset-0 z-[100] min-h-[100dvh] w-full overflow-hidden bg-black">
+      <div className="fixed inset-0 z-[100] min-h-0 w-full overflow-y-auto overflow-x-hidden overscroll-y-contain bg-black [-webkit-overflow-scrolling:touch]">
         <RecordingStudio
           maxDurationSec={maxStudioDurationSec}
           mode={studioRecordingMode}
@@ -190,8 +190,8 @@ export default function UploadFormContent(props: Props) {
           />
         </div>
       ) : (
-        <div className="flex min-h-[calc(100dvh-4rem)] w-full flex-col">
-          <header className="shrink-0 px-4 pb-2 pt-[max(8px,env(safe-area-inset-top))]">
+        <div className="flex w-full min-h-0 flex-col">
+          <header className="shrink-0 px-4 pb-1 pt-[max(6px,env(safe-area-inset-top))]">
             <button
               type="button"
               onClick={onBackToStudio}
@@ -202,8 +202,7 @@ export default function UploadFormContent(props: Props) {
             </button>
           </header>
 
-          <div className="flex min-h-0 flex-1 flex-col items-center px-4 pb-[calc(8.5rem+env(safe-area-inset-bottom))] md:pb-[calc(9rem+env(safe-area-inset-bottom))]">
-            <div className="flex w-full max-w-md flex-1 flex-col items-center justify-center">
+          <div className="mx-auto w-full max-w-md space-y-4 px-4 pb-[calc(9.25rem+env(safe-area-inset-bottom))] pt-1 md:space-y-5 md:pb-[calc(9.75rem+env(safe-area-inset-bottom))]">
               {uploadSource === UPLOAD_SOURCE_FILE && (
                 <UploadDropzone
                   composer
@@ -217,9 +216,6 @@ export default function UploadFormContent(props: Props) {
                   error={dropzoneError}
                 />
               )}
-            </div>
-
-            <div className="w-full max-w-md shrink-0 space-y-4">
               {challengeContext ? (
                 <div className="rounded-xl border border-accent/25 bg-accent/[0.08] px-3.5 py-2.5">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-accent/80">Challenge</p>
@@ -342,6 +338,22 @@ export default function UploadFormContent(props: Props) {
                         <option value="OFF">Off</option>
                       </select>
                     </div>
+                    {file ? (
+                      <div className="border-t border-white/[0.08] pt-4">
+                        <button
+                          type="button"
+                          disabled={loading}
+                          onClick={() => {
+                            handleClearFile();
+                            setMoreOpen(false);
+                          }}
+                          className="min-h-[44px] w-full rounded-xl border border-red-500/35 bg-red-500/[0.08] px-4 py-2.5 text-left text-[13px] font-medium text-red-300/95 transition-colors enabled:[@media(hover:hover)]:hover:border-red-500/50 enabled:[@media(hover:hover)]:hover:bg-red-500/[0.12] disabled:opacity-45"
+                        >
+                          {t('upload.deleteVideo')}
+                        </button>
+                        <p className="mt-2 text-[11px] leading-relaxed text-white/35">{t('upload.deleteVideoHint')}</p>
+                      </div>
+                    ) : null}
                     <p className="text-[11px] leading-relaxed text-white/35">
                       Visibility is public by default for new performances. Votes and gifts follow platform rules for your account tier.
                     </p>
@@ -363,13 +375,12 @@ export default function UploadFormContent(props: Props) {
                   ) : null}
                 </div>
               ) : null}
-            </div>
           </div>
 
           <div
             className="fixed bottom-0 left-0 right-0 z-40 border-t border-white/[0.08] px-4 pt-3"
             style={{
-              paddingBottom: 'max(12px, env(safe-area-inset-bottom))',
+              paddingBottom: 'max(12px, env(safe-area-inset-bottom, 0px))',
               background: 'rgba(6,6,8,0.92)',
               backdropFilter: 'blur(20px)',
             }}

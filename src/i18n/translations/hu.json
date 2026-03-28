@@ -103,6 +103,8 @@
   "upload.preparing": "Feltöltés előkészítése…",
   "upload.processing": "Feldolgozás…",
   "upload.tryAgainHint": "Módosíthatod a fájlt vagy a részleteket, majd próbáld újra.",
+  "upload.deleteVideo": "Videó törlése",
+  "upload.deleteVideoHint": "Eltávolítja a videót a szerkesztőből — később választhatsz másik fájlt vagy használhatod a stúdiót.",
   "feed.views": "megtekintés",
   "feed.likes": "kedvelés",
   "feed.comments": "hozzászólás",

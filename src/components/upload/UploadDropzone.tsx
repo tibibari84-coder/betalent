@@ -179,7 +179,7 @@ export default function UploadDropzone({
               <video
                 ref={videoRef}
                 src={previewUrl}
-                className="mx-auto max-h-[min(52dvh,560px)] w-full object-contain"
+                className="mx-auto max-h-[min(44dvh,480px)] w-full object-contain sm:max-h-[min(52dvh,560px)]"
                 muted
                 playsInline
                 loop
