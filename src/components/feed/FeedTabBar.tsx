@@ -18,29 +18,42 @@ interface FeedTabBarProps {
 export default function FeedTabBar({ activeTab, onTabChange }: FeedTabBarProps) {
   return (
     <div
-      className="relative flex items-center gap-1 min-h-[40px] rounded-[12px] border border-white/[0.08] bg-black/35 px-1.5 py-1 shrink-0 min-w-0 overflow-x-auto overflow-y-hidden backdrop-blur-xl [scrollbar-width:thin]"
-      style={{ boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04)' }}
+      className="relative flex min-h-[44px] shrink-0 min-w-0 items-center gap-0.5 overflow-x-auto overflow-y-hidden rounded-[16px] border border-white/[0.09] bg-black/45 px-1 py-1 backdrop-blur-xl [scrollbar-width:thin]"
+      style={{
+        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05), 0 8px 32px rgba(0,0,0,0.35)',
+      }}
+      role="tablist"
+      aria-label="Feed sections"
     >
       {TABS.map((tab) => (
         <button
           key={tab.id}
           type="button"
+          role="tab"
+          aria-selected={activeTab === tab.id}
           onClick={() => onTabChange(tab.id)}
-          className="relative h-full min-h-[36px] rounded-[10px] px-2.5 sm:px-3 flex items-center gap-1 text-[12px] sm:text-[13px] font-medium transition-colors shrink-0"
+          className="relative flex h-full min-h-[38px] shrink-0 items-center gap-1 rounded-[12px] px-3 text-[12px] font-semibold tracking-tight transition-colors sm:px-3.5 sm:text-[13px]"
           style={{
-            color: activeTab === tab.id ? '#f5f5f5' : (tab as { comingSoon?: boolean }).comingSoon ? '#6b7280' : '#9ca3af',
-            background: activeTab === tab.id ? 'rgba(255,255,255,0.06)' : 'transparent',
+            color: activeTab === tab.id ? '#f8fafc' : (tab as { comingSoon?: boolean }).comingSoon ? '#64748b' : '#94a3b8',
+            background:
+              activeTab === tab.id
+                ? 'linear-gradient(180deg, rgba(196,18,47,0.22) 0%, rgba(255,255,255,0.07) 100%)'
+                : 'transparent',
+            boxShadow: activeTab === tab.id ? 'inset 0 1px 0 rgba(255,255,255,0.12)' : undefined,
           }}
         >
           {tab.label}
           {(tab as { comingSoon?: boolean }).comingSoon && (
-            <span className="text-[10px] font-medium uppercase tracking-wider text-[#6b7280]">Soon</span>
+            <span className="text-[10px] font-medium uppercase tracking-wider text-[#64748b]">Soon</span>
           )}
           {activeTab === tab.id && (
-            <>
-              <span className="absolute bottom-[2px] left-2 right-2 h-[2px] rounded-full bg-[#c4122f]" />
-              <span className="absolute bottom-0 left-3 right-3 h-[1px] rounded-full bg-[#ff4a6a]/60 blur-[0.5px]" />
-            </>
+            <span
+              className="absolute bottom-1 left-3 right-3 h-[2px] rounded-full opacity-90"
+              style={{
+                background: 'linear-gradient(90deg, transparent, #c4122f, #e11d48, transparent)',
+              }}
+              aria-hidden
+            />
           )}
         </button>
       ))}

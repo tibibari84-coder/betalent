@@ -106,7 +106,7 @@ export default function FollowButton({
         type="button"
         onClick={(e) => handleClick(e)}
         disabled={loading}
-        className={`flex flex-col items-center gap-1 min-h-[44px] justify-center text-white/90 hover:text-white active:scale-95 transition-all duration-200 disabled:opacity-60 ${className}`}
+        className={`flex flex-col items-center gap-1 min-h-[44px] justify-center text-white/90 transition-all duration-200 hover:text-white active:translate-y-px disabled:opacity-60 ${className}`}
         aria-label={following ? 'Unfollow' : 'Follow'}
       >
         <span

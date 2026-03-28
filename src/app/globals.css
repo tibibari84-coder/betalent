@@ -156,6 +156,11 @@
   --accent-rgb: 196, 18, 47;
   --accent-deep-rgb: 177, 18, 38;
   --accent-soft-rgb: 255, 70, 90;
+  /* BeTalent mobile premium surfaces (feed rail, sheets) — not for auth/layout chrome */
+  --bt-smoke-950: rgba(10, 10, 12, 0.94);
+  --bt-glass-border: rgba(255, 255, 255, 0.11);
+  --bt-glass-highlight: rgba(255, 255, 255, 0.06);
+  --bt-sheet-scrim: rgba(0, 0, 0, 0.72);
 }
 @media (min-width: 768px) {
   :root {

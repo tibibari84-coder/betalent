@@ -6,8 +6,10 @@ import { createPortal } from 'react-dom';
 type Props = {
   open: boolean;
   onClose: () => void;
-  /** Short heading above actions (e.g. "Video") */
+  /** Short heading above actions */
   title: string;
+  /** Optional secondary line (brand / context) */
+  subtitle?: string;
   children: React.ReactNode;
 };
 
@@ -15,7 +17,7 @@ type Props = {
  * Mobile-first bottom sheet for video actions (••• menu).
  * Portaled to body; respects safe area; blocks background scroll while open.
  */
-export default function VideoActionsSheet({ open, onClose, title, children }: Props) {
+export default function VideoActionsSheet({ open, onClose, title, subtitle, children }: Props) {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => setMounted(true), []);
@@ -60,9 +62,12 @@ export default function VideoActionsSheet({ open, onClose, title, children }: Pr
         <div className="flex justify-center pt-3.5 pb-1">
           <div className="h-1 w-12 shrink-0 rounded-full bg-white/[0.22]" aria-hidden />
         </div>
-        <p className="px-4 pb-2.5 text-center font-display text-[13px] font-semibold uppercase tracking-[0.2em] text-white/50">
-          {title}
-        </p>
+        <div className="px-4 pb-2.5 text-center">
+          <p className="font-display text-[13px] font-semibold uppercase tracking-[0.2em] text-white/50">{title}</p>
+          {subtitle ? (
+            <p className="mt-1 text-[11px] font-medium tracking-[0.12em] text-white/32">{subtitle}</p>
+          ) : null}
+        </div>
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-2 pb-1">{children}</div>
       </div>
     </div>,

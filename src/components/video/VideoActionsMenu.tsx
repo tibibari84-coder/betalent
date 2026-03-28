@@ -575,7 +575,7 @@ export default function VideoActionsMenu({
       </button>
 
       {open && useSheet && (
-        <VideoActionsSheet open={open} onClose={closeMenu} title="Performance">
+        <VideoActionsSheet open={open} onClose={closeMenu} title="Performance" subtitle="BeTalent">
           {sheetBody}
         </VideoActionsSheet>
       )}

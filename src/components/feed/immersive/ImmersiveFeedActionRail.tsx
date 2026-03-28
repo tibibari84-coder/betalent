@@ -57,13 +57,16 @@ export function ImmersiveFeedActionRail({
       <div
         className={cn(
           'flex flex-col items-center gap-4 px-2 py-3',
-          'rounded-[22px] border border-white/[0.12]',
-          'bg-gradient-to-b from-black/50 via-black/40 to-black/55',
-          'shadow-[0_12px_40px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.06)]',
+          'rounded-[22px] border',
+          'bg-gradient-to-b from-black/55 via-black/42 to-black/[0.58]',
+          'shadow-[0_16px_48px_rgba(0,0,0,0.58),inset_0_1px_0_var(--bt-glass-highlight)]',
           'backdrop-blur-xl backdrop-saturate-150',
           'xl:gap-5 xl:py-4 xl:px-2.5'
         )}
-        style={{ WebkitBackdropFilter: 'blur(20px)' }}
+        style={{
+          WebkitBackdropFilter: 'blur(22px)',
+          borderColor: 'var(--bt-glass-border)',
+        }}
       >
         <div className={cn(likeBounce && 'feed-like-bounce')}>
           <LikeButton

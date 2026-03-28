@@ -278,7 +278,7 @@ export default function UploadPage() {
         at: Date.now(),
       });
       showBetalentToast({
-        message: 'Uploading your performance…',
+        message: 'Uploading…',
         durationMs: 4500,
         variant: 'info',
       });

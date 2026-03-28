@@ -507,13 +507,18 @@ export default function CommentsPanel({
         onClose={() => setReportId(null)}
         onDone={() => setReportInfo('Report submitted. Thank you.')}
       />
-      <div className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm md:hidden" onClick={onClose} aria-hidden />
+      <div
+        className="fixed inset-0 z-40 backdrop-blur-md md:hidden"
+        style={{ background: 'var(--bt-sheet-scrim)' }}
+        onClick={onClose}
+        aria-hidden
+      />
 
       <aside
-        className="fixed inset-x-0 z-50 flex w-full h-[min(92dvh,920px)] flex-col overflow-hidden md:inset-x-auto md:bottom-0 md:right-0 md:top-0 md:h-full md:w-[430px] rounded-t-[24px] md:rounded-none transition-transform duration-220 ease-out"
+        className="fixed inset-x-0 z-50 flex h-[min(92dvh,920px)] w-full flex-col overflow-hidden rounded-t-[28px] border-t border-white/[0.1] transition-transform duration-220 ease-out md:inset-x-auto md:bottom-0 md:right-0 md:top-0 md:h-full md:w-[430px] md:rounded-none md:border-t-0"
         style={{
           borderLeft: '1px solid rgba(255,255,255,0.08)',
-          boxShadow: '-8px 0 48px rgba(0,0,0,0.5)',
+          boxShadow: '0 -8px 48px rgba(0,0,0,0.55), -8px 0 48px rgba(0,0,0,0.45)',
         }}
       >
         <div
