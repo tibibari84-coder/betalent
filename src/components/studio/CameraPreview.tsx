@@ -11,9 +11,8 @@ export type CameraPreviewProps = {
 };
 
 /**
- * Full-bleed portrait preview: fills the studio layer edge-to-edge (TikTok-style).
- * Uses `object-cover` so the stream fills the frame without letterboxing; `object-center` keeps framing neutral
- * (no CSS transform zoom — only fit/crop to viewport like native camera apps).
+ * Natural preview: **`object-contain`** — full camera frame visible, **no crop, no “zoomed in” look**
+ * (`object-cover` was perceived as constant zoom). Letterboxing only if sensor vs screen aspect differs.
  */
 export default function CameraPreview({ videoRef, mirror, className }: CameraPreviewProps) {
   return (
@@ -23,7 +22,7 @@ export default function CameraPreview({ videoRef, mirror, className }: CameraPre
       playsInline
       muted
       className={cn(
-        'absolute inset-0 h-full w-full min-h-full min-w-full bg-black object-cover object-center',
+        'absolute inset-0 h-full w-full bg-black object-contain object-center',
         mirror && '-scale-x-100',
         className
       )}
