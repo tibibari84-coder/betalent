@@ -1,6 +1,6 @@
 'use client';
 
-import { IconComment, IconShare, IconGift } from '@/components/ui/Icons';
+import { IconComment, IconGift } from '@/components/ui/Icons';
 import LikeButton from '@/components/video/LikeButton';
 import VoteButton from '@/components/video/VoteButton';
 import VideoActionsMenu from '@/components/video/VideoActionsMenu';
@@ -20,14 +20,13 @@ export interface ImmersiveFeedActionRailProps {
   onLikeToggle: (liked: boolean, count: number) => void;
   onOpenComments: (e: React.MouseEvent) => void;
   onOpenGift?: (e: React.MouseEvent) => void;
-  onShare: (e: React.MouseEvent) => void;
   onVideoRemoved?: (videoId: string) => void;
   className?: string;
 }
 
 /**
- * Mobile/tablet: absolute stack on the right over the video.
- * xl+: dedicated column beside the video (no overlap, premium desktop layout).
+ * BeTalent-specific floating action column: glass stack, balanced spacing — not a TikTok clone layout.
+ * Order: like → comment → gift (optional) → vote → follow → more (share/copy/report live in the sheet).
  */
 export function ImmersiveFeedActionRail({
   item,
@@ -38,7 +37,6 @@ export function ImmersiveFeedActionRail({
   onLikeToggle,
   onOpenComments,
   onOpenGift,
-  onShare,
   onVideoRemoved,
   showGiftButton = false,
   className,
@@ -49,80 +47,92 @@ export function ImmersiveFeedActionRail({
   return (
     <div
       className={cn(
-        'flex flex-col items-center gap-5 z-20',
-        'absolute xl:static right-0 pr-2 md:pr-3',
+        'z-20 flex flex-col items-center pr-2 md:pr-3',
+        'absolute xl:static right-0',
         'bottom-[max(5rem,calc(env(safe-area-inset-bottom)+4.5rem))] xl:bottom-auto',
-        'xl:h-full xl:self-stretch xl:justify-end xl:w-[92px] xl:shrink-0 xl:pr-2 xl:pl-3',
-        'xl:border-l xl:border-white/[0.08]',
-        'xl:bg-gradient-to-l xl:from-black/35 xl:via-black/15 xl:to-transparent',
+        'xl:h-full xl:self-stretch xl:justify-end xl:w-[104px] xl:shrink-0 xl:border-l xl:border-white/[0.07] xl:bg-gradient-to-l xl:from-black/30 xl:via-black/10 xl:to-transparent xl:pl-3 xl:pr-2',
         className
       )}
     >
-      <VideoActionsMenu
-        videoId={id}
-        title={title}
-        creatorId={creatorId}
-        visibility={visibility}
-        onRemoved={onVideoRemoved}
-        compact
-        className="mb-1"
-      />
-      <div className={likeBounce ? 'feed-like-bounce' : ''}>
-        <LikeButton
-          videoId={id}
-          initialLiked={liked}
-          initialLikesCount={likesCount}
-          onToggle={onLikeToggle}
-          variant="rail"
-          stopPropagation
-        />
-      </div>
-
-      <button
-        type="button"
-        onClick={onOpenComments}
-        className="flex flex-col items-center gap-1 min-h-[44px] justify-center text-white/90 hover:text-white active:scale-90 transition-transform duration-150"
-        aria-label="Comments"
+      <div
+        className={cn(
+          'flex flex-col items-center gap-4 px-2 py-3',
+          'rounded-[22px] border border-white/[0.12]',
+          'bg-gradient-to-b from-black/50 via-black/40 to-black/55',
+          'shadow-[0_12px_40px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.06)]',
+          'backdrop-blur-xl backdrop-saturate-150',
+          'xl:gap-5 xl:py-4 xl:px-2.5'
+        )}
+        style={{ WebkitBackdropFilter: 'blur(20px)' }}
       >
-        <IconComment className="w-7 h-7" />
-        <span className="text-[11px] font-medium tabular-nums">{formatCompactCount(stats.commentsCount)}</span>
-      </button>
+        <div className={cn(likeBounce && 'feed-like-bounce')}>
+          <LikeButton
+            videoId={id}
+            initialLiked={liked}
+            initialLikesCount={likesCount}
+            onToggle={onLikeToggle}
+            variant="rail"
+            stopPropagation
+          />
+        </div>
 
-      {showGiftButton && onOpenGift ? (
         <button
           type="button"
-          onClick={onOpenGift}
-          className="flex flex-col items-center gap-1 min-h-[44px] justify-center text-white/70 hover:text-white/90 active:scale-90 transition-transform duration-150"
-          aria-label="Send gift"
+          onClick={onOpenComments}
+          className="flex min-h-[44px] flex-col items-center justify-center gap-1 text-white/92 transition-transform duration-150 hover:text-white active:translate-y-[1px]"
+          aria-label="Comments"
         >
-          <IconGift className="w-6 h-6 shrink-0" aria-hidden />
-          <span className="text-[10px] font-medium">Gift</span>
+          <span
+            className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/[0.1] bg-white/[0.06] shadow-inner shadow-black/20"
+            aria-hidden
+          >
+            <IconComment className="h-6 w-6" />
+          </span>
+          <span className="text-[11px] font-medium tabular-nums text-white/75">{formatCompactCount(stats.commentsCount)}</span>
         </button>
-      ) : null}
 
-      <VoteButton
-        videoId={id}
-        initialUserVote={null}
-        initialVotesCount={votesCount}
-        initialTalentScore={stats.talentScore ?? null}
-        variant="rail"
-        stopPropagation
-        className="text-white/90"
-      />
+        {showGiftButton && onOpenGift ? (
+          <button
+            type="button"
+            onClick={onOpenGift}
+            className="flex min-h-[44px] flex-col items-center justify-center gap-1 text-amber-100/90 transition-transform duration-150 hover:text-amber-50 active:translate-y-[1px]"
+            aria-label="Send gift"
+          >
+            <span className="flex h-11 w-11 items-center justify-center rounded-2xl border border-amber-400/15 bg-amber-500/[0.09]">
+              <IconGift className="h-6 w-6 shrink-0" aria-hidden />
+            </span>
+            <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-amber-100/70">Gift</span>
+          </button>
+        ) : null}
 
-      <button
-        type="button"
-        onClick={onShare}
-        className="flex flex-col items-center gap-1 min-h-[44px] justify-center text-white/90 hover:text-white active:scale-90 transition-transform duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40 rounded-lg px-1"
-        aria-label="Share video"
-      >
-        <IconShare className="w-6 h-6 shrink-0" aria-hidden />
-        <span className="text-[11px] font-medium">Share</span>
-      </button>
+        <VoteButton
+          videoId={id}
+          initialUserVote={null}
+          initialVotesCount={votesCount}
+          initialTalentScore={stats.talentScore ?? null}
+          variant="rail"
+          stopPropagation
+          className="text-white/90"
+        />
 
-      {showFollowRail ? (
-        <FollowButton targetId={creatorId} layout="rail" variant="secondary" stopPropagation className="text-white/90" />
-      ) : null}
+        {showFollowRail ? (
+          <div className="flex w-full justify-center border-t border-white/[0.08] pt-3">
+            <FollowButton targetId={creatorId} layout="rail" variant="secondary" stopPropagation className="text-white/90" />
+          </div>
+        ) : null}
+
+        <div className="flex w-full justify-center border-t border-white/[0.08] pt-3">
+          <VideoActionsMenu
+            videoId={id}
+            title={title}
+            creatorId={creatorId}
+            visibility={visibility}
+            onRemoved={onVideoRemoved}
+            compact
+            className="!mb-0"
+          />
+        </div>
+      </div>
     </div>
   );
 }

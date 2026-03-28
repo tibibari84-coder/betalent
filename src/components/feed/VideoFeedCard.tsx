@@ -339,7 +339,7 @@ function VideoFeedCardInner({
   return (
     <article
       ref={cardRef}
-      className="relative flex-shrink-0 w-full h-full min-h-[100dvh] max-h-[100dvh] snap-center snap-always overflow-hidden bg-[#070707] grid grid-cols-1 grid-rows-1 xl:grid-cols-[minmax(0,1fr)_92px]"
+      className="relative flex-shrink-0 w-full h-full min-h-[100dvh] max-h-[100dvh] snap-center snap-always overflow-hidden bg-[#070707] grid grid-cols-1 grid-rows-1 xl:grid-cols-[minmax(0,1fr)_104px]"
       style={{
         minHeight: '100dvh',
         maxHeight: '100dvh',
@@ -418,10 +418,6 @@ function VideoFeedCardInner({
         }}
         showGiftButton={showGiftButton}
         onOpenGift={handleOpenGift}
-        onShare={(e) => {
-          e.stopPropagation();
-          setShareOpen(true);
-        }}
         onVideoRemoved={onVideoRemoved}
       />
 

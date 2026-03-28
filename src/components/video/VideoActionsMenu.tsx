@@ -376,6 +376,16 @@ export default function VideoActionsMenu({
               Report
             </button>
           )}
+          <button
+            type="button"
+            className={sheetBtn + ' text-white/55'}
+            onClick={() => {
+              toastMessage('Not interested — personalization coming soon');
+              closeMenu();
+            }}
+          >
+            Not interested
+          </button>
           <button type="button" className={sheetBtn} onClick={() => void shareVideo()}>
             Share
           </button>
@@ -457,6 +467,17 @@ export default function VideoActionsMenu({
                       Report
                     </button>
                   )}
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="w-full px-4 py-3 text-left text-[14px] text-white/55 transition-colors hover:bg-white/[0.06]"
+                    onClick={() => {
+                      toastMessage('Not interested — personalization coming soon');
+                      closeMenu();
+                    }}
+                  >
+                    Not interested
+                  </button>
                   <button
                     type="button"
                     role="menuitem"
@@ -554,7 +575,7 @@ export default function VideoActionsMenu({
       </button>
 
       {open && useSheet && (
-        <VideoActionsSheet open={open} onClose={closeMenu} title="Video">
+        <VideoActionsSheet open={open} onClose={closeMenu} title="Performance">
           {sheetBody}
         </VideoActionsSheet>
       )}

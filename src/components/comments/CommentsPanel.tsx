@@ -704,10 +704,13 @@ export default function CommentsPanel({
             <input
               ref={inputRef}
               type="text"
-              placeholder="Add a comment..."
+              placeholder="Add a thoughtful comment…"
               disabled={busy}
-              className="flex-1 h-[54px] px-4 rounded-[16px] border border-white/[0.1] text-zinc-200 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-accent/25 focus:border-white/[0.14] text-[16px] disabled:opacity-60 disabled:cursor-not-allowed"
-              style={{ background: 'linear-gradient(180deg, #3a3a3e 0%, #323236 100%)' }}
+              className="flex-1 h-[52px] px-4 rounded-[18px] border border-white/[0.09] text-[15px] text-zinc-100 placeholder:text-zinc-500/90 focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-white/[0.16] disabled:opacity-60 disabled:cursor-not-allowed"
+              style={{
+                background: 'linear-gradient(180deg, rgba(48,48,52,0.95) 0%, rgba(34,34,38,0.98) 100%)',
+                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05)',
+              }}
             />
             <button
               type="button"

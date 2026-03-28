@@ -44,22 +44,23 @@ export default function VideoActionsSheet({ open, onClose, title, children }: Pr
     <div className="fixed inset-0 z-[190] touch-manipulation" role="presentation">
       <button
         type="button"
-        className="absolute inset-0 bg-black/55 backdrop-blur-[2px] active:bg-black/60"
+        className="absolute inset-0 bg-black/65 backdrop-blur-md active:bg-black/70"
         aria-label="Close menu"
         onClick={onClose}
       />
       <div
-        className="video-actions-sheet-enter absolute inset-x-0 bottom-0 flex max-h-[min(72dvh,560px)] flex-col rounded-t-[22px] border border-white/[0.1] border-b-0 shadow-[0_-12px_48px_rgba(0,0,0,0.55)]"
+        className="video-actions-sheet-enter absolute inset-x-0 bottom-0 flex max-h-[min(78dvh,600px)] flex-col rounded-t-[26px] border border-white/[0.12] border-b-0 shadow-[0_-20px_64px_rgba(0,0,0,0.65)]"
         style={{
-          background: 'rgba(12,14,20,0.98)',
+          background:
+            'linear-gradient(180deg, rgba(22,22,28,0.97) 0%, rgba(10,10,12,0.99) 100%)',
           paddingBottom: 'max(12px, env(safe-area-inset-bottom, 0px))',
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex justify-center pt-3 pb-1">
-          <div className="h-1 w-11 shrink-0 rounded-full bg-white/25" aria-hidden />
+        <div className="flex justify-center pt-3.5 pb-1">
+          <div className="h-1 w-12 shrink-0 rounded-full bg-white/[0.22]" aria-hidden />
         </div>
-        <p className="px-4 pb-2 text-center text-[12px] font-semibold uppercase tracking-[0.14em] text-white/45">
+        <p className="px-4 pb-2.5 text-center font-display text-[13px] font-semibold uppercase tracking-[0.2em] text-white/50">
           {title}
         </p>
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-2 pb-1">{children}</div>

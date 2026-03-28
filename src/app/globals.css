@@ -340,23 +340,25 @@
 
 /* Feed – video loading shimmer (no white flash) */
 @keyframes feedShimmer {
-  0%, 100% { opacity: 0.5; transform: scale(0.95); }
-  50% { opacity: 1; transform: scale(1); }
+  0%, 100% { opacity: 0.45; }
+  50% { opacity: 1; }
 }
 .feed-video-loading {
   animation: feedShimmer 1s ease-in-out infinite;
   box-shadow: 0 0 0 2px rgba(196,18,47,0.2);
 }
 
-/* Action rail – like bounce */
-@keyframes likeBounce {
-  0%, 100% { transform: scale(1); }
-  40% { transform: scale(1.25); }
-  60% { transform: scale(1.1); }
-  80% { transform: scale(1.15); }
+/* Action rail – like affirm (no scale/zoom; premium glow) */
+@keyframes likeAffirm {
+  0%, 100% {
+    filter: drop-shadow(0 0 0 transparent);
+  }
+  45% {
+    filter: drop-shadow(0 0 14px rgba(196, 18, 47, 0.55));
+  }
 }
 .feed-like-bounce {
-  animation: likeBounce 0.4s ease-out;
+  animation: likeAffirm 0.42s ease-out;
 }
 
 /* App shell – content area min-height matches topbar (single source of truth) */
