@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
-import { listConversationsForUser } from '@/services/chat.service';
+import { listConversationsWithAccessForUser } from '@/services/chat.service';
 import { isSchemaDriftError } from '@/lib/runtime-config';
 import { isDatabaseUnavailableError } from '@/lib/db-errors';
 
@@ -11,7 +11,7 @@ export async function GET() {
       return NextResponse.json({ ok: false, message: 'Unauthorized' }, { status: 401 });
     }
 
-    const { conversations, totalUnread } = await listConversationsForUser(sessionUser.id);
+    const { conversations, totalUnread } = await listConversationsWithAccessForUser(sessionUser.id);
     return NextResponse.json({ ok: true, conversations, totalUnread });
   } catch (e) {
     if (isSchemaDriftError(e)) {

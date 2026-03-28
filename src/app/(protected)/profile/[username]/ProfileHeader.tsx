@@ -5,7 +5,7 @@ import { IconGift, IconPaperAirplane, IconSettings } from '@/components/ui/Icons
 import VerifiedBadge from '@/components/shared/VerifiedBadge';
 import FollowButton from '@/components/profile/FollowButton';
 import { getFlagEmoji } from '@/lib/countries';
-import { useChatPanelOptional } from '@/contexts/ChatPanelContext';
+import { inboxThreadPath } from '@/lib/chat-navigation';
 
 interface ProfileHeaderProps {
   displayName: string;
@@ -38,7 +38,6 @@ export default function ProfileHeader({
   memberSinceLabel,
   isOwner = false,
 }: ProfileHeaderProps) {
-  const chatPanel = useChatPanelOptional();
   const flag = getFlagEmoji(countryCode);
   const handle = `@${username}`;
   const bioTrimmed = bio?.trim() ?? '';
@@ -168,39 +167,18 @@ export default function ProfileHeader({
                   className="h-10 px-4 rounded-[999px] text-[14px]"
                 />
               )}
-              {creatorId && chatPanel ? (
-                <button
-                  type="button"
-                  onClick={() =>
-                    chatPanel.openWithPeer(creatorId, {
-                      id: creatorId,
-                      username,
-                      displayName,
-                      avatarUrl: avatarUrl ?? null,
-                    })
-                  }
-                  className="h-10 min-w-[120px] px-4 rounded-[999px] font-medium text-[14px] text-white border border-[rgba(255,255,255,0.18)] transition-colors hover:bg-white/10"
+              {creatorId ? (
+                <Link
+                  href={inboxThreadPath(creatorId)}
+                  className="inline-flex h-10 min-w-[120px] items-center justify-center rounded-[999px] border border-[rgba(255,255,255,0.18)] px-4 text-[14px] font-medium text-white transition-colors hover:bg-white/10"
                   style={{ background: 'rgba(255,255,255,0.06)' }}
                 >
                   <span className="flex items-center gap-2">
                     <IconPaperAirplane className="w-4 h-4" />
                     Message
                   </span>
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  disabled
-                  className="h-10 min-w-[120px] px-4 rounded-[999px] font-medium text-[14px] text-white border border-[rgba(255,255,255,0.18)] opacity-70 cursor-not-allowed"
-                  style={{ background: 'rgba(255,255,255,0.04)' }}
-                  title="Sign in to message creators."
-                >
-                  <span className="flex items-center gap-2">
-                    <IconPaperAirplane className="w-4 h-4" />
-                    Message
-                  </span>
-                </button>
-              )}
+                </Link>
+              ) : null}
               <button
                 type="button"
                 disabled

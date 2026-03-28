@@ -1,22 +1,11 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import Link from 'next/link';
 import { useChatPanel, type DmPeerSummary } from '@/contexts/ChatPanelContext';
-import { IconArrowLeft, IconChat, IconPaperAirplane, IconX } from '@/components/ui/Icons';
+import { DmThreadView } from '@/components/chat/DmThreadView';
+import { IconArrowLeft, IconChat, IconX } from '@/components/ui/Icons';
 import { useI18n } from '@/contexts/I18nContext';
 import { cn } from '@/lib/utils';
-import { DM_CONTENT_MAX } from '@/lib/chat-constants';
-
-type ApiMessage = {
-  id: string;
-  senderId: string;
-  receiverId: string;
-  content: string;
-  isRead: boolean;
-  readAt: string | null;
-  createdAt: string;
-};
 
 type ApiConversation = {
   conversationId: string;
@@ -25,16 +14,6 @@ type ApiConversation = {
   lastMessagePreview: string | null;
   unreadCount: number;
 };
-
-type ApiAccess =
-  | { canMessage: true; state: 'OPEN'; reason: null; mutualFollow: boolean; priorConsent: boolean }
-  | {
-      canMessage: false;
-      state: 'FOLLOW_TO_MESSAGE' | 'REQUEST_REQUIRED';
-      reason: 'NOT_MUTUAL';
-      mutualFollow: false;
-      priorConsent: boolean;
-    };
 
 export function DmSlidingPanel() {
   const { t } = useI18n();
@@ -49,34 +28,15 @@ export function DmSlidingPanel() {
   } = useChatPanel();
 
   const [screen, setScreen] = useState<'list' | 'thread'>('list');
-  const [meId, setMeId] = useState<string | null>(null);
   const [conversations, setConversations] = useState<ApiConversation[]>([]);
   const [listLoading, setListLoading] = useState(false);
 
   const [activePeer, setActivePeer] = useState<DmPeerSummary | null>(null);
-  const [messages, setMessages] = useState<ApiMessage[]>([]);
-  const [threadLoading, setThreadLoading] = useState(false);
-  const [hasMore, setHasMore] = useState(false);
-  const [access, setAccess] = useState<ApiAccess | null>(null);
-  const [draft, setDraft] = useState('');
-  const [sending, setSending] = useState(false);
 
   const listPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const threadPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const bottomRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const lastHistorySigRef = useRef<string>('');
   const prevListFocusIdRef = useRef(0);
-
-  const fetchMe = useCallback(async () => {
-    try {
-      const r = await fetch('/api/auth/me');
-      const d = await r.json();
-      if (d.ok && d.user?.id) setMeId(d.user.id);
-    } catch {
-      setMeId(null);
-    }
-  }, []);
 
   const fetchConversations = useCallback(async () => {
     setListLoading((prev) => (prev ? prev : true));
@@ -96,71 +56,25 @@ export function DmSlidingPanel() {
     }
   }, []);
 
-  const loadHistory = useCallback(
-    async (peerId: string, before?: string) => {
-      if (!before) setThreadLoading(true);
-      try {
-        const q = before ? `?before=${encodeURIComponent(before)}` : '';
-        const r = await fetch(`/api/chat/${encodeURIComponent(peerId)}/history${q}`);
-        const d = await r.json();
-        if (!d.ok) return;
-        if (d.peer) {
-          setActivePeer(d.peer);
-        }
-        if (d.access) {
-          setAccess(d.access as ApiAccess);
-        } else {
-          setAccess(null);
-        }
-        const rows: ApiMessage[] = d.messages ?? [];
-        if (before) {
-          setMessages((prev) => [...rows, ...prev]);
-        } else {
-          const sig = rows.map((m) => `${m.id}:${m.isRead ? '1' : '0'}`).join('|');
-          if (sig !== lastHistorySigRef.current) {
-            lastHistorySigRef.current = sig;
-            setMessages(rows);
-            queueMicrotask(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }));
-          }
-        }
-        setHasMore(!!d.hasMore);
-        await refreshDmUnread();
-      } catch {
-        /* ignore */
-      } finally {
-        setThreadLoading(false);
-      }
-    },
-    [refreshDmUnread]
-  );
-
   useEffect(() => {
     if (!isOpen) {
       setScreen('list');
       setActivePeer(null);
-      setMessages([]);
-      setAccess(null);
-      setDraft('');
       lastHistorySigRef.current = '';
       if (listPollRef.current) {
         clearInterval(listPollRef.current);
         listPollRef.current = null;
       }
-      if (threadPollRef.current) {
-        clearInterval(threadPollRef.current);
-        threadPollRef.current = null;
-      }
       return;
     }
 
-    fetchMe();
     fetchConversations();
     listPollRef.current = setInterval(fetchConversations, 4500);
     return () => {
       if (listPollRef.current) clearInterval(listPollRef.current);
       listPollRef.current = null;
     };
-  }, [isOpen, fetchMe, fetchConversations]);
+  }, [isOpen, fetchConversations]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -172,7 +86,6 @@ export function DmSlidingPanel() {
     if (listFocusId === 0) return;
     setScreen('list');
     setActivePeer(null);
-    setMessages([]);
     lastHistorySigRef.current = '';
   }, [isOpen, listFocusId]);
 
@@ -187,24 +100,7 @@ export function DmSlidingPanel() {
     setActivePeer(hint);
     setScreen('thread');
     clearThreadTarget();
-    loadHistory(threadPeerId);
-  }, [isOpen, threadPeerId, threadPeerHint, clearThreadTarget, loadHistory, t]);
-
-  useEffect(() => {
-    if (!isOpen || screen !== 'thread' || !activePeer?.id) {
-      if (threadPollRef.current) {
-        clearInterval(threadPollRef.current);
-        threadPollRef.current = null;
-      }
-      return;
-    }
-    const id = activePeer.id;
-    threadPollRef.current = setInterval(() => loadHistory(id), 2800);
-    return () => {
-      if (threadPollRef.current) clearInterval(threadPollRef.current);
-      threadPollRef.current = null;
-    };
-  }, [isOpen, screen, activePeer?.id, loadHistory]);
+  }, [isOpen, threadPeerId, threadPeerHint, clearThreadTarget, t]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -215,69 +111,16 @@ export function DmSlidingPanel() {
     return () => window.removeEventListener('keydown', onKey);
   }, [isOpen, closePanel]);
 
-  async function handleSend() {
-    if (!activePeer?.id || sending) return;
-    const text = draft.trim();
-    if (!text) return;
-    if (access && !access.canMessage) return;
-    setSending(true);
-    const optimistic: ApiMessage = {
-      id: `tmp-${Date.now()}`,
-      senderId: meId ?? 'me',
-      receiverId: activePeer.id,
-      content: text,
-      isRead: false,
-      readAt: null,
-      createdAt: new Date().toISOString(),
-    };
-    setMessages((prev) => [...prev, optimistic]);
-    setDraft('');
-    try {
-      const r = await fetch('/api/chat/send', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ receiverId: activePeer.id, content: text }),
-      });
-      const d = await r.json();
-      if (!d.ok) {
-        const code = typeof d.code === 'string' ? d.code : '';
-        if (code === 'NOT_MUTUAL') {
-          setAccess({
-            canMessage: false,
-            state: 'FOLLOW_TO_MESSAGE',
-            reason: 'NOT_MUTUAL',
-            mutualFollow: false,
-            priorConsent: false,
-          });
-        }
-        throw new Error(d.message || 'send failed');
-      }
-      setMessages((prev) => [...prev.filter((m) => m.id !== optimistic.id), d.message]);
-      fetchConversations();
-      await refreshDmUnread();
-    } catch {
-      setMessages((prev) => prev.filter((m) => m.id !== optimistic.id));
-      setDraft(text);
-    } finally {
-      setSending(false);
-    }
-  }
-
   function openThread(peer: DmPeerSummary) {
     lastHistorySigRef.current = '';
     setActivePeer(peer);
     setScreen('thread');
-    setMessages([]);
-    setAccess(null);
-    loadHistory(peer.id);
   }
 
   function backToList() {
     lastHistorySigRef.current = '';
     setScreen('list');
     setActivePeer(null);
-    setMessages([]);
-    setAccess(null);
     fetchConversations();
   }
 
@@ -373,20 +216,27 @@ export function DmSlidingPanel() {
                           (c.peer.displayName || c.peer.username || '?').charAt(0).toUpperCase()
                         )}
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium text-[14px] text-white truncate">
-                            {c.peer.displayName || `@${c.peer.username}`}
-                          </span>
-                          {c.unreadCount > 0 ? (
-                            <span className="shrink-0 min-w-[18px] h-[18px] px-1 rounded-full bg-accent text-[10px] font-bold text-white flex items-center justify-center">
-                              {c.unreadCount > 9 ? '9+' : c.unreadCount}
+                      <div className="flex min-w-0 flex-1 items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex min-w-0 items-center gap-2">
+                            <span className="truncate font-medium text-[14px] text-white">
+                              {c.peer.displayName || `@${c.peer.username}`}
                             </span>
-                          ) : null}
+                            {c.unreadCount > 0 ? (
+                              <span className="flex h-[18px] min-w-[18px] shrink-0 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-bold text-white">
+                                {c.unreadCount > 99 ? '99+' : c.unreadCount}
+                              </span>
+                            ) : null}
+                          </div>
+                          <p className="mt-0.5 truncate text-[12px] text-white/45">
+                            {c.lastMessagePreview || t('dm.noMessagesYet')}
+                          </p>
                         </div>
-                        <p className="text-[12px] text-white/45 truncate mt-0.5">
-                          {c.lastMessagePreview || t('dm.noMessagesYet')}
-                        </p>
+                        {c.lastMessageAt ? (
+                          <span className="shrink-0 pt-0.5 text-[11px] text-white/40">
+                            {formatListTime(c.lastMessageAt)}
+                          </span>
+                        ) : null}
                       </div>
                     </button>
                   </li>
@@ -394,134 +244,33 @@ export function DmSlidingPanel() {
               </ul>
             )}
           </div>
+        ) : activePeer ? (
+          <DmThreadView
+            peerId={activePeer.id}
+            peerHint={activePeer}
+            showProfileLink
+            onClosePanel={closePanel}
+            refreshUnread={refreshDmUnread}
+            onThreadActivity={fetchConversations}
+            className="min-h-0 flex-1"
+          />
         ) : (
-          <>
-            <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-3 py-3 space-y-2">
-              {activePeer?.username ? (
-                <div className="flex justify-center pb-2">
-                  <Link
-                    href={`/profile/${encodeURIComponent(activePeer.username)}`}
-                    className="text-[11px] text-accent/90 hover:text-accent"
-                    onClick={closePanel}
-                  >
-                    {t('dm.viewProfile')}
-                  </Link>
-                </div>
-              ) : null}
-              {threadLoading && messages.length === 0 ? (
-                <p className="text-sm text-white/45 text-center py-8">{t('dm.loading')}</p>
-              ) : null}
-              {hasMore && activePeer ? (
-                <button
-                  type="button"
-                  className="w-full py-2 text-[12px] text-accent/90 hover:text-accent"
-                  onClick={() => {
-                    const oldest = messages[0]?.id;
-                    if (oldest) loadHistory(activePeer.id, oldest);
-                  }}
-                >
-                  {t('dm.loadOlder')}
-                </button>
-              ) : null}
-              {messages.map((m) => {
-                const mine = meId ? m.senderId === meId : false;
-                return (
-                  <div key={m.id} className={cn('flex', mine ? 'justify-end' : 'justify-start')}>
-                    <div
-                      className={cn(
-                        'max-w-[85%] rounded-2xl px-3.5 py-2.5 text-[14px] leading-snug',
-                        mine
-                          ? 'rounded-br-md bg-accent/25 text-white border border-accent/20'
-                          : 'rounded-bl-md bg-white/[0.06] text-white/90 border border-white/[0.06]'
-                      )}
-                    >
-                      <p className="whitespace-pre-wrap break-words">{m.content}</p>
-                      <div
-                        className={cn(
-                          'flex items-center justify-end gap-1.5 mt-1 text-[10px]',
-                          mine ? 'text-white/45' : 'text-white/35'
-                        )}
-                      >
-                        <span>{formatShortTime(m.createdAt)}</span>
-                        {mine && m.isRead ? (
-                          <span className="text-emerald-400/90">{t('dm.read')}</span>
-                        ) : null}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-              <div ref={bottomRef} />
-            </div>
-            {access && !access.canMessage ? (
-              <div className="shrink-0 p-3 border-t border-white/[0.06]">
-                <div
-                  className="rounded-[14px] border px-4 py-3"
-                  style={{ background: 'rgba(255,255,255,0.04)', borderColor: 'rgba(255,255,255,0.10)' }}
-                >
-                  <p className="text-[13px] font-semibold text-white mb-1">Message locked</p>
-                  <p className="text-[12px] text-white/60 leading-[1.45]">
-                    Only mutual followers can message each other. Follow and get a follow back to unlock DMs.
-                  </p>
-                  {activePeer?.username ? (
-                    <div className="mt-3 flex gap-2">
-                      <Link
-                        href={`/profile/${encodeURIComponent(activePeer.username)}`}
-                        className="inline-flex items-center justify-center min-h-[40px] px-4 rounded-[12px] text-[13px] font-semibold text-white border border-white/10"
-                        style={{ background: 'linear-gradient(135deg,#c4122f,#e11d48)' }}
-                        onClick={closePanel}
-                      >
-                        View profile
-                      </Link>
-                      <button
-                        type="button"
-                        className="inline-flex items-center justify-center min-h-[40px] px-4 rounded-[12px] text-[13px] font-semibold text-white/90 border border-white/[0.16] bg-white/[0.04] hover:bg-white/[0.08] transition-colors"
-                        onClick={() => closePanel()}
-                      >
-                        Not now
-                      </button>
-                    </div>
-                  ) : null}
-                </div>
-              </div>
-            ) : (
-              <div className="shrink-0 p-3 border-t border-white/[0.06] flex gap-2 items-end">
-              <textarea
-                value={draft}
-                onChange={(e) => setDraft(e.target.value.slice(0, DM_CONTENT_MAX))}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    handleSend();
-                  }
-                }}
-                rows={2}
-                placeholder={t('dm.placeholder')}
-                className="flex-1 min-h-[44px] max-h-28 resize-none rounded-xl bg-white/[0.05] border border-white/[0.08] px-3 py-2.5 text-[14px] text-white placeholder:text-white/35 focus:outline-none focus:ring-1 focus:ring-accent/40"
-              />
-              <button
-                type="button"
-                onClick={handleSend}
-                disabled={sending || !draft.trim()}
-                className="h-11 w-11 shrink-0 rounded-xl flex items-center justify-center bg-accent text-white disabled:opacity-40 disabled:pointer-events-none hover:opacity-95 transition-opacity"
-                aria-label={t('dm.send')}
-              >
-                <IconPaperAirplane className="w-5 h-5" />
-              </button>
-              </div>
-            )}
-          </>
+          <div className="flex flex-1 items-center justify-center p-6 text-sm text-white/45">{t('dm.loading')}</div>
         )}
       </div>
     </>
   );
 }
 
-function formatShortTime(iso: string) {
-  try {
-    const d = new Date(iso);
-    return d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
-  } catch {
-    return '';
-  }
+function formatListTime(iso: string) {
+  const date = new Date(iso);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const min = 60_000;
+  const hour = 60 * min;
+  const day = 24 * hour;
+  if (diffMs < hour) return `${Math.max(1, Math.floor(diffMs / min))}m`;
+  if (diffMs < day) return `${Math.floor(diffMs / hour)}h`;
+  if (diffMs < day * 7) return `${Math.floor(diffMs / day)}d`;
+  return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }

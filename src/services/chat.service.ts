@@ -82,6 +82,78 @@ export async function listConversationsForUser(viewerId: string) {
   return { conversations, totalUnread };
 }
 
+export type ConversationListItem = {
+  conversationId: string;
+  peer: {
+    id: string;
+    username: string;
+    displayName: string;
+    avatarUrl: string | null;
+  };
+  lastMessageAt: string | null;
+  lastMessagePreview: string | null;
+  unreadCount: number;
+  mutualFollow: boolean;
+  priorConsent: boolean;
+  canMessage: boolean;
+};
+
+/**
+ * Conversation list + access flags in one shot (tabs: All / Unread / Requests / Following).
+ */
+export async function listConversationsWithAccessForUser(viewerId: string): Promise<{
+  conversations: ConversationListItem[];
+  totalUnread: number;
+}> {
+  const base = await listConversationsForUser(viewerId);
+  const { conversations, totalUnread } = base;
+  if (conversations.length === 0) {
+    return { conversations: [], totalUnread: 0 };
+  }
+
+  const conversationIds = conversations.map((c) => c.conversationId);
+  const peerIds = Array.from(new Set(conversations.map((c) => c.peer.id)));
+
+  const [iFollowRows, followsMeRows, priorGroups] = await Promise.all([
+    prisma.follow.findMany({
+      where: { followerId: viewerId, creatorId: { in: peerIds } },
+      select: { creatorId: true },
+    }),
+    prisma.follow.findMany({
+      where: { followerId: { in: peerIds }, creatorId: viewerId },
+      select: { followerId: true },
+    }),
+    prisma.dmMessage.groupBy({
+      by: ['conversationId'],
+      where: {
+        conversationId: { in: conversationIds },
+        receiverId: viewerId,
+        NOT: { senderId: viewerId },
+      },
+      _count: { _all: true },
+    }),
+  ]);
+
+  const iFollow = new Set(iFollowRows.map((r) => r.creatorId));
+  const followsMe = new Set(followsMeRows.map((r) => r.followerId));
+  const priorConsentByConv = new Set(priorGroups.map((g) => g.conversationId));
+
+  const enriched: ConversationListItem[] = conversations.map((c) => {
+    const pid = c.peer.id;
+    const mutualFollow = iFollow.has(pid) && followsMe.has(pid);
+    const priorConsent = priorConsentByConv.has(c.conversationId);
+    const canMessage = mutualFollow || priorConsent;
+    return {
+      ...c,
+      mutualFollow,
+      priorConsent,
+      canMessage,
+    };
+  });
+
+  return { conversations: enriched, totalUnread };
+}
+
 export async function getConversationForPair(viewerId: string, peerId: string) {
   const [user1Id, user2Id] = orderedPairIds(viewerId, peerId);
   return prisma.dmConversation.findUnique({
