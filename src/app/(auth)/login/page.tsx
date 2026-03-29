@@ -11,27 +11,23 @@ import {
 export default function LoginPage() {
   return (
     <AuthSplitLayout
-      brandEyebrow="Creator platform"
+      brandEyebrow="The stage"
       brandTitle={
         <>
-          Your performance,
+          Spotlight
           <br />
-          <span className="text-accent">their spotlight.</span>
+          <span className="text-accent">on you</span>
         </>
       }
-      brandSubtitle="Performances, challenges, and community tools in one account — with clear rules and email confirmation before protected areas open."
-      mobileTagline="Welcome back. Sign in to continue."
-      brandFooter={
-        <p className="text-[13px] text-white/40 leading-relaxed max-w-md pt-1">
-          Protected routes (dashboard, uploads, wallet, settings, and similar) require a confirmed email address.
-        </p>
-      }
+      brandSubtitle="Performances challenges community — one account"
+      mobileTagline="Welcome back"
+      brandFooter={<p className="text-[12px] text-white/34 leading-snug">Verified email unlocks uploads and wallet</p>}
     >
       <AuthGlassCard>
         <AuthCardHeader
-          eyebrow="Sign in"
-          title="Welcome back"
-          subtitle="Sign in to continue. If you use 2FA, you’ll confirm with your authenticator app after your password."
+          eyebrow="Access"
+          title="Sign in"
+          subtitle="Google or email — authenticator after password if you use 2FA"
         />
         <GoogleContinueButton />
         <AuthDivider />

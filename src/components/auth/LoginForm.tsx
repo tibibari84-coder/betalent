@@ -120,8 +120,8 @@ export default function LoginForm() {
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-5" noValidate>
-      <div className="flex flex-col items-stretch gap-1 sm:flex-row sm:items-center sm:justify-between -mt-1">
-        <p className="text-[12px] font-medium text-white/65">{t('i18n.language')}</p>
+      <div className="flex flex-col gap-2 rounded-2xl border border-white/[0.06] bg-white/[0.02] px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between -mt-0.5">
+        <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-white/40">{t('i18n.language')}</p>
         <LanguageSelector compact align="right" className="self-end sm:self-auto" />
       </div>
       {info ? <AuthAlert tone="success">{info}</AuthAlert> : null}

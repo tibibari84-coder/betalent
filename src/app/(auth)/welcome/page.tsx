@@ -15,19 +15,21 @@ export default async function WelcomePage() {
 
   return (
     <AuthSplitLayout
-      brandEyebrow="Global talent platform"
+      brandEyebrow="Live"
       brandTitle={
         <>
-          Show the World
+          The world
           <br />
-          <span className="text-accent">Your Talent</span>
+          <span className="text-accent">is watching</span>
         </>
       }
-      brandSubtitle="Join performers from around the world. Create an account to upload performances, compete in weekly challenges, and let the audience decide who rises."
-      mobileTagline="Sign in or create an account to get started."
+      brandSubtitle="Upload · challenge · connect"
+      mobileTagline="Sign in or join"
       brandFooter={
-        <p className="text-[13px] text-white/40 leading-relaxed max-w-md pt-1">
-          Want to learn more first? <Link href="/landing" className="text-accent/90 hover:text-accent underline">See what BETALENT offers</Link>.
+        <p className="text-[12px] text-white/34 leading-snug">
+          <Link href="/landing" className="text-accent/85 hover:text-accent transition-colors">
+            Discover BETALENT
+          </Link>
         </p>
       }
     >

@@ -19,13 +19,14 @@ export function WelcomeAuthCard() {
         title={t('welcome.joinTitle')}
         subtitle={t('welcome.joinSubtitle')}
       />
-      <div className="mb-4 flex justify-end sm:justify-start">
-        <LanguageSelector compact align="right" />
+      <div className="mb-5 flex flex-col gap-2 rounded-2xl border border-white/[0.06] bg-white/[0.02] px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-white/40">{t('i18n.language')}</p>
+        <LanguageSelector compact align="right" className="self-end sm:self-auto" />
       </div>
       <div className="space-y-3">
         <Link
           href="/register"
-          className="google-btn relative z-[2] flex w-full items-center justify-center gap-2.5 min-h-[48px] rounded-[14px] text-[14px] font-semibold text-white transition-all"
+          className="google-btn relative z-[2] flex w-full items-center justify-center gap-2.5 min-h-[48px] rounded-[15px] text-[14px] font-semibold text-white transition-all"
           style={{
             background: ACCENT_PRIMARY_GRADIENT,
             boxShadow: `0 2px 12px ${accentAlpha(0.25)}`,
@@ -35,7 +36,7 @@ export function WelcomeAuthCard() {
         </Link>
         <Link
           href="/login"
-          className="flex w-full items-center justify-center gap-2.5 min-h-[48px] rounded-[14px] border border-white/[0.12] bg-white/[0.04] text-[14px] font-medium text-text-primary/95 hover:bg-white/[0.08]"
+          className="flex w-full items-center justify-center gap-2.5 min-h-[48px] rounded-[15px] border border-white/[0.09] bg-white/[0.035] text-[14px] font-medium text-text-primary/95 hover:bg-white/[0.07]"
         >
           {t('auth.signIn')}
         </Link>

@@ -4,8 +4,32 @@ import Link from 'next/link';
 import { useState, type ReactNode } from 'react';
 import { useI18n } from '@/contexts/I18nContext';
 import { IconEye, IconEyeOff } from '@/components/ui/Icons';
+import { BrandWordmark } from '@/components/brand/BrandWordmark';
 import { ROUTES } from '@/constants/app';
 import { evaluatePasswordStrength } from '@/lib/auth-password-strength';
+import { cn } from '@/lib/utils';
+
+/** Premium brand lockup — editorial, not nav chrome */
+function AuthBrandLockup({ align = 'center' }: { align?: 'center' | 'start' }) {
+  return (
+    <div className={cn('flex flex-col', align === 'start' ? 'items-start' : 'items-center')}>
+      <BrandWordmark
+        variant="auth"
+        className="text-[clamp(1.2rem,4.5vw,1.65rem)] tracking-[0.22em] text-white/[0.96]"
+        style={{ textShadow: '0 0 40px rgba(196,18,47,0.12)' }}
+      />
+      <div
+        className={cn(
+          'mt-4 h-px bg-gradient-to-r to-transparent',
+          align === 'start'
+            ? 'w-16 from-[rgba(196,18,47,0.45)] via-white/15'
+            : 'w-11 from-transparent via-white/25'
+        )}
+        aria-hidden
+      />
+    </div>
+  );
+}
 
 /** Desktop brand column + mobile headline strip + form column */
 export function AuthSplitLayout({
@@ -26,25 +50,31 @@ export function AuthSplitLayout({
 }) {
   return (
     <>
+      {/* Mobile: brand statement above hero line — no navbar, cinematic entry */}
+      <div className="lg:hidden w-full flex justify-center px-2 pt-1 pb-2 auth-brand-fade">
+        <AuthBrandLockup align="center" />
+      </div>
+
       <section
-        className="hidden lg:flex flex-1 flex-col justify-center min-w-0 pr-4 xl:pr-10 auth-brand-fade"
+        className="hidden lg:flex flex-1 flex-col justify-center min-w-0 pr-4 xl:pr-12 auth-brand-fade"
         aria-hidden={false}
       >
-        <div className="max-w-lg space-y-5 xl:space-y-6">
-          <p className="text-[11px] tracking-[0.28em] uppercase text-white/45 font-medium">{brandEyebrow}</p>
-          <div className="font-display text-[clamp(2rem,3.2vw,3.25rem)] leading-[1.05] tracking-[-0.045em] text-text-primary">
+        <div className="max-w-[min(100%,26rem)] xl:max-w-lg space-y-7 xl:space-y-8">
+          <AuthBrandLockup align="start" />
+          <p className="text-[10px] xl:text-[11px] tracking-[0.32em] uppercase text-white/38 font-medium pt-1">{brandEyebrow}</p>
+          <div className="font-display text-[clamp(2.125rem,3.4vw,3.5rem)] leading-[1.02] tracking-[-0.04em] text-text-primary">
             {brandTitle}
           </div>
-          <p className="text-[15px] leading-relaxed text-text-secondary/95 max-w-md">{brandSubtitle}</p>
-          {brandFooter}
+          <p className="text-[15px] xl:text-[16px] leading-[1.55] text-text-secondary/90 max-w-md font-normal">{brandSubtitle}</p>
+          {brandFooter ? <div className="text-[12px] leading-relaxed text-white/36 max-w-md pt-1">{brandFooter}</div> : null}
         </div>
       </section>
 
-      <section className="lg:hidden w-full max-w-[min(100%,28rem)] mx-auto text-center px-1 pt-2 pb-1 auth-brand-fade">
-        <p className="text-[13px] text-text-secondary/90 leading-snug">{mobileTagline}</p>
+      <section className="lg:hidden w-full max-w-[min(100%,28rem)] mx-auto text-center px-2 pb-2 auth-brand-fade">
+        <p className="text-[13px] sm:text-[14px] text-text-secondary/88 leading-snug tracking-tight">{mobileTagline}</p>
       </section>
 
-      <section className="flex-1 flex items-start lg:items-center justify-center min-w-0 w-full pb-8 lg:pb-0">
+      <section className="flex-1 flex items-start lg:items-center justify-center min-w-0 w-full pb-6 sm:pb-8 lg:pb-0">
         <div className="w-full max-w-[min(100%,28rem)]">{children}</div>
       </section>
     </>
@@ -64,18 +94,18 @@ export function AuthGlassCard({
 }) {
   return (
     <div
-      className={`relative w-full rounded-[22px] border border-white/[0.09] bg-[rgba(12,12,14,0.72)] backdrop-blur-xl shadow-[0_8px_40px_rgba(0,0,0,0.45),0_32px_90px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.06)] overflow-hidden auth-card-enter ${scrollable ? 'max-h-[min(88vh,880px)] flex flex-col' : ''} ${className}`}
+      className={`relative w-full rounded-[24px] border border-white/[0.07] bg-[rgba(6,6,8,0.58)] backdrop-blur-[28px] shadow-[0_4px_24px_rgba(0,0,0,0.55),0_28px_80px_rgba(0,0,0,0.45),inset_0_1px_0_rgba(255,255,255,0.07)] overflow-hidden auth-card-enter ${scrollable ? 'max-h-[min(88vh,880px)] flex flex-col' : ''} ${className}`}
     >
       <div
-        className="pointer-events-none absolute inset-x-[-30%] top-[-45%] h-[min(220px,50vw)] opacity-[0.55]"
+        className="pointer-events-none absolute inset-x-[-35%] top-[-50%] h-[min(240px,52vw)] opacity-[0.42]"
         aria-hidden
         style={{
           background:
-            'radial-gradient(ellipse 80% 60% at 15% 0%, rgba(196,18,47,0.35), transparent 65%), radial-gradient(ellipse 70% 50% at 95% 10%, rgba(196,18,47,0.12), transparent 55%)',
+            'radial-gradient(ellipse 75% 55% at 20% 0%, rgba(196,18,47,0.28), transparent 68%), radial-gradient(ellipse 65% 45% at 92% 8%, rgba(196,18,47,0.1), transparent 58%)',
         }}
       />
       <div
-        className={`relative z-[1] px-5 sm:px-8 py-7 sm:py-9 ${scrollable ? 'overflow-y-auto overscroll-contain min-h-0 flex-1' : ''}`}
+        className={`relative z-[1] px-5 sm:px-8 py-7 sm:py-8 ${scrollable ? 'overflow-y-auto overscroll-contain min-h-0 flex-1' : ''}`}
       >
         {children}
       </div>
@@ -93,12 +123,12 @@ export function AuthCardHeader({
   subtitle: string;
 }) {
   return (
-    <header className="mb-7 space-y-2">
-      <p className="text-[10px] sm:text-[11px] tracking-[0.22em] uppercase text-white/40 font-semibold">{eyebrow}</p>
-      <h1 className="font-display text-[1.65rem] sm:text-[1.85rem] font-semibold text-text-primary tracking-[-0.035em] leading-tight">
+    <header className="mb-6 sm:mb-7 space-y-1.5 sm:space-y-2">
+      <p className="text-[10px] sm:text-[11px] tracking-[0.28em] uppercase text-white/36 font-medium">{eyebrow}</p>
+      <h1 className="font-display text-[1.7rem] sm:text-[1.95rem] font-semibold text-text-primary tracking-[-0.038em] leading-[1.08]">
         {title}
       </h1>
-      <p className="text-[14px] leading-relaxed text-text-secondary/95">{subtitle}</p>
+      <p className="text-[13.5px] sm:text-[14px] leading-[1.5] text-text-secondary/88">{subtitle}</p>
     </header>
   );
 }
@@ -118,7 +148,7 @@ export function GoogleContinueButton({ className = '' }: { className?: string })
   return (
     <a
       href="/api/auth/google"
-      className={`google-btn relative z-[2] group w-full flex items-center justify-center gap-2.5 min-h-[48px] rounded-[14px] border border-white/[0.12] bg-white/[0.04] text-[14px] font-medium text-text-primary/95 hover:bg-white/[0.08] hover:border-white/[0.16] active:scale-[0.99] transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(196,18,47,0.45)] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a0a0c] ${className}`}
+      className={`google-btn relative z-[2] group w-full flex items-center justify-center gap-2.5 min-h-[48px] rounded-[15px] border border-white/[0.09] bg-white/[0.035] text-[14px] font-medium text-text-primary/95 hover:bg-white/[0.07] hover:border-white/[0.14] active:scale-[0.99] transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(196,18,47,0.4)] focus-visible:ring-offset-2 focus-visible:ring-offset-[#070708] ${className}`}
     >
       <svg className="w-[18px] h-[18px] shrink-0 opacity-90 group-hover:opacity-100 transition-opacity" viewBox="0 0 24 24" aria-hidden>
         <path
@@ -338,10 +368,9 @@ export function AuthSuccessMark({ className = '' }: { className?: string }) {
 
 export function AuthTrustStrip() {
   return (
-    <div className="rounded-[14px] border border-white/[0.07] bg-black/25 px-4 py-3 mt-1">
-      <p className="text-[12px] leading-relaxed text-white/50">
-        After sign-in, BETALENT uses an httpOnly session cookie sealed on the server until it expires. Email verification only proves you
-        can receive mail at this address — it is not legal or payment identity verification.
+    <div className="rounded-[14px] border border-white/[0.06] bg-black/20 px-3.5 py-2.5 mt-1">
+      <p className="text-[11px] leading-snug text-white/45">
+        Session is a sealed server cookie · Email verification confirms inbox access only
       </p>
     </div>
   );
@@ -349,7 +378,7 @@ export function AuthTrustStrip() {
 
 export function AuthLegalNote({ compact }: { compact?: boolean }) {
   return (
-    <p className={`text-center text-white/38 leading-relaxed ${compact ? 'text-[11px] mt-5' : 'text-[12px] mt-6'} max-w-[340px] mx-auto`}>
+    <p className={`text-center text-white/32 leading-snug ${compact ? 'text-[10px] mt-4 sm:mt-5' : 'text-[11px] mt-5 sm:mt-6'} max-w-[300px] mx-auto`}>
       By continuing you accept our{' '}
       <Link href={ROUTES.LEGAL_TERMS} className="text-white/55 hover:text-accent/90 underline underline-offset-2">
         Terms

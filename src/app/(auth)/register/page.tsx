@@ -24,34 +24,26 @@ export default async function RegisterPage({
 
   return (
     <AuthSplitLayout
-      brandEyebrow="Join the stage"
+      brandEyebrow="Join"
       brandTitle={
         <>
-          Build a profile
+          Your name
           <br />
-          <span className="text-accent">the world hears.</span>
+          <span className="text-accent">in lights</span>
         </>
       }
-      brandSubtitle="Create a profile, join challenges when they run, and keep votes and uploads tied to one account."
-      mobileTagline="Create your BETALENT account."
-      brandFooter={
-        <p className="text-[13px] text-white/40 leading-relaxed max-w-md pt-1">
-          We send a one-time link to your inbox; it expires in 24 hours, same as the message states.
-        </p>
-      }
+      brandSubtitle="One profile for challenges gifts and growth"
+      mobileTagline="Create your account"
+      brandFooter={<p className="text-[12px] text-white/34 leading-snug">Verification link expires in 24 hours</p>}
     >
       <AuthGlassCard scrollable>
         <AuthCardHeader
-          eyebrow="Create account"
-          title="Start with BETALENT"
-          subtitle="You’ll confirm your email before protected areas unlock. That step checks inbox access only — separate from moderator-run creator checks when those apply."
+          eyebrow="Start"
+          title="Create account"
+          subtitle="Confirm email to unlock uploads and the rest of the stage"
         />
         <GoogleContinueButton />
         <AuthDivider />
-        <p className="text-[12px] text-center text-white/45 leading-relaxed px-1 -mt-1 mb-1">
-          Google sign-in uses Google&apos;s email verification. Email registration sends you a link — that confirms inbox access, not legal
-          identity.
-        </p>
         <RegisterForm referrerId={referrerId} googleConfigError={googleConfigError} />
       </AuthGlassCard>
       <AuthLegalNote compact />
