@@ -1,12 +1,16 @@
 import { NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { excludeStorageDeleteQuarantine } from '@/lib/video-delete-quarantine';
 
 export async function GET() {
   try {
     const user = await requireAuth();
     const videos = await prisma.video.findMany({
-      where: { creatorId: user.id },
+      where: {
+        creatorId: user.id,
+        ...excludeStorageDeleteQuarantine,
+      },
       orderBy: { createdAt: 'desc' },
       include: {
         category: { select: { name: true, slug: true } },

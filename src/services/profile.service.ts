@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma';
 import { getVideoProcessingLabel } from '@/lib/upload-status';
 import { CANONICAL_PUBLIC_VIDEO_WHERE } from '@/lib/video-moderation';
+import { excludeStorageDeleteQuarantine } from '@/lib/video-delete-quarantine';
 
 export async function getProfileByUsername(username: string) {
   const user = await prisma.user.findUnique({
@@ -47,7 +48,7 @@ export async function getProfileVideos(profileUserId: string, currentUserId?: st
   const isOwnProfile = currentUserId != null && currentUserId === profileUserId;
   const videos = await prisma.video.findMany({
     where: isOwnProfile
-      ? { creatorId: profileUserId }
+      ? { creatorId: profileUserId, ...excludeStorageDeleteQuarantine }
       : {
           creatorId: profileUserId,
           ...CANONICAL_PUBLIC_VIDEO_WHERE,

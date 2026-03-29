@@ -221,26 +221,32 @@ export async function DELETE(
 
     const storageDelete = await deleteVideoStorageObjects(video);
     if (storageDelete.failed.length > 0) {
-      console.error('[video.delete] storage delete failed', {
+      // Still remove the DB row so the video disappears from feeds / My Videos; ops can retry storage cleanup.
+      console.error('[video.delete] storage partial failure (continuing with DB delete)', {
         videoId: id,
         failed: storageDelete.failed,
       });
-      return NextResponse.json(
-        {
-          ok: false,
-          message: 'Failed to delete one or more storage objects',
-          failed: storageDelete.failed,
-        },
-        { status: 502 }
-      );
     }
 
     try {
-      await prisma.video.delete({ where: { id } });
+      await prisma.$transaction(async (tx) => {
+        await tx.video.delete({ where: { id } });
+        const owner = await tx.user.findUnique({
+          where: { id: video.creatorId },
+          select: { videosCount: true },
+        });
+        if (owner && owner.videosCount > 0) {
+          await tx.user.update({
+            where: { id: video.creatorId },
+            data: { videosCount: { decrement: 1 } },
+          });
+        }
+      });
       return NextResponse.json({
         ok: true,
         deletedStorageKeys: storageDelete.deleted,
         neutralizedStorageKeys: storageDelete.neutralized,
+        storageFailures: storageDelete.failed.length > 0 ? storageDelete.failed : undefined,
       });
     } catch (dbError) {
       console.error('[video.delete] db delete failed after storage cleanup', {

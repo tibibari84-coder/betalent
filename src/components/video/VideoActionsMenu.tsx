@@ -271,7 +271,6 @@ export default function VideoActionsMenu({
   const confirmDelete = async () => {
     logVideoAction('video_delete_started', { videoId });
     setDeleting(true);
-    onRemoved?.(videoId);
     setDeleteOpen(false);
     closeMenu();
     try {
@@ -288,6 +287,7 @@ export default function VideoActionsMenu({
         return;
       }
       logVideoAction('video_deleted', { videoId });
+      onRemoved?.(videoId);
       await refresh();
       router.refresh();
     } catch {
