@@ -39,16 +39,18 @@ export const CONTENT_TYPE_DESCRIPTIONS: Record<ContentTypeKey, string> = {
   REMIX: 'Remix or adaptation of existing material',
 };
 
-/** Publish UI chips (5) → Prisma ContentType (3). Freestyle / Duet / Other store as REMIX. */
+/** Legacy publish chips (freestyle/duet/other → REMIX). Prefer {@link PERFORMANCE_TYPE_PILLS} for new upload UI. */
 export type PublishContentKind = 'original' | 'cover' | 'freestyle' | 'duet' | 'other';
 
-export const PUBLISH_CONTENT_CHIPS: { kind: PublishContentKind; label: string }[] = [
-  { kind: 'original', label: 'Original' },
-  { kind: 'cover', label: 'Cover' },
-  { kind: 'freestyle', label: 'Freestyle' },
-  { kind: 'duet', label: 'Duet' },
-  { kind: 'other', label: 'Other' },
+/** Required before publish: Cover vs Original (no default — user must tap). */
+export type PublishPerformanceType = 'ORIGINAL' | 'COVER';
+
+export const PERFORMANCE_TYPE_PILLS: { type: PublishPerformanceType; label: string }[] = [
+  { type: 'COVER', label: 'Cover' },
+  { type: 'ORIGINAL', label: 'Original' },
 ];
+
+export const PUBLISH_GATE_PERFORMANCE_TYPE = 'Please select performance type';
 
 export function mapPublishContentKindToApi(kind: PublishContentKind): ContentTypeKey {
   if (kind === 'original') return 'ORIGINAL';

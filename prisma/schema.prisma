@@ -819,6 +819,10 @@ model Video {
   performanceStyle         String?
   /// Content type for copyright and monetization: original vs cover vs remix
   contentType              ContentType           @default(ORIGINAL)
+  /// Optional: credited original artist when contentType is COVER (MVP; not required to publish).
+  coverOriginalArtistName  String?
+  /// Optional: song title when contentType is COVER (MVP; not required to publish).
+  coverSongTitle           String?
   /// Future licensing: ORIGINAL = full rights; COVER/REMIX = licensing integration when available
   contentLicensingEligible Boolean               @default(true)
   /// Cached count of content reports; updated when reports are created/resolved.

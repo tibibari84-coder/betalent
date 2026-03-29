@@ -9,9 +9,9 @@ import { cn } from '@/lib/utils';
 import { VOCAL_STYLES_UPLOAD } from '@/constants/categories';
 import { getMimeTypeForUpload, MAX_VIDEO_FILE_SIZE } from '@/constants/upload';
 import {
-  PUBLISH_CONTENT_CHIPS,
+  PERFORMANCE_TYPE_PILLS,
   PLATFORM_RULES_ACKNOWLEDGMENT_SHORT,
-  type PublishContentKind,
+  type PublishPerformanceType,
 } from '@/constants/platform-rules';
 import type { UploadProgressStep } from '@/lib/upload-client';
 import type { RecordingMode } from '@/constants/recording-modes';
@@ -54,8 +54,12 @@ export type Props = {
   challengeId: string;
   setChallengeId: (value: string) => void;
   challengeContext: ChallengeContext | null;
-  publishContentKind: PublishContentKind;
-  setPublishContentKind: (value: PublishContentKind) => void;
+  performanceType: PublishPerformanceType | null;
+  setPerformanceType: (value: PublishPerformanceType) => void;
+  coverOriginalArtistName: string;
+  setCoverOriginalArtistName: (value: string) => void;
+  coverSongTitle: string;
+  setCoverSongTitle: (value: string) => void;
   commentPermission: 'EVERYONE' | 'FOLLOWERS' | 'FOLLOWING' | 'OFF';
   setCommentPermission: (value: 'EVERYONE' | 'FOLLOWERS' | 'FOLLOWING' | 'OFF') => void;
   rulesAcknowledged: boolean;
@@ -99,8 +103,12 @@ export default function UploadFormContent(props: Props) {
     challengeId,
     setChallengeId,
     challengeContext,
-    publishContentKind,
-    setPublishContentKind,
+    performanceType,
+    setPerformanceType,
+    coverOriginalArtistName,
+    setCoverOriginalArtistName,
+    coverSongTitle,
+    setCoverSongTitle,
     commentPermission,
     setCommentPermission,
     rulesAcknowledged,
@@ -231,6 +239,69 @@ export default function UploadFormContent(props: Props) {
               </div>
 
               <div>
+                <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-white/40">
+                  Performance type
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {PERFORMANCE_TYPE_PILLS.map(({ type, label }) => (
+                    <button
+                      key={type}
+                      type="button"
+                      disabled={loading}
+                      onClick={() => setPerformanceType(type)}
+                      className={cn(
+                        'min-h-[48px] min-w-[calc(50%-4px)] flex-1 rounded-full border px-4 py-2.5 text-[14px] font-semibold transition-colors sm:min-w-[140px] sm:flex-none',
+                        performanceType === type
+                          ? 'border-accent/55 bg-accent/20 text-white shadow-[0_0_24px_rgba(196,18,47,0.25)]'
+                          : 'border-white/[0.12] bg-white/[0.04] text-white/65 [@media(hover:hover)]:hover:border-white/25'
+                      )}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                {performanceType === 'COVER' ? (
+                  <div className="mt-4 space-y-3 rounded-xl border border-white/[0.08] bg-white/[0.03] p-3">
+                    <div>
+                      <label htmlFor="cover-artist" className="mb-1.5 block text-[12px] text-white/50">
+                        Original artist <span className="text-white/30">(optional)</span>
+                      </label>
+                      <input
+                        id="cover-artist"
+                        type="text"
+                        value={coverOriginalArtistName}
+                        onChange={(e) => setCoverOriginalArtistName(e.target.value)}
+                        placeholder="e.g. Artist name"
+                        className={inputClass}
+                        disabled={loading}
+                        autoComplete="off"
+                        maxLength={200}
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="cover-song" className="mb-1.5 block text-[12px] text-white/50">
+                        Song title <span className="text-white/30">(optional)</span>
+                      </label>
+                      <input
+                        id="cover-song"
+                        type="text"
+                        value={coverSongTitle}
+                        onChange={(e) => setCoverSongTitle(e.target.value)}
+                        placeholder="e.g. Song title"
+                        className={inputClass}
+                        disabled={loading}
+                        autoComplete="off"
+                        maxLength={200}
+                      />
+                    </div>
+                  </div>
+                ) : null}
+                <p className="mt-2 text-[11px] leading-relaxed text-white/30">
+                  Cover = performing someone else&apos;s song. Original = your own work.
+                </p>
+              </div>
+
+              <div>
                 <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-white/40">{t('upload.vocalStyle')}</p>
                 <div className="flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                   {VOCAL_STYLES_UPLOAD.map((s) => (
@@ -250,31 +321,6 @@ export default function UploadFormContent(props: Props) {
                     </button>
                   ))}
                 </div>
-              </div>
-
-              <div>
-                <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-white/40">Content type</p>
-                <div className="flex flex-wrap gap-2">
-                  {PUBLISH_CONTENT_CHIPS.map(({ kind, label }) => (
-                    <button
-                      key={kind}
-                      type="button"
-                      disabled={loading}
-                      onClick={() => setPublishContentKind(kind)}
-                      className={cn(
-                        'min-h-[44px] rounded-full border px-4 py-2 text-[13px] font-medium transition-colors',
-                        publishContentKind === kind
-                          ? 'border-accent/45 bg-accent/15 text-white'
-                          : 'border-white/[0.1] bg-white/[0.04] text-white/60'
-                      )}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-                <p className="mt-1.5 text-[11px] text-white/35">
-                  Freestyle, Duet &amp; Other are stored as remix-style entries for licensing rules.
-                </p>
               </div>
 
               <div>

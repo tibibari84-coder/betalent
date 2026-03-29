@@ -21,8 +21,8 @@ import { logUploadFlowEvent, writePostPublishHandoff } from '@/lib/upload-flow-l
 import { useI18n } from '@/contexts/I18nContext';
 import UploadFormContent from './UploadFormContent';
 import type { UploadEntryMode } from './UploadFormContent';
-import type { PublishContentKind } from '@/constants/platform-rules';
-import { mapPublishContentKindToApi } from '@/constants/platform-rules';
+import type { PublishPerformanceType } from '@/constants/platform-rules';
+import { PUBLISH_GATE_PERFORMANCE_TYPE } from '@/constants/platform-rules';
 
 type UploadPhase = 'idle' | 'uploading' | 'success' | 'failed';
 type ChallengeContext = {
@@ -72,7 +72,9 @@ export default function UploadPage() {
   const [description, setDescription] = useState('');
   const [styleSlug, setStyleSlug] = useState('');
   const [challengeId, setChallengeId] = useState('');
-  const [publishContentKind, setPublishContentKind] = useState<PublishContentKind>('original');
+  const [performanceType, setPerformanceType] = useState<PublishPerformanceType | null>(null);
+  const [coverOriginalArtistName, setCoverOriginalArtistName] = useState('');
+  const [coverSongTitle, setCoverSongTitle] = useState('');
   const [commentPermission, setCommentPermission] = useState<'EVERYONE' | 'FOLLOWERS' | 'FOLLOWING' | 'OFF'>('EVERYONE');
   const [rulesAcknowledged, setRulesAcknowledged] = useState(false);
   const [file, setFile] = useState<File | null>(null);
@@ -186,6 +188,10 @@ export default function UploadPage() {
       setError('Please confirm the platform rules (real performance, no playback, no lip-sync).');
       return;
     }
+    if (!performanceType) {
+      setError(PUBLISH_GATE_PERFORMANCE_TYPE);
+      return;
+    }
     if (challengeSlug && challengeContext && challengeContext.status !== 'ENTRY_OPEN') {
       setError('This challenge is not accepting entries right now.');
       return;
@@ -224,9 +230,15 @@ export default function UploadPage() {
           description: description.trim() || undefined,
           categorySlug: styleSlug,
           durationSec: sec,
-          contentType: mapPublishContentKindToApi(publishContentKind),
+          contentType: performanceType,
           commentPermission,
           ...(hasChallengeSlug ? { challengeSlug } : {}),
+          ...(performanceType === 'COVER'
+            ? {
+                coverOriginalArtistName: coverOriginalArtistName.trim() || undefined,
+                coverSongTitle: coverSongTitle.trim() || undefined,
+              }
+            : {}),
         },
         {
           onProgress: setUploadProgress,
@@ -332,7 +344,9 @@ export default function UploadPage() {
     setUploadProgress(0);
     setSuccessVideoId(null);
     setSuccessReady(false);
-    setPublishContentKind('original');
+    setPerformanceType(null);
+    setCoverOriginalArtistName('');
+    setCoverSongTitle('');
     setUploadEntryMode('studio');
   }, []);
 
@@ -376,6 +390,7 @@ export default function UploadPage() {
     file &&
     Boolean(derivedTitleForGate) &&
     styleSlug &&
+    performanceType !== null &&
     durationSec >= 1 &&
     durationSec <= maxStudioDurationSec &&
     rulesAcknowledged &&
@@ -387,6 +402,7 @@ export default function UploadPage() {
     const hints: string[] = [];
     if (!derivedTitleForGate) hints.push(t('upload.errorTitleRequired'));
     if (!styleSlug) hints.push(t('upload.errorChooseStyle'));
+    if (!performanceType) hints.push(PUBLISH_GATE_PERFORMANCE_TYPE);
     if (!rulesAcknowledged) hints.push(t('upload.hintAcknowledgeRules'));
     if (durationSec < 1 || durationSec > maxStudioDurationSec) hints.push(t('upload.hintDurationOutOfRange'));
     if (challengeSlug && challengeContext && challengeContext.status !== 'ENTRY_OPEN') {
@@ -400,6 +416,7 @@ export default function UploadPage() {
     canSubmit,
     derivedTitleForGate,
     styleSlug,
+    performanceType,
     rulesAcknowledged,
     durationSec,
     maxStudioDurationSec,
@@ -448,8 +465,12 @@ export default function UploadPage() {
       challengeId,
       setChallengeId,
       challengeContext,
-      publishContentKind,
-      setPublishContentKind,
+      performanceType,
+      setPerformanceType,
+      coverOriginalArtistName,
+      setCoverOriginalArtistName,
+      coverSongTitle,
+      setCoverSongTitle,
     commentPermission,
     setCommentPermission,
       rulesAcknowledged,

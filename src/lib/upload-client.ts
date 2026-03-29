@@ -18,10 +18,14 @@ export type DirectUploadMetadata = {
   description?: string;
   categorySlug: string;
   durationSec: number;
-  contentType?: ContentTypeUpload;
+  /** Required — ORIGINAL vs COVER (or REMIX for legacy callers). */
+  contentType: ContentTypeUpload;
   commentPermission?: CommentPermissionUpload;
   /** When set, server may allow up to live-challenge duration if the challenge is open. */
   challengeSlug?: string;
+  /** Optional; stored when contentType is COVER. */
+  coverOriginalArtistName?: string;
+  coverSongTitle?: string;
 };
 
 /** Chain: Upload → Save → Process → Thumbnail → READY → Feed → Open Performance. */
@@ -206,7 +210,7 @@ export async function performDirectUpload(
       title: metadata.title.trim(),
       description: metadata.description?.trim() || undefined,
       categorySlug: metadata.categorySlug,
-      contentType: metadata.contentType ?? 'ORIGINAL',
+      contentType: metadata.contentType,
       commentPermission: metadata.commentPermission ?? 'EVERYONE',
       filename: file.name,
       fileSize: file.size,
@@ -214,6 +218,12 @@ export async function performDirectUpload(
       durationSec: durationSecInt,
       ...(metadata.challengeSlug?.trim()
         ? { challengeSlug: metadata.challengeSlug.trim() }
+        : {}),
+      ...(metadata.contentType === 'COVER'
+        ? {
+            coverOriginalArtistName: metadata.coverOriginalArtistName?.trim() || undefined,
+            coverSongTitle: metadata.coverSongTitle?.trim() || undefined,
+          }
         : {}),
     }),
   });

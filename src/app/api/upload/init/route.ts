@@ -32,8 +32,12 @@ const initSchema = z.object({
   title: z.string().min(1).max(150),
   description: z.string().max(500).optional(),
   categorySlug: z.string().min(1),
-  contentType: z.enum(CONTENT_TYPES).optional().default('ORIGINAL'),
+  /** Required at init — client must send explicit ORIGINAL | COVER | REMIX (upload UI forces user choice for O/C). */
+  contentType: z.enum(CONTENT_TYPES),
   commentPermission: z.enum(COMMENT_PERMISSIONS).optional(),
+  /** Optional cover attribution when contentType is COVER (MVP: may be empty). */
+  coverOriginalArtistName: z.string().max(200).optional(),
+  coverSongTitle: z.string().max(200).optional(),
   filename: z.string().min(1).max(255),
   fileSize: z.number().int().positive(),
   mimeType: z.string().min(1),
@@ -106,8 +110,11 @@ export async function POST(req: Request) {
       );
     }
 
-    const contentType = parsed.contentType ?? 'ORIGINAL';
+    const contentType = parsed.contentType;
     const contentLicensingEligible = contentType === 'ORIGINAL';
+    const coverOriginalArtistName =
+      contentType === 'COVER' ? (parsed.coverOriginalArtistName?.trim() || null) : null;
+    const coverSongTitle = contentType === 'COVER' ? (parsed.coverSongTitle?.trim() || null) : null;
 
     const userPrefs = await prisma.user.findUnique({
       where: { id: user.id },
@@ -130,6 +137,8 @@ export async function POST(req: Request) {
         mimeType: mimeTypeNorm,
         performanceStyle,
         contentType,
+        coverOriginalArtistName,
+        coverSongTitle,
         commentPermission,
         contentLicensingEligible,
         uploadStatus: 'UPLOADING',
