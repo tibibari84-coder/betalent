@@ -132,7 +132,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   try {
     const user = await requireAuth();
     const { id } = params;
-    if (!id?.trim()) {
+    if (!id?.trim() || id.length > 128) {
       return NextResponse.json({ ok: false, message: 'Invalid video id' }, { status: 400 });
     }
     const body = await req.json();
@@ -242,7 +242,7 @@ export async function DELETE(
   try {
     const user = await requireAuth();
     const { id } = params;
-    if (!id?.trim()) {
+    if (!id?.trim() || id.length > 128) {
       return NextResponse.json({ ok: false, message: 'Invalid video id' }, { status: 400 });
     }
 

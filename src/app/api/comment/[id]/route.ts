@@ -7,6 +7,8 @@ import { NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth';
 import { softDeleteCommentOrThrow } from '@/services/comment-delete.service';
 
+const MAX_ID_LEN = 128;
+
 export async function DELETE(
   _req: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -14,6 +16,9 @@ export async function DELETE(
   try {
     const user = await requireAuth();
     const { id: commentId } = await params;
+    if (!commentId?.trim() || commentId.length > MAX_ID_LEN) {
+      return NextResponse.json({ ok: false, message: 'Invalid comment id' }, { status: 400 });
+    }
     const result = await softDeleteCommentOrThrow({
       commentId,
       actor: { id: user.id, role: user.role },

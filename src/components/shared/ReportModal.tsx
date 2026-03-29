@@ -93,7 +93,11 @@ export default function ReportModal({ videoId, videoTitle, isOpen, onClose, onSu
         </div>
 
         {videoTitle && (
-          <p className="text-[13px] text-text-muted mb-4 line-clamp-2">"{videoTitle}"</p>
+          <p className="text-[13px] text-text-muted mb-4 line-clamp-2">
+            {'\u201C'}
+            {videoTitle}
+            {'\u201D'}
+          </p>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">

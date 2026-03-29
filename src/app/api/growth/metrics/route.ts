@@ -1,19 +1,23 @@
 /**
  * GET /api/growth/metrics
  * Growth metrics for viral loop: shares per video, referrals, signup conversion.
- * Requires auth (admin or creator dashboard).
+ * Admin-only: aggregate shares, referrals, top shared videos.
  */
 
 import { NextResponse } from 'next/server';
-import { requireAuth } from '@/lib/auth';
+import { requireAdmin } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { CANONICAL_PUBLIC_VIDEO_WHERE } from '@/lib/video-moderation';
 
 export async function GET() {
   try {
-    await requireAuth();
-  } catch {
-    return NextResponse.json({ ok: false, message: 'Unauthorized' }, { status: 401 });
+    await requireAdmin();
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : '';
+    if (msg === 'Unauthorized') {
+      return NextResponse.json({ ok: false, message: 'Unauthorized' }, { status: 401 });
+    }
+    return NextResponse.json({ ok: false, message: 'Forbidden' }, { status: 403 });
   }
 
   try {

@@ -8,8 +8,10 @@
  * - reset: clear rankingBoostMultiplier and set rankingDisabled = false (re-allow public discovery/listing).
  */
 import { NextResponse } from 'next/server';
+import { z } from 'zod';
 import { requireAdmin } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { adminVideoOverrideSchema } from '@/lib/api-schemas';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,21 +25,23 @@ export async function POST(req: Request) {
   }
 
   try {
-    const body = await req.json();
-    const { videoId, action, boostMultiplier } = body as {
-      videoId?: string;
-      action?: 'boost' | 'disable' | 'reset';
-      boostMultiplier?: number;
-    };
+    let raw: unknown;
+    try {
+      raw = await req.json();
+    } catch {
+      return NextResponse.json({ ok: false, message: 'Invalid JSON' }, { status: 400 });
+    }
+    const parsed = adminVideoOverrideSchema.safeParse(raw);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { ok: false, message: 'Invalid body', errors: parsed.error.flatten() },
+        { status: 400 }
+      );
+    }
+    const { videoId, action, boostMultiplier } = parsed.data;
 
-    if (!videoId || typeof videoId !== 'string') {
-      return NextResponse.json({ ok: false, message: 'videoId required' }, { status: 400 });
-    }
-    if (!action || !['boost', 'disable', 'reset'].includes(action)) {
-      return NextResponse.json({ ok: false, message: 'action must be boost, disable, or reset' }, { status: 400 });
-    }
-    if (action === 'boost' && (boostMultiplier == null || typeof boostMultiplier !== 'number' || boostMultiplier <= 0)) {
-      return NextResponse.json({ ok: false, message: 'boost requires boostMultiplier > 0' }, { status: 400 });
+    if (action === 'boost' && boostMultiplier == null) {
+      return NextResponse.json({ ok: false, message: 'boost requires boostMultiplier' }, { status: 400 });
     }
 
     const video = await prisma.video.findUnique({ where: { id: videoId } });
@@ -71,6 +75,6 @@ export async function POST(req: Request) {
     });
   } catch (e) {
     console.error('[admin/feed/video-override]', e);
-    return NextResponse.json({ ok: false, error: String(e) }, { status: 500 });
+    return NextResponse.json({ ok: false, message: 'Request failed' }, { status: 500 });
   }
 }

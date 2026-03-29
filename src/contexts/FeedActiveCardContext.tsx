@@ -119,9 +119,8 @@ export function useFeedRegister(): FeedRegisterContextValue | null {
 export function useFeedActiveCard(): FeedActiveCardContextValue | null {
   const activeCardId = useContext(FeedActiveCardContext);
   const register = useContext(FeedRegisterContext);
-  if (!register) return null;
-  return useMemo(
-    () => ({ ...register, activeCardId }),
-    [register, activeCardId]
-  );
+  return useMemo(() => {
+    if (!register) return null;
+    return { ...register, activeCardId };
+  }, [register, activeCardId]);
 }

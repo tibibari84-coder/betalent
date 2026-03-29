@@ -43,3 +43,9 @@ export const RATE_LIMIT_SEARCH_PER_IP_PER_MINUTE = 90;
 
 // Direct messages (authenticated — per-user burst control)
 export const RATE_LIMIT_DM_SEND_PER_USER_PER_MINUTE = 30;
+
+// Qualified view ingestion (POST /api/view — anon + auth)
+export const RATE_LIMIT_VIEW_POST_PER_IP_PER_MINUTE = 180;
+
+// Watch progress for For You scoring (POST /api/watch-progress)
+export const RATE_LIMIT_WATCH_PROGRESS_PER_USER_PER_MINUTE = 120;

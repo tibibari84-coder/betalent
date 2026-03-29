@@ -15,14 +15,26 @@ import { z } from 'zod';
 const bodySchema = z.object({
   shareType: z.enum(['copy_link', 'external']),
   resourceType: z.enum(['video', 'profile']),
-  resourceId: z.string().min(1, 'resourceId required'),
+  resourceId: z.string().min(1).max(128),
 });
 
 export async function POST(req: Request) {
   try {
     const user = await getCurrentUser();
-    const body = await req.json();
-    const { shareType, resourceType, resourceId } = bodySchema.parse(body);
+    let raw: unknown;
+    try {
+      raw = await req.json();
+    } catch {
+      return NextResponse.json({ ok: false, message: 'Invalid JSON' }, { status: 400 });
+    }
+    const parsed = bodySchema.safeParse(raw);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { ok: false, message: 'Invalid body', errors: parsed.error.flatten() },
+        { status: 400 }
+      );
+    }
+    const { shareType, resourceType, resourceId } = parsed.data;
 
     const shareTypeDb = shareType === 'copy_link' ? 'COPY_LINK' : 'EXTERNAL';
     const resourceTypeDb = resourceType === 'video' ? 'VIDEO' : 'PROFILE';
@@ -66,13 +78,7 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json({ ok: true });
-  } catch (e) {
-    if (e instanceof z.ZodError) {
-      return NextResponse.json(
-        { ok: false, message: 'Invalid body (shareType, resourceType, resourceId)', errors: e.flatten() },
-        { status: 400 }
-      );
-    }
+  } catch {
     return NextResponse.json({ ok: false, message: 'Share track failed' }, { status: 500 });
   }
 }

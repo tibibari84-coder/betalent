@@ -9,14 +9,16 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { getCurrentUser } from '@/lib/auth';
-import { recordView, getClientIpFromHeaders, hashViewerIp } from '@/services/view-tracking.service';
+import { recordView, hashViewerIp } from '@/services/view-tracking.service';
+import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
+import { RATE_LIMIT_VIEW_POST_PER_IP_PER_MINUTE } from '@/constants/api-rate-limits';
 import { z } from 'zod';
 
 const VIEW_SESSION_COOKIE = 'betalent_sid';
 const VIEW_SESSION_MAX_AGE = 60 * 60 * 24 * 365;
 
 const bodySchema = z.object({
-  videoId: z.string().min(1),
+  videoId: z.string().min(1).max(128),
   qualifiedWatchSeconds: z.number().finite().min(0).max(86400),
   durationSecondsClient: z.number().finite().min(0).max(86400).optional(),
   source: z.enum(['feed', 'detail', 'modal']).optional(),
@@ -24,9 +26,25 @@ const bodySchema = z.object({
 
 export async function POST(req: Request) {
   try {
+    const ip = getClientIp(req);
+    if (!(await checkRateLimit('view-post-ip', ip, RATE_LIMIT_VIEW_POST_PER_IP_PER_MINUTE, 60_000))) {
+      return NextResponse.json({ ok: false, message: 'Too many view requests' }, { status: 429 });
+    }
+
     const user = await getCurrentUser();
-    const body = await req.json().catch(() => ({}));
-    const parsed = bodySchema.parse(body);
+    let raw: unknown;
+    try {
+      raw = await req.json();
+    } catch {
+      return NextResponse.json({ ok: false, message: 'Invalid JSON' }, { status: 400 });
+    }
+    const parsed = bodySchema.safeParse(raw);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { ok: false, message: 'Invalid body', errors: parsed.error.flatten() },
+        { status: 400 }
+      );
+    }
 
     const cookieStore = await cookies();
     let sessionId = cookieStore.get(VIEW_SESSION_COOKIE)?.value;
@@ -37,12 +55,11 @@ export async function POST(req: Request) {
     }
     const viewerKey = user?.id ?? sessionId!;
 
-    const ip = getClientIpFromHeaders(req.headers);
     const viewerIpHash = hashViewerIp(ip);
 
-    const result = await recordView(parsed.videoId, viewerKey, {
+    const result = await recordView(parsed.data.videoId, viewerKey, {
       viewerUserId: user?.id ?? null,
-      qualifiedWatchSeconds: parsed.qualifiedWatchSeconds,
+      qualifiedWatchSeconds: parsed.data.qualifiedWatchSeconds,
       viewerIpHash,
     });
 
@@ -53,13 +70,7 @@ export async function POST(req: Request) {
     });
     if (setCookieHeader) res.headers.set('Set-Cookie', setCookieHeader);
     return res;
-  } catch (e) {
-    if (e instanceof z.ZodError) {
-      return NextResponse.json(
-        { ok: false, message: 'Invalid body', errors: e.flatten() },
-        { status: 400 }
-      );
-    }
+  } catch {
     return NextResponse.json({ ok: false, message: 'View record failed' }, { status: 500 });
   }
 }

@@ -29,22 +29,28 @@ if (isVercelProduction) {
   });
 }
 
-/** Monitor violations in DevTools / reporting API; tighten to enforcing CSP only after tuning. */
+const cspPageDirectives = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.google.com https://*.gstatic.com https://*.googletagmanager.com",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: https: blob:",
+  "font-src 'self' data:",
+  "connect-src 'self' https: wss:",
+  "media-src 'self' https: blob:",
+  "frame-src 'self' https://accounts.google.com https://js.stripe.com https://hooks.stripe.com https://*.google.com",
+  "worker-src 'self' blob:",
+  "base-uri 'self'",
+  "form-action 'self' https://accounts.google.com",
+].join('; ');
+
+/**
+ * HTML pages: Report-Only by default. Set CSP_ENFORCE=1 at build time to send enforcing
+ * Content-Security-Policy (same directives). Roll back by unsetting if violations break UX.
+ */
+const cspEnforce = process.env.CSP_ENFORCE === '1';
 securityHeaders.push({
-  key: 'Content-Security-Policy-Report-Only',
-  value: [
-    "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.google.com https://*.gstatic.com https://*.googletagmanager.com",
-    "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data: https: blob:",
-    "font-src 'self' data:",
-    "connect-src 'self' https: wss:",
-    "media-src 'self' https: blob:",
-    "frame-src 'self' https://accounts.google.com https://js.stripe.com https://hooks.stripe.com https://*.google.com",
-    "worker-src 'self' blob:",
-    "base-uri 'self'",
-    "form-action 'self' https://accounts.google.com",
-  ].join('; '),
+  key: cspEnforce ? 'Content-Security-Policy' : 'Content-Security-Policy-Report-Only',
+  value: cspPageDirectives,
 });
 
 const nextConfig = {
@@ -56,11 +62,20 @@ const nextConfig = {
     },
   },
   async headers() {
-    return [
+    /** JSON API responses: lock down framing / MIME confusion; no-store for sensitive data. */
+    const apiSecurityHeaders = [
+      { key: 'X-Content-Type-Options', value: 'nosniff' },
+      { key: 'X-Frame-Options', value: 'DENY' },
       {
-        source: '/:path*',
-        headers: securityHeaders,
+        key: 'Content-Security-Policy',
+        value: "default-src 'none'; frame-ancestors 'none'",
       },
+      { key: 'Cache-Control', value: 'no-store, max-age=0' },
+      { key: 'Referrer-Policy', value: 'no-referrer' },
+    ];
+    return [
+      { source: '/api/:path*', headers: apiSecurityHeaders },
+      { source: '/:path*', headers: securityHeaders },
     ];
   },
   async rewrites() {

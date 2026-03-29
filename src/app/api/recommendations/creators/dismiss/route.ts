@@ -7,21 +7,31 @@ import { NextResponse } from 'next/server';
 import { CreatorRecommendationDismissalReason } from '@prisma/client';
 import { requireAuth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { creatorDismissSchema } from '@/lib/api-schemas';
 
 export async function POST(req: Request) {
   try {
     const user = await requireAuth();
-    const body = (await req.json()) as { creatorId?: string; reason?: string };
-    const creatorId = body.creatorId?.trim();
-    if (!creatorId) {
-      return NextResponse.json({ ok: false, message: 'creatorId is required' }, { status: 400 });
+    let raw: unknown;
+    try {
+      raw = await req.json();
+    } catch {
+      return NextResponse.json({ ok: false, message: 'Invalid JSON' }, { status: 400 });
     }
+    const parsed = creatorDismissSchema.safeParse(raw);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { ok: false, message: 'Invalid body', errors: parsed.error.flatten() },
+        { status: 400 }
+      );
+    }
+    const { creatorId, reason: reasonRaw } = parsed.data;
     if (creatorId === user.id) {
       return NextResponse.json({ ok: false, message: 'Invalid target' }, { status: 400 });
     }
 
     const reason =
-      body.reason === 'DISMISSED'
+      reasonRaw === 'DISMISSED'
         ? CreatorRecommendationDismissalReason.DISMISSED
         : CreatorRecommendationDismissalReason.NOT_INTERESTED;
 

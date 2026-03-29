@@ -5,6 +5,7 @@ import { filterVideoIdsForFeedViewer } from '@/lib/feed-profile-visibility';
 import { isDatabaseUnavailableError } from '@/lib/db-errors';
 import { stampApiResponse } from '@/lib/api-route-observe';
 import { loadFeedVideosInOrder, type FeedVideoApiItem } from '@/lib/feed-api-response';
+import { parseFeedQueryParams } from '@/lib/api-schemas';
 
 const ROUTE_KEY = 'GET /api/feed/for-you';
 
@@ -15,12 +16,7 @@ export async function GET(req: Request) {
   const startedAt = performance.now();
   try {
     const { searchParams } = new URL(req.url);
-    const limit = Math.min(
-      parseInt(searchParams.get('limit') ?? '30', 10),
-      50
-    );
-    const sessionCreatorIds = searchParams.get('creatorIds')?.split(',').filter(Boolean) ?? [];
-    const excludeIds = searchParams.get('excludeIds')?.split(',').filter(Boolean) ?? [];
+    const { limit, sessionCreatorIds, excludeIds } = parseFeedQueryParams(searchParams);
     const debug = searchParams.get('debug') === '1' && process.env.NODE_ENV !== 'production';
     const sessionUser = await getCurrentUser();
 
