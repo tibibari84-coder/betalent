@@ -358,7 +358,7 @@ export default function UploadPage() {
       });
       setPhase('done');
       showBetalentToast({
-        message: 'Uploading…',
+        message: 'Upload received — processing in the background. For You updates when ready.',
         durationMs: 4500,
         variant: 'info',
       });

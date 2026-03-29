@@ -3,7 +3,7 @@
  * See: docs/WEEKLY-CHALLENGE-SYSTEM.md
  */
 
-import type { ChallengeStatus } from '@prisma/client';
+import type { ChallengeStatus, VideoVisibility } from '@prisma/client';
 
 export type { ChallengeStatus };
 
@@ -61,7 +61,7 @@ export interface ChallengeLeaderboardEntry {
   videoTitle: string;
   thumbnailUrl?: string | null;
   /** Public challenge entries are always PUBLIC in feeds; included for menu/copy consistency. */
-  visibility: 'PUBLIC' | 'PRIVATE';
+  visibility: VideoVisibility;
   score: number;
   votes: number;
   likesCount: number;

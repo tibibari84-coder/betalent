@@ -56,6 +56,8 @@ enum UploadStatus {
 enum VideoVisibility {
   PUBLIC
   PRIVATE
+  /// Link-only / profile; excluded from For You and Explore (same pattern as YouTube unlisted).
+  UNLISTED
 }
 
 /// Who may comment on a performance. Enforced server-side.
@@ -95,6 +97,8 @@ enum VideoModerationStatus {
   APPROVED
   FLAGGED
   BLOCKED
+  /// Human or async review required; not eligible for canonical public surfaces until resolved.
+  NEEDS_REVIEW
 }
 
 /// Content type for copyright and monetization: original work vs derivative.
@@ -841,6 +845,10 @@ model Video {
   commentPermission       CommentPermission     @default(EVERYONE)
   processingStartedAt      DateTime?
   processingCompletedAt    DateTime?
+  /// Background worker attempts (finalize → async pipeline); capped before PROCESSING_FAILED.
+  processingAttempts       Int                   @default(0)
+  /// Earliest time the processing worker may pick this row again (exponential backoff between retries).
+  processingNextAttemptAt  DateTime?
   processingError          String? /// Error message when PROCESSING_FAILED; supports retry/audit
   /// Soft delete: set when creator deletes; hidden from all listings; hard delete after storage cleanup worker.
   deletedAt                DateTime?

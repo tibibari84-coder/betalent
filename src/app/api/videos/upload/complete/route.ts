@@ -1,10 +1,8 @@
 /**
  * POST /api/videos/upload/complete
  *
- * Creator flow chain: Upload → Save → Process → Thumbnail → READY → Feed → Open Performance.
- * This route does: Save (videoUrl, UPLOADED) → Process (PENDING_PROCESSING) → Thumbnail → READY (or enqueue analysis).
- * On success returns { ok: true, video: { id }, ready }.
- * On failure returns { ok: false, message, step } so client can report which step is missing.
+ * Finalize direct upload: bind playback URL, mark UPLOADED + PROCESSING, reward, enqueue async pipeline.
+ * Heavy processing runs in {@link runVideoProcessingWorker}, not here.
  */
 
 import { NextResponse } from 'next/server';
@@ -13,14 +11,10 @@ import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { buildPublicPlaybackUrl, getPlaybackUrl, getStorageConfig, isValidVideoStorageKeyForUser } from '@/lib/storage';
-import { checkFfmpegAvailable } from '@/lib/ffmpeg';
 import { rewardUpload } from '@/services/coin.service';
-import { enqueueAnalysis } from '@/services/vocal-scoring.service';
-import { runThumbnailPipelineStep } from '@/services/thumbnail.service';
-import { runAudioProcessingPipelineStep } from '@/services/audio-processing.service';
-import { runPostUploadIntegrityAnalysis } from '@/services/media-integrity.service';
 import { RATE_LIMIT_UPLOAD_COMPLETE_PER_HOUR } from '@/constants/api-rate-limits';
 import { logOpsEvent } from '@/lib/ops-events';
+import { logger } from '@/lib/logger';
 
 const completeSchema = z.object({
   /** Prisma @default(cuid()) — allow full id string (avoid z.cuid() mismatch with cuid2). */
@@ -125,8 +119,17 @@ export async function POST(req: Request) {
     }
     if (video.uploadStatus !== 'UPLOADING') {
       if (video.uploadStatus === 'UPLOADED') {
-        const current = await prisma.video.findUnique({ where: { id: videoId }, select: { status: true } });
-        return NextResponse.json({ ok: true, video: { id: video.id }, ready: current?.status === 'READY' });
+        const current = await prisma.video.findUnique({
+          where: { id: videoId },
+          select: { status: true, processingStatus: true },
+        });
+        const ready = current?.status === 'READY' && current?.processingStatus === 'READY';
+        return NextResponse.json({
+          ok: true,
+          video: { id: video.id },
+          ready: ready === true,
+          processing: ready ? 'done' : 'queued',
+        });
       }
       return NextResponse.json(
         { ok: false, message: 'Upload not in progress', step: 'upload' },
@@ -185,6 +188,12 @@ export async function POST(req: Request) {
         logOpsEvent('processing_failed', { videoId, userId: user.id, errorCode: 'PLAYBACK_URL_FAILED' });
         logOpsEvent('upload_failed', { videoId, userId: user.id, errorCode: 'PLAYBACK_URL_FAILED' });
         logOpsEvent('publish_failed', { videoId, userId: user.id, errorCode: 'PLAYBACK_URL_FAILED' });
+        logger.error('VIDEO_UPLOAD_FINALIZE_FAILED', {
+          videoId,
+          userId: user.id,
+          storageKey,
+          code: 'PLAYBACK_URL_FAILED',
+        });
         return NextResponse.json(
           {
             ok: false,
@@ -206,8 +215,10 @@ export async function POST(req: Request) {
       processingStartedAt: now,
       status: 'PROCESSING' as const,
       processingError: null,
+      processingAttempts: 0,
+      processingNextAttemptAt: null as Date | null,
     };
-    logComplete('info', 'DB transaction: saving video after upload', {
+    logComplete('info', 'DB transaction: saving video after upload (async pipeline)', {
       videoId,
       playbackSource,
       dbPayload: {
@@ -229,136 +240,30 @@ export async function POST(req: Request) {
 
     await rewardUpload(user.id, videoId);
 
-    /**
-     * Thumbnail + audio steps require FFmpeg (`thumbnail.service.ts` assertFfmpegAvailable →
-     * PROCESSING_FAILED at lines 101–108; `audio-processing.service.ts` same at 290–298).
-     * If we always ran them when ffmpeg is missing, complete would return 200 but the row would
-     * become PROCESSING_FAILED — Profile shows badge "Failed"; For You stays empty (not READY).
-     * When ffmpeg is unavailable, skip those steps and advance to ANALYZING_AUDIO so enqueue/fallback can run.
-     */
-    const ffmpegCheck = checkFfmpegAvailable();
-    const forceMinimal =
-      process.env.BETALENT_MINIMAL_MEDIA_PIPELINE === '1' || process.env.BETALENT_SKIP_FFMPEG_PIPELINE === '1';
-    const useMinimalMediaPipeline = forceMinimal || !ffmpegCheck.available;
+    await logVideoDbRow(videoId, 'after finalize — processing queued');
 
-    if (useMinimalMediaPipeline) {
-      logComplete('warn', 'skipping ffmpeg thumbnail + loudness pipeline', {
-        videoId,
-        reason: forceMinimal ? 'env_forced' : 'ffmpeg_not_available',
-        ffmpegAvailable: ffmpegCheck.available,
-        ffmpegError: ffmpegCheck.error ?? null,
-        reference:
-          'Without this branch, runThumbnailPipelineStep calls assertFfmpegAvailable() and writes processingStatus PROCESSING_FAILED (thumbnail.service.ts ~101–108).',
-      });
-      await prisma.video.update({
-        where: { id: videoId },
-        data: {
-          processingStatus: 'ANALYZING_AUDIO',
-          processingError: null,
-          updatedAt: new Date(),
-        },
-      });
-    } else {
-      try {
-        await runThumbnailPipelineStep(videoId);
-      } catch (e) {
-        logComplete('warn', 'thumbnail step threw', { videoId, error: e instanceof Error ? e.message : String(e) });
-      }
-
-      try {
-        await runAudioProcessingPipelineStep(videoId);
-      } catch (e) {
-        logComplete('warn', 'audio processing step threw', {
-          videoId,
-          error: e instanceof Error ? e.message : String(e),
-        });
-      }
-    }
-
-    try {
-      await runPostUploadIntegrityAnalysis(videoId);
-    } catch (e) {
-      logComplete('warn', 'post-upload integrity failed', { videoId, error: e instanceof Error ? e.message : String(e) });
-    }
-
-    const updated = await prisma.video.findUnique({
-      where: { id: videoId },
-      select: { processingStatus: true, status: true, videoUrl: true },
-    });
-
-    let ready = updated?.status === 'READY';
-    /**
-     * Full pipeline: enqueueAnalysis() may return { enqueued: true } (vocal-scoring.service.ts ~237–238).
-     * The previous fallback only ran when enqueued was false — so ANALYZING_AUDIO + PENDING moderation
-     * stayed forever if no worker consumed the job (typical local dev).
-     * Minimal media pipeline (no ffmpeg): never wait on a worker; finalize DB to READY/APPROVED here.
-     * uploadStatus stays UPLOADED (not modified).
-     */
-    if (!ready && updated?.processingStatus === 'ANALYZING_AUDIO') {
-      if (useMinimalMediaPipeline) {
-        logComplete('info', 'minimal media pipeline: finalize READY/APPROVED without vocal worker', {
-          videoId,
-          note: 'Skips enqueueAnalysis so the row does not depend on a background worker.',
-        });
-        await prisma.video.update({
-          where: { id: videoId },
-          data: {
-            processingStatus: 'READY',
-            status: 'READY',
-            moderationStatus: 'APPROVED',
-            processingCompletedAt: new Date(),
-            processingError: null,
-          },
-        });
-        ready = true;
-      } else {
-        const enqueueResult = await enqueueAnalysis(videoId).catch((e) => {
-          logComplete('warn', 'enqueueAnalysis threw', { videoId, error: e instanceof Error ? e.message : String(e) });
-          return { enqueued: false as const, reason: 'ENQUEUE_ERROR' };
-        });
-
-        if (!enqueueResult.enqueued) {
-          logComplete('info', 'analysis not enqueued, marking READY fallback', {
-            videoId,
-            reason: enqueueResult.reason ?? 'unknown',
-          });
-          await prisma.video.update({
-            where: { id: videoId },
-            data: {
-              processingStatus: 'READY',
-              status: 'READY',
-              moderationStatus: 'APPROVED',
-              processingCompletedAt: new Date(),
-              processingError: null,
-            },
-          });
-          ready = true;
-        }
-      }
-    }
-
-    await logVideoDbRow(videoId, 'after processing + enqueue/fallback');
-
-    const final = await prisma.video.findUnique({
-      where: { id: videoId },
-      select: { status: true, processingStatus: true, uploadStatus: true, videoUrl: true },
-    });
-    logComplete('info', 'complete finished (HTTP 200)', {
+    logger.info('VIDEO_UPLOAD_FINALIZED', {
       videoId,
-      status: final?.status,
-      processingStatus: final?.processingStatus,
-      uploadStatus: final?.uploadStatus,
-      hasVideoUrl: !!final?.videoUrl,
-      videoUrlSample:
-        final?.videoUrl && final.videoUrl.length > 120 ? `${final.videoUrl.slice(0, 120)}…` : final?.videoUrl ?? null,
-      ready,
+      userId: user.id,
+      storageKey,
+      processing: 'queued',
     });
 
-    logOpsEvent('upload_completed', { videoId, userId: user.id, ready });
-    logOpsEvent('processing_ready', { videoId, userId: user.id, ready });
-    logOpsEvent('publish_success', { videoId, userId: user.id, ready });
+    logComplete('info', 'complete finished (HTTP 200, async processing)', {
+      videoId,
+      uploadStatus: 'UPLOADED',
+      processingStatus: 'PENDING_PROCESSING',
+    });
 
-    return NextResponse.json({ ok: true, video: { id: videoId }, ready });
+    logOpsEvent('upload_completed', { videoId, userId: user.id, ready: false });
+    /** Do not emit publish_success until worker + moderation gates pass — use upload_completed + processing_queued. */
+
+    return NextResponse.json({
+      ok: true,
+      video: { id: videoId },
+      ready: false,
+      processing: 'queued',
+    });
   } catch (e) {
     if (e instanceof Error && e.message === 'Unauthorized') {
       return NextResponse.json({ ok: false, message: 'Login required', step: 'upload' }, { status: 401 });

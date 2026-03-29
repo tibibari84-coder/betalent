@@ -1,5 +1,6 @@
 'use client';
 
+import type { VideoVisibility } from '@prisma/client';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import Badge from '@/components/shared/Badge';
@@ -68,7 +69,7 @@ export interface VideoCardProps {
   onChallengeVoteSuccess?: (videoId: string, stars: number) => void;
   /** Override creator id for menus when not nested in `creator` (e.g. profile grid). */
   creatorUserId?: string;
-  visibility?: 'PUBLIC' | 'PRIVATE';
+  visibility?: VideoVisibility;
   onVideoRemoved?: (videoId: string) => void;
 }
 

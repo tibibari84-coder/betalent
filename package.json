@@ -21,7 +21,9 @@
     "db:seed-gifts": "tsx scripts/seed-gifts.ts",
     "db:upsert-vocal-categories": "tsx scripts/upsert-vocal-categories.ts",
     "job:maintenance": "tsx scripts/run-maintenance-job.ts",
-    "job:video-cleanup": "tsx scripts/run-maintenance-job.ts video_cleanup"
+    "job:video-cleanup": "tsx scripts/run-maintenance-job.ts video_cleanup",
+    "job:video-processing": "tsx scripts/run-maintenance-job.ts video_processing",
+    "job:stale-upload-cleanup": "tsx scripts/run-maintenance-job.ts stale_upload_cleanup"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

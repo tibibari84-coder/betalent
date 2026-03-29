@@ -34,6 +34,8 @@ export function mapVideoToIntegrityModeration(status: VideoModerationStatus): Mo
       return 'BLOCKED';
     case 'FLAGGED':
       return 'FLAGGED';
+    case 'NEEDS_REVIEW':
+      return 'PENDING';
     case 'PENDING':
     default:
       return 'PENDING';
@@ -41,39 +43,39 @@ export function mapVideoToIntegrityModeration(status: VideoModerationStatus): Mo
 }
 
 /**
- * Pipeline + legacy moderation + integrity alignment (no admin feed-de-list flag).
- * Use for: sync logic, or background jobs that need the same quality bar without "delisted from feed" semantics.
+ * Core gate for “distribution-ready” video rows: upload finished **and** processing + moderation passed.
+ * `uploadStatus: UPLOADED` alone is never sufficient for public surfaces — always requires READY + APPROVED below.
  */
-export const PUBLIC_VIDEO_READY_WHERE: Prisma.VideoWhereInput = {
-  AND: [
-    GLOBAL_VIDEO_FILTER,
-    {
-      status: 'READY',
-      processingStatus: 'READY',
-      moderationStatus: 'APPROVED',
-      OR: [
-        { mediaIntegrity: { is: null } },
-        { mediaIntegrity: { is: { moderationStatus: { in: INTEGRITY_PUBLIC_ALLOWED_STATUSES } } } },
-      ],
-    },
+export const PUBLIC_DISTRIBUTION_CORE_WHERE: Prisma.VideoWhereInput = {
+  uploadStatus: 'UPLOADED',
+  status: 'READY',
+  processingStatus: 'READY',
+  moderationStatus: 'APPROVED',
+  OR: [
+    { mediaIntegrity: { is: null } },
+    { mediaIntegrity: { is: { moderationStatus: { in: INTEGRITY_PUBLIC_ALLOWED_STATUSES } } } },
   ],
 };
 
 /**
- * Single public-product visibility gate: everything in {@link PUBLIC_VIDEO_READY_WHERE}
- * plus not admin-de-listed from all public discovery/listing surfaces (`rankingDisabled`),
- * and must have a valid playback URL (R2/storage).
- *
- * Use for: home, explore, For You, public profile, video detail, public lists, challenge/live eligibility,
- * public leaderboards, and interaction APIs that should only apply to publicly visible performances.
- *
- * Intentional exceptions: owner/admin/internal views (e.g. `/api/videos/me`, moderation queues) use their own where clauses.
+ * Pipeline + legacy moderation + integrity alignment (no admin feed-de-list flag).
+ */
+export const PUBLIC_VIDEO_READY_WHERE: Prisma.VideoWhereInput = {
+  AND: [GLOBAL_VIDEO_FILTER, PUBLIC_DISTRIBUTION_CORE_WHERE],
+};
+
+/**
+ * Single public-product visibility gate: READY + APPROVED + integrity allow-list + playback URL + PUBLIC visibility.
+ * Do not hand-roll a weaker variant on listing routes — use this or {@link PUBLIC_VIDEO_READY_WHERE} where appropriate.
  */
 export const CANONICAL_PUBLIC_VIDEO_WHERE: Prisma.VideoWhereInput = {
-  ...PUBLIC_VIDEO_READY_WHERE,
-  rankingDisabled: false,
-  videoUrl: { not: null },
-  visibility: 'PUBLIC',
+  AND: [
+    GLOBAL_VIDEO_FILTER,
+    PUBLIC_DISTRIBUTION_CORE_WHERE,
+    { rankingDisabled: false },
+    { videoUrl: { not: null } },
+    { visibility: 'PUBLIC' },
+  ],
 };
 
 /**

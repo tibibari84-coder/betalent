@@ -4,6 +4,10 @@
     {
       "path": "/api/cron/video-cleanup",
       "schedule": "*/10 * * * *"
+    },
+    {
+      "path": "/api/cron/video-pipeline",
+      "schedule": "*/3 * * * *"
     }
   ]
 }

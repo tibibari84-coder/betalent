@@ -3,6 +3,7 @@
  * Uses TALENT_CATEGORIES and VOCAL_STYLES (singing, instrument, rap, gospel, etc.).
  */
 
+import type { VideoVisibility } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { TALENT_CATEGORIES, VOCAL_STYLES } from '@/constants/categories';
 import { CANONICAL_PUBLIC_VIDEO_WHERE } from '@/lib/video-moderation';
@@ -30,7 +31,7 @@ export interface SearchPerformancesResult {
   thumbnailUrl: string | null;
   viewsCount: number;
   likesCount: number;
-  visibility: 'PUBLIC' | 'PRIVATE';
+  visibility: VideoVisibility;
   creator: {
     id: string;
     username: string;

@@ -181,6 +181,13 @@ export async function POST(req: Request) {
       data: { storageKey },
     });
 
+    logger.info('VIDEO_INIT_CREATED', {
+      videoId: video.id,
+      userId: user.id,
+      storageKey,
+      contentType: contentType,
+    });
+
     let uploadUrl: string;
     let expiresAt: string;
     try {

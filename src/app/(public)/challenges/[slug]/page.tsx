@@ -1,5 +1,6 @@
 'use client';
 
+import type { VideoVisibility } from '@prisma/client';
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import VideoCard from '@/components/video/VideoCard';
@@ -84,7 +85,7 @@ type LeaderboardEntry = {
   votesCount?: number;
   averageStars?: number;
   weightedVoteScore?: number;
-  visibility: 'PUBLIC' | 'PRIVATE';
+  visibility: VideoVisibility;
   isFinalist?: boolean;
 };
 

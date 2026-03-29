@@ -1,6 +1,7 @@
 /* eslint-disable @next/next/no-img-element */
 'use client';
 
+import type { VideoVisibility } from '@prisma/client';
 import { useState, useMemo, useEffect } from 'react';
 import { ComposableMap, Geographies, Geography } from 'react-simple-maps';
 import type { RsmGeography } from 'react-simple-maps';
@@ -38,7 +39,7 @@ type CountryTalentResponse = {
     commentsCount: number;
     votesCount: number;
     talentScore: number | null;
-    visibility: 'PUBLIC' | 'PRIVATE';
+    visibility: VideoVisibility;
     creator: {
       id: string;
       username: string;

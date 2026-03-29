@@ -158,7 +158,8 @@ export async function getChallengeBySlug(slug: string) {
 /**
  * Submit an entry: link a video to the challenge. One entry per creator per challenge.
  * For cover challenges: styleSlug required (user-chosen performance style).
- * Fails if challenge not OPEN, creator already entered, video not public-ready,
+ * Fails if challenge not OPEN, creator already entered, video not canonical-public-ready
+ * ({@link CANONICAL_PUBLIC_VIDEO_WHERE}: READY + APPROVED + PUBLIC + playback URL, etc.),
  * wrong category, or video exceeds effective challenge max — same as upload/init with challengeSlug:
  * {@link getLiveChallengeRecordingCapSec}(challenge.maxDurationSec).
  */
@@ -178,7 +179,9 @@ export async function createEntry(params: {
       select: { status: true, categoryId: true, artistTheme: true, maxDurationSec: true, rules: true },
     }),
     prisma.video.findFirst({
-      where: { id: videoId, ...CANONICAL_PUBLIC_VIDEO_WHERE },
+      where: {
+        AND: [{ id: videoId }, { creatorId }, CANONICAL_PUBLIC_VIDEO_WHERE],
+      },
       select: { creatorId: true, status: true, categoryId: true, durationSec: true },
     }),
     prisma.challengeEntry.findUnique({ where: { challengeId_creatorId: { challengeId, creatorId } }, select: { id: true, status: true } }),

@@ -1,5 +1,6 @@
 'use client';
 
+import type { VideoVisibility } from '@prisma/client';
 import { useState, useRef, useEffect, useCallback, memo } from 'react';
 import Link from 'next/link';
 import { IconComment, IconShare, IconPlay, IconEye } from '@/components/ui/Icons';
@@ -23,7 +24,7 @@ import { ImmersiveFeedActionRail } from '@/components/feed/immersive/ImmersiveFe
 export interface VideoFeedItem {
   id: string;
   creatorId: string;
-  visibility: 'PUBLIC' | 'PRIVATE';
+  visibility: VideoVisibility;
   title: string;
   thumbnailUrl?: string;
   videoUrl?: string | null;

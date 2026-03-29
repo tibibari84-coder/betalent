@@ -28,9 +28,9 @@ export type DirectUploadMetadata = {
   coverSongTitle?: string;
 };
 
-/** Chain: Upload → Save → Process → Thumbnail → READY → Feed → Open Performance. */
+/** Chain: Upload → Save → async processing → READY → Feed (ready=false until worker + gates complete). */
 export type DirectUploadResult =
-  | { ok: true; videoId: string; ready: boolean }
+  | { ok: true; videoId: string; ready: boolean; processing?: 'queued' | 'done' }
   | { ok: false; message: string; step?: string; code?: string };
 
 /** Pipeline phases: init → PUT (can run while user fills the stepper) → complete (finalize). */
@@ -288,20 +288,20 @@ export async function finalizeDirectUpload(
   options?: Pick<DirectUploadOptions, 'onStatus'>
 ): Promise<DirectUploadResult> {
   options?.onStatus?.('finalizing');
-  let completeParsed = await interpretApiResponse<{ ready?: boolean; step?: string }>(
+  let completeParsed = await interpretApiResponse<{ ready?: boolean; processing?: string; step?: string }>(
     await postUploadComplete(videoId, storageKey)
   );
 
   if (!completeParsed.ok) {
     if (completeParsed.status >= 500) {
       await sleep(700);
-      completeParsed = await interpretApiResponse<{ ready?: boolean; step?: string }>(
+      completeParsed = await interpretApiResponse<{ ready?: boolean; processing?: string; step?: string }>(
         await postUploadComplete(videoId, storageKey)
       );
     }
     if (!completeParsed.ok && completeParsed.status >= 500) {
       await sleep(1200);
-      completeParsed = await interpretApiResponse<{ ready?: boolean; step?: string }>(
+      completeParsed = await interpretApiResponse<{ ready?: boolean; processing?: string; step?: string }>(
         await postUploadComplete(videoId, storageKey)
       );
     }
@@ -317,7 +317,14 @@ export async function finalizeDirectUpload(
   }
 
   const completeData = completeParsed.data;
-  return { ok: true, videoId, ready: completeData.ready === true };
+  const ready = completeData.ready === true;
+  const processing =
+    completeData.processing === 'done' || completeData.processing === 'queued'
+      ? (completeData.processing as 'queued' | 'done')
+      : ready
+        ? 'done'
+        : 'queued';
+  return { ok: true, videoId, ready, processing };
 }
 
 /**

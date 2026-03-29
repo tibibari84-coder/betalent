@@ -3,13 +3,14 @@
  * One item type for For You, Trending, New Voices, Following, Challenge vertical feed.
  */
 
+import type { VideoVisibility } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { CANONICAL_PUBLIC_VIDEO_WHERE } from '@/lib/video-moderation';
 
 export type FeedVideoApiItem = {
   id: string;
   creatorId: string;
-  visibility: 'PUBLIC' | 'PRIVATE';
+  visibility: VideoVisibility;
   title: string;
   thumbnailUrl?: string;
   videoUrl?: string | null;
@@ -66,7 +67,7 @@ export function mapVideoRowToFeedItem(
   return {
     id: v.id,
     creatorId: v.creatorId,
-    visibility: v.visibility as 'PUBLIC' | 'PRIVATE',
+    visibility: v.visibility as VideoVisibility,
     title: v.title,
     thumbnailUrl: v.thumbnailUrl ?? undefined,
     videoUrl: v.videoUrl ?? undefined,

@@ -107,7 +107,7 @@ export default async function ProfilePage({ params }: Props) {
       thumbnailUrl: v.thumbnailUrl ?? null,
       processingLabel: (v as { processingLabel?: string | null }).processingLabel ?? null,
       creatorId: v.creatorId,
-      visibility: (v as { visibility?: 'PUBLIC' | 'PRIVATE' }).visibility ?? 'PUBLIC',
+      visibility: (v as { visibility?: import('@prisma/client').VideoVisibility }).visibility ?? 'PUBLIC',
       commentPermission: (v as { commentPermission?: 'EVERYONE' | 'FOLLOWERS' | 'FOLLOWING' | 'OFF' }).commentPermission ?? 'EVERYONE',
     };
   });

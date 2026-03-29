@@ -17,7 +17,7 @@ export type VideoActionsMenuProps = {
   creatorId: string;
   /** Optional `video.creator.id` from feed/detail — if `creatorId` were ever wrong client-side, this still matches the profile row. */
   creatorProfileId?: string;
-  visibility?: 'PUBLIC' | 'PRIVATE';
+  visibility?: import('@prisma/client').VideoVisibility;
   commentPermission?: 'EVERYONE' | 'FOLLOWERS' | 'FOLLOWING' | 'OFF';
   onRemoved?: (videoId: string) => void;
   compact?: boolean;

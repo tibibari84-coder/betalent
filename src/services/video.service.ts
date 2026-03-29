@@ -1,6 +1,10 @@
 import type { Prisma, ProfileVisibilityLevel } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
-import { CANONICAL_PUBLIC_VIDEO_WHERE, PRIVATE_VIDEO_OWNER_VIEW_WHERE } from '@/lib/video-moderation';
+import {
+  CANONICAL_PUBLIC_VIDEO_WHERE,
+  PRIVATE_VIDEO_OWNER_VIEW_WHERE,
+} from '@/lib/video-moderation';
+import { GLOBAL_VIDEO_FILTER } from '@/lib/video-global-filter';
 import { canViewerAccessProfile } from '@/services/profile-access.service';
 import { videoDiscoveryVisibilityWhere } from '@/lib/discovery-visibility';
 
@@ -48,6 +52,7 @@ const videoDetailInclude = {
 
 /**
  * Public video (canonical gate) OR private READY video when viewer is the creator.
+ * Creator may always open their own non-deleted, non-quarantined row (processing, failed, private, etc.).
  * Private/hidden performances never appear here for other viewers; gifts/votes/views use the same public gate in services.
  */
 export async function getVideoById(id: string, viewerUserId?: string | null) {
@@ -56,7 +61,10 @@ export async function getVideoById(id: string, viewerUserId?: string | null) {
     OR: [
       CANONICAL_PUBLIC_VIDEO_WHERE,
       ...(viewerUserId
-        ? [{ AND: [{ creatorId: viewerUserId }, PRIVATE_VIDEO_OWNER_VIEW_WHERE] } satisfies Prisma.VideoWhereInput]
+        ? [
+            { AND: [{ creatorId: viewerUserId }, PRIVATE_VIDEO_OWNER_VIEW_WHERE] } satisfies Prisma.VideoWhereInput,
+            { AND: [{ creatorId: viewerUserId }, GLOBAL_VIDEO_FILTER] } satisfies Prisma.VideoWhereInput,
+          ]
         : []),
     ],
   };

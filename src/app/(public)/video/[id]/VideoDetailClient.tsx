@@ -30,7 +30,7 @@ import { getFlagEmoji } from '@/lib/countries';
 import { CREATOR_TIER_LABELS } from '@/constants/app';
 import { CONTENT_TYPE_LABELS } from '@/constants/platform-rules';
 import { isMobileOrTabletDevice } from '@/lib/device';
-import type { ContentType } from '@prisma/client';
+import type { ContentType, VideoVisibility } from '@prisma/client';
 
 function formatCount(n: number) {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
@@ -92,7 +92,7 @@ type RelatedVideo = {
   id: string;
   title: string;
   thumbnailUrl: string | null;
-  visibility: 'PUBLIC' | 'PRIVATE';
+  visibility: VideoVisibility;
   creator: {
     id: string;
     username: string;

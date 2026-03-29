@@ -1,5 +1,6 @@
 'use client';
 
+import type { VideoVisibility } from '@prisma/client';
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { IconHeart, IconComment, IconGift, IconX, IconFlag } from '@/components/ui/Icons';
@@ -47,7 +48,7 @@ type VideoPayload = {
     followersCount: number;
   };
   category: { id: string; name: string; slug: string };
-  visibility?: 'PUBLIC' | 'PRIVATE';
+  visibility?: VideoVisibility;
   comments: Array<{
     id: string;
     body: string;

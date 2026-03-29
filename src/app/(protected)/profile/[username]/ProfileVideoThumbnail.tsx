@@ -21,7 +21,7 @@ interface ProfileVideoThumbnailProps {
   onOpenModal?: (videoId: string) => void;
   /** Owner-only: enables 3-dots with delete / visibility */
   creatorId?: string;
-  visibility?: 'PUBLIC' | 'PRIVATE';
+  visibility?: import('@prisma/client').VideoVisibility;
   commentPermission?: 'EVERYONE' | 'FOLLOWERS' | 'FOLLOWING' | 'OFF';
   showOwnerMenu?: boolean;
 }

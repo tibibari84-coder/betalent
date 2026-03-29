@@ -25,7 +25,7 @@ interface VideoItem {
   thumbnailUrl?: string | null;
   processingLabel?: string | null;
   creatorId?: string;
-  visibility?: 'PUBLIC' | 'PRIVATE';
+  visibility?: import('@prisma/client').VideoVisibility;
   commentPermission?: 'EVERYONE' | 'FOLLOWERS' | 'FOLLOWING' | 'OFF';
 }
 
