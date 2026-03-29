@@ -13,7 +13,8 @@ type NotificationsBellProps = {
 type BellPanelState = { open: false } | { open: true; top: number; left: number; width: number };
 
 const PANEL_Z = 560;
-const PANEL_WIDTH_MOBILE = 304;
+/** Viewport minus horizontal inset — reads wider on narrow phones without crowding edges. */
+const PANEL_WIDTH_MOBILE_MAX = 340;
 const PANEL_WIDTH_DESKTOP = 380;
 
 export default function NotificationsBell({ isOpen: controlledOpen, onOpenChange }: NotificationsBellProps) {
@@ -34,7 +35,10 @@ export default function NotificationsBell({ isOpen: controlledOpen, onOpenChange
 
   function getPanelWidth() {
     if (typeof window === 'undefined') return PANEL_WIDTH_DESKTOP;
-    return window.innerWidth < 640 ? PANEL_WIDTH_MOBILE : PANEL_WIDTH_DESKTOP;
+    if (window.innerWidth < 640) {
+      return Math.min(window.innerWidth - 24, PANEL_WIDTH_MOBILE_MAX);
+    }
+    return PANEL_WIDTH_DESKTOP;
   }
 
   function getRightAnchoredLeft(r: DOMRect, width: number) {
@@ -187,7 +191,7 @@ export default function NotificationsBell({ isOpen: controlledOpen, onOpenChange
                 top: panel.top,
                 left: panel.left,
                 width: panel.width,
-                maxWidth: 'min(calc(100vw - 16px), 380px)',
+                maxWidth: 'min(calc(100vw - 24px), 380px)',
                 zIndex: PANEL_Z,
               }}
             >

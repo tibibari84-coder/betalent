@@ -87,7 +87,7 @@ export default function NotificationsPageClient() {
 function NotificationCard({ item, onOpen }: { item: NotificationItem; onOpen?: () => void }) {
   const content = (
     <div
-      className={`flex items-start gap-4 p-4 rounded-[18px] min-h-[72px] transition-colors hover:bg-white/[0.03] ${
+      className={`flex items-start gap-3 sm:gap-4 p-3 sm:p-4 rounded-[14px] sm:rounded-[18px] transition-colors hover:bg-white/[0.03] ${
         item.isRead ? 'opacity-85' : ''
       }`}
       style={{
@@ -96,14 +96,16 @@ function NotificationCard({ item, onOpen }: { item: NotificationItem; onOpen?: (
         border: '1px solid rgba(255,255,255,0.06)',
       }}
     >
-      <div className="w-12 h-12 rounded-full bg-canvas-tertiary flex items-center justify-center text-text-muted font-semibold shrink-0">
+      <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-full bg-canvas-tertiary flex items-center justify-center text-xs sm:text-base text-text-muted font-semibold shrink-0">
         {item.actorName?.charAt(0) ?? '•'}
       </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-[15px] text-text-primary leading-snug">{item.message}</p>
-        <p className="text-[13px] text-text-muted mt-1.5">{item.timestamp}</p>
+      <div className="flex-1 min-w-0 py-0.5 sm:py-0">
+        <p className="text-[13px] sm:text-[15px] text-text-primary leading-tight sm:leading-snug">{item.message}</p>
+        <p className="text-[11px] sm:text-[13px] text-text-muted mt-1 sm:mt-1.5 tabular-nums">{item.timestamp}</p>
       </div>
-      {!item.isRead && <span className="mt-1.5 w-2.5 h-2.5 rounded-full bg-accent shrink-0" aria-hidden />}
+      {!item.isRead && (
+        <span className="mt-1 sm:mt-1.5 w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-accent shrink-0" aria-hidden />
+      )}
     </div>
   );
 

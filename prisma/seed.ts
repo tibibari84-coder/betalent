@@ -2,7 +2,6 @@ import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import { giftCatalogToSeedRows } from '../src/constants/giftCatalog';
 import { COVER_CHALLENGE_MAX_DURATION_SEC, WEEKLY_ARTIST_THEMES } from '../src/constants/cover-challenge';
-import { VOCAL_STYLE_CATALOG } from '../src/constants/vocal-style-catalog';
 
 const prisma = new PrismaClient();
 
@@ -46,30 +45,34 @@ async function main() {
   await prisma.category.deleteMany();
   await prisma.user.deleteMany();
 
-  // Categories: canonical vocal catalog + legacy buckets (deduped by slug).
-  const legacyCategories = [
+  // Categories (legacy + vocal styles for upload/explore)
+  const categoriesData = [
     { name: 'Singing', slug: 'singing', description: 'Vocal performances, solo singing, covers, original vocals.' },
     { name: 'Radio Jingle', slug: 'radio-jingle', description: 'Short melodic radio-style vocal intros and branded singing clips.' },
     { name: 'Rap', slug: 'rap', description: 'Rap performances, freestyle rap, lyrical delivery.' },
     { name: 'Instrument', slug: 'instrument', description: 'Piano, guitar, violin, drums and other instrumental performances.' },
     { name: 'Dance', slug: 'dance', description: 'Dance performances including freestyle, hip-hop and stage choreography.' },
     { name: 'Performance', slug: 'performance', description: 'Live stage performance, musical theatre and vocal storytelling.' },
+    { name: 'Gospel', slug: 'gospel', description: 'Gospel singing, spiritual and inspirational vocal performances.' },
     { name: 'Beatbox', slug: 'beatbox', description: 'Beatboxing and vocal rhythm performance.' },
     { name: 'Special Talent', slug: 'special-talent', description: 'Unique, unusual and memorable talents.' },
+    { name: 'Pop', slug: 'pop', description: 'Pop vocal style.' },
+    { name: 'R&B', slug: 'rnb', description: 'R&B vocal style.' },
+    { name: 'Soul', slug: 'soul', description: 'Soul vocal style.' },
+    { name: 'Jazz', slug: 'jazz', description: 'Jazz vocal style.' },
+    { name: 'Acoustic', slug: 'acoustic', description: 'Acoustic vocal style.' },
+    { name: 'Classical / Opera', slug: 'classical', description: 'Classical and opera vocal style.' },
+    { name: 'Country', slug: 'country', description: 'Country vocal style.' },
+    { name: 'Rock', slug: 'rock', description: 'Rock vocal style.' },
+    { name: 'Indie', slug: 'indie', description: 'Indie vocal style.' },
+    { name: 'Latin', slug: 'latin', description: 'Latin vocal style.' },
+    { name: 'Afrobeat', slug: 'afrobeat', description: 'Afrobeat vocal style.' },
+    { name: 'Folk', slug: 'folk', description: 'Folk vocal style.' },
+    { name: 'Reggae', slug: 'reggae', description: 'Reggae vocal style.' },
+    { name: 'Alternative', slug: 'alternative', description: 'Alternative vocal style.' },
+    { name: 'Worship', slug: 'worship', description: 'Worship vocal style.' },
     { name: 'Cover', slug: 'cover', description: 'Cover performances for Weekly Live Cover Challenges.' },
   ];
-  const fromCatalog = VOCAL_STYLE_CATALOG.map((v) => ({
-    name: v.name,
-    slug: v.slug,
-    description: `${v.name} — vocal performances on BETALENT.`,
-  }));
-  const seen = new Set<string>();
-  const categoriesData: { name: string; slug: string; description: string }[] = [];
-  for (const row of [...fromCatalog, ...legacyCategories]) {
-    if (seen.has(row.slug)) continue;
-    seen.add(row.slug);
-    categoriesData.push(row);
-  }
 
   const categories: Record<string, { id: string; slug: string }> = {};
   for (const c of categoriesData) {
