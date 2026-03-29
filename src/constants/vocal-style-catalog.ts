@@ -51,6 +51,9 @@ export const VOCAL_STYLE_CATALOG: VocalStyleCatalogEntry[] = [
 
 const SLUG_SET = new Set(VOCAL_STYLE_CATALOG.map((s) => s.slug));
 
+/** Same slugs as {@link VOCAL_STYLE_CATALOG} — used by GET /api/categories/vocal-styles. */
+export const VOCAL_STYLE_SLUG_SET: ReadonlySet<string> = SLUG_SET;
+
 /**
  * True if this category slug should be copied to Video.performanceStyle for personalization.
  */
