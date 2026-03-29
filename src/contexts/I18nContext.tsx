@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { LOCALE_COOKIE_NAME } from '@/lib/locale';
 import type { SupportedLocale } from '@/lib/validations';
 
 export type Messages = Record<string, string>;
@@ -35,6 +36,8 @@ export function I18nProvider({
     setLocaleState(next);
     if (typeof document !== 'undefined') {
       document.documentElement.lang = next;
+      /** Guest + client switches: persist for next request / full navigation (root layout reads this cookie). */
+      document.cookie = `${LOCALE_COOKIE_NAME}=${next};path=/;max-age=31536000;SameSite=Lax`;
     }
   }, []);
 

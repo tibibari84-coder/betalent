@@ -14,6 +14,7 @@ import { APP_NAME } from '@/constants/app';
 import { BrandWordmark } from '@/components/brand/BrandWordmark';
 import { BrandMarkLockupNav } from '@/components/brand/BrandMarkLockup';
 import { useI18n } from '@/contexts/I18nContext';
+import { LanguageSelector } from '@/components/i18n/LanguageSelector';
 import { cn } from '@/lib/utils';
 
 const BTN_PRIMARY =
@@ -84,7 +85,7 @@ export default function PublicNavbar() {
                 </BrandMarkLockupNav>
               </Link>
             </div>
-            <nav aria-label="Sign in and discovery" className="flex shrink-0 items-center justify-end gap-2 min-w-0">
+            <nav aria-label="Sign in and discovery" className="flex shrink-0 items-center justify-end gap-1.5 min-w-0 sm:gap-2">
               <button
                 type="button"
                 onClick={() => setMobileSearchOpen(true)}
@@ -95,11 +96,12 @@ export default function PublicNavbar() {
               >
                 <IconSearch className="w-5 h-5" />
               </button>
+              <LanguageSelector compact align="right" className="shrink-0" />
               <Link href="/login" className={BTN_GHOST}>
-                Sign in
+                {t('auth.signIn')}
               </Link>
               <Link href="/register" className={BTN_PRIMARY}>
-                Create account
+                {t('auth.createAccount')}
               </Link>
             </nav>
           </div>
@@ -168,11 +170,12 @@ export default function PublicNavbar() {
             >
               Google
             </a>
+            <LanguageSelector compact align="right" className="shrink-0" />
             <Link href="/login" className={BTN_GHOST}>
-              Sign in
+              {t('auth.signIn')}
             </Link>
             <Link href="/register" className={BTN_PRIMARY}>
-              Create account
+              {t('auth.createAccount')}
             </Link>
           </nav>
         </div>

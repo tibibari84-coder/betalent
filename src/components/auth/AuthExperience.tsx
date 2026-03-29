@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useState, type ReactNode } from 'react';
+import { useI18n } from '@/contexts/I18nContext';
 import { IconEye, IconEyeOff } from '@/components/ui/Icons';
 import { ROUTES } from '@/constants/app';
 import { evaluatePasswordStrength } from '@/lib/auth-password-strength';
@@ -103,10 +104,11 @@ export function AuthCardHeader({
 }
 
 export function AuthDivider() {
+  const { t } = useI18n();
   return (
     <div className="relative flex items-center gap-4 py-1" role="separator">
       <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/12 to-transparent" />
-      <span className="text-[11px] uppercase tracking-[0.2em] text-white/35 font-medium shrink-0">or</span>
+      <span className="text-[11px] uppercase tracking-[0.2em] text-white/35 font-medium shrink-0">{t('auth.orDivider')}</span>
       <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/12 to-transparent" />
     </div>
   );

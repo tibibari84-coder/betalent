@@ -1,18 +1,8 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { getSession } from '@/lib/session';
-import {
-  AuthSplitLayout,
-  AuthGlassCard,
-  AuthCardHeader,
-  AuthDivider,
-  AuthLegalNote,
-  GoogleContinueButton,
-} from '@/components/auth/AuthExperience';
-import {
-  ACCENT_PRIMARY_GRADIENT,
-  accentAlpha,
-} from '@/constants/accent-tokens';
+import { AuthSplitLayout, AuthGlassCard, AuthLegalNote } from '@/components/auth/AuthExperience';
+import { WelcomeAuthCard } from '@/components/auth/WelcomeAuthCard';
 
 export const dynamic = 'force-dynamic';
 
@@ -42,31 +32,7 @@ export default async function WelcomePage() {
       }
     >
       <AuthGlassCard>
-        <AuthCardHeader
-          eyebrow="Get started"
-          title="Join BETALENT"
-          subtitle="Create an account, sign in, or continue with Google. You’ll confirm your email before protected areas unlock."
-        />
-        <div className="space-y-3">
-          <Link
-            href="/register"
-            className="google-btn relative z-[2] flex w-full items-center justify-center gap-2.5 min-h-[48px] rounded-[14px] text-[14px] font-semibold text-white transition-all"
-            style={{
-              background: ACCENT_PRIMARY_GRADIENT,
-              boxShadow: `0 2px 12px ${accentAlpha(0.25)}`,
-            }}
-          >
-            Register
-          </Link>
-          <Link
-            href="/login"
-            className="flex w-full items-center justify-center gap-2.5 min-h-[48px] rounded-[14px] border border-white/[0.12] bg-white/[0.04] text-[14px] font-medium text-text-primary/95 hover:bg-white/[0.08]"
-          >
-            Sign in
-          </Link>
-        </div>
-        <AuthDivider />
-        <GoogleContinueButton />
+        <WelcomeAuthCard />
       </AuthGlassCard>
       <AuthLegalNote compact />
     </AuthSplitLayout>

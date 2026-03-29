@@ -6,10 +6,8 @@ import Link from 'next/link';
 import { ROUTES } from '@/constants/app';
 import { validatePasswordPolicy } from '@/lib/validations';
 import { useI18n } from '@/contexts/I18nContext';
-import { SUPPORTED_LOCALES } from '@/lib/validations';
-import { LOCALE_LABELS } from '@/constants/locales';
-import { getBrowserLocaleClient } from '@/lib/locale';
 import CountrySelect from '@/components/ui/CountrySelect';
+import { LanguageSelector } from '@/components/i18n/LanguageSelector';
 import type { SupportedLocale } from '@/lib/validations';
 import {
   AuthTextField,
@@ -19,9 +17,6 @@ import {
   PasswordStrengthMeter,
 } from '@/components/auth/AuthExperience';
 
-const selectAuthClass =
-  'w-full min-h-[48px] pl-4 pr-10 rounded-[14px] bg-black/35 border border-white/[0.08] text-[15px] text-text-primary focus:border-[rgba(196,18,47,0.45)] focus:ring-2 focus:ring-[rgba(196,18,47,0.2)] focus:outline-none appearance-none cursor-pointer bg-no-repeat bg-[length:12px] bg-[right_14px_center]';
-
 interface RegisterFormProps {
   referrerId?: string;
   /** Set when /api/auth/google redirected here because OAuth env is missing */
@@ -30,7 +25,7 @@ interface RegisterFormProps {
 
 export default function RegisterForm({ referrerId, googleConfigError }: RegisterFormProps) {
   const router = useRouter();
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [form, setForm] = useState({
     username: '',
     email: '',
@@ -39,7 +34,7 @@ export default function RegisterForm({ referrerId, googleConfigError }: Register
     displayName: '',
     countryCode: '',
     talentType: '',
-    preferredLocale: 'en' as SupportedLocale,
+    preferredLocale: locale as SupportedLocale,
     agreeToPolicies: false,
   });
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -47,8 +42,8 @@ export default function RegisterForm({ referrerId, googleConfigError }: Register
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    setForm((f) => ({ ...f, preferredLocale: getBrowserLocaleClient() }));
-  }, []);
+    setForm((f) => ({ ...f, preferredLocale: locale }));
+  }, [locale]);
 
   useEffect(() => {
     if (googleConfigError) {
@@ -141,29 +136,11 @@ export default function RegisterForm({ referrerId, googleConfigError }: Register
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-5" noValidate>
-      {error ? <AuthAlert tone="error">{error}</AuthAlert> : null}
-
-      <div className="space-y-1.5">
-        <label htmlFor="reg-locale" className="block text-[13px] font-medium text-white/75">
-          {t('auth.preferredLanguage')}
-        </label>
-        <select
-          id="reg-locale"
-          value={form.preferredLocale}
-          onChange={(e) => setForm((f) => ({ ...f, preferredLocale: e.target.value as SupportedLocale }))}
-          className={selectAuthClass}
-          style={{
-            backgroundImage:
-              "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%239ca3af'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E\")",
-          }}
-        >
-          {SUPPORTED_LOCALES.map((code) => (
-            <option key={code} value={code}>
-              {LOCALE_LABELS[code]}
-            </option>
-          ))}
-        </select>
+      <div className="flex flex-col items-stretch gap-1 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-[12px] font-medium text-white/65">{t('auth.preferredLanguage')}</p>
+        <LanguageSelector compact align="right" className="self-end sm:self-auto" />
       </div>
+      {error ? <AuthAlert tone="error">{error}</AuthAlert> : null}
 
       <AuthTextField
         id="reg-username"

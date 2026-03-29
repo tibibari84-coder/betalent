@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useI18n } from '@/contexts/I18nContext';
+import { LanguageSelector } from '@/components/i18n/LanguageSelector';
 import {
   AuthTextField,
   AuthPasswordField,
@@ -119,6 +120,10 @@ export default function LoginForm() {
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-5" noValidate>
+      <div className="flex flex-col items-stretch gap-1 sm:flex-row sm:items-center sm:justify-between -mt-1">
+        <p className="text-[12px] font-medium text-white/65">{t('i18n.language')}</p>
+        <LanguageSelector compact align="right" className="self-end sm:self-auto" />
+      </div>
       {info ? <AuthAlert tone="success">{info}</AuthAlert> : null}
       {error ? <AuthAlert tone="error">{error}</AuthAlert> : null}
 
