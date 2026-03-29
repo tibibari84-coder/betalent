@@ -39,8 +39,8 @@ type ProfileMenuState = { open: false } | { open: true; top: number; left: numbe
 
 /** Below modals (e.g. avatar crop z-400); above notifications popover (z-100). */
 const PROFILE_MENU_Z = 600;
-const PROFILE_MENU_WIDTH_DESKTOP = 272;
-const PROFILE_MENU_WIDTH_MOBILE = 196;
+const PROFILE_MENU_WIDTH_DESKTOP = 280;
+const PROFILE_MENU_WIDTH_MOBILE = 220;
 
 const TOPBAR_TRANSITION = 'transition-all duration-150 ease-out';
 const ICON_BTN =
@@ -298,7 +298,7 @@ export default function Navbar({
         const width = getProfileMenuWidth();
         return {
           open: true,
-          top: r.bottom + 6,
+          top: r.bottom + 10,
           left: menuLeftFromButtonRect(r, width),
           width,
         };
@@ -364,21 +364,23 @@ export default function Navbar({
           ref={profileMenuPanelRef}
           id="navbar-profile-menu"
           role="menu"
-          className="fixed rounded-xl overflow-hidden pointer-events-auto backdrop-blur-xl"
+          className="premium-dropdown-enter fixed rounded-2xl overflow-hidden pointer-events-auto origin-top-right"
           style={{
             top: profileMenu.top,
             left: profileMenu.left,
             width: profileMenu.width,
-            maxWidth: 'min(calc(100vw - 10px), 272px)',
+            maxWidth: 'min(calc(100vw - 16px), 280px)',
             zIndex: PROFILE_MENU_Z,
-            background: 'rgba(18,18,22,0.98)',
+            background: 'rgba(20,20,24,0.7)',
             border: '1px solid rgba(255,255,255,0.08)',
-            boxShadow: '0 14px 30px rgba(0,0,0,0.44)',
+            backdropFilter: 'blur(24px)',
+            WebkitBackdropFilter: 'blur(24px)',
+            boxShadow: '0 20px 60px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.08)',
           }}
           onKeyDown={onMenuKeyDown}
         >
-          <div className="px-2 py-1.5 sm:px-3.5 sm:py-3 border-b border-white/[0.08] min-w-0 flex items-center gap-2 sm:gap-3">
-            <span className="flex h-6 w-6 sm:h-9 sm:w-9 items-center justify-center overflow-hidden rounded-full bg-white/10 ring-1 ring-white/15 shrink-0">
+          <div className="px-2.5 py-2 border-b border-white/[0.08] min-w-0 flex items-center gap-2">
+            <span className="flex h-7 w-7 items-center justify-center overflow-hidden rounded-full bg-white/10 ring-1 ring-white/15 shrink-0">
               {user && user !== 'loading' && user.avatarUrl ? (
                 <img src={user.avatarUrl} alt="" className="avatar-image h-full w-full object-cover" />
               ) : (
@@ -387,28 +389,27 @@ export default function Navbar({
             </span>
             <div className="min-w-0">
               <p
-                className="text-[12.5px] sm:text-[13px] font-semibold text-white truncate"
+                className="text-[12.5px] font-semibold text-white truncate"
                 title={user && user !== 'loading' ? (user.displayName?.trim() || user.username) : undefined}
               >
                 {user && user !== 'loading' ? user.displayName?.trim() || user.username : ''}
               </p>
               <p
-                className="text-[11.5px] sm:text-[12px] text-white/55 truncate"
+                className="text-[11px] text-white/55 truncate"
                 title={user && user !== 'loading' ? (user.email || `@${user.username}`) : undefined}
               >
                 {user && user !== 'loading' ? user.email || `@${user.username}` : ''}
               </p>
             </div>
           </div>
-          <div className="py-1">
+          <div className="py-1.5">
             <Link
               href="/profile/me"
               role="menuitem"
               data-account-menu-item
               tabIndex={0}
               className={cn(
-                'flex items-center gap-2.5 px-2 py-1.5 text-[12px] sm:text-[12.5px] font-medium text-white hover:bg-white/[0.08]',
-                'sm:px-3.5 sm:py-2.5',
+                'flex items-center gap-2.5 px-2.5 py-2 text-[12px] font-medium text-white rounded-xl mx-1 transition-all duration-150 ease-out hover:bg-white/[0.08] active:scale-[0.97]',
                 TOPBAR_TRANSITION
               )}
               onClick={closeProfileMenu}
@@ -422,8 +423,7 @@ export default function Navbar({
               data-account-menu-item
               tabIndex={0}
               className={cn(
-                'flex items-center gap-2.5 px-2 py-1.5 text-[12px] sm:text-[12.5px] font-medium text-white hover:bg-white/[0.08]',
-                'sm:px-3.5 sm:py-2.5',
+                'flex items-center gap-2.5 px-2.5 py-2 text-[12px] font-medium text-white rounded-xl mx-1 transition-all duration-150 ease-out hover:bg-white/[0.08] active:scale-[0.97]',
                 TOPBAR_TRANSITION
               )}
               onClick={closeProfileMenu}
@@ -437,8 +437,7 @@ export default function Navbar({
               data-account-menu-item
               tabIndex={0}
               className={cn(
-                'flex items-center gap-2.5 px-2 py-1.5 text-[12px] sm:text-[12.5px] font-medium text-white hover:bg-white/[0.08]',
-                'sm:px-3.5 sm:py-2.5 sm:text-[13px] sm:gap-3',
+                'flex items-center gap-2.5 px-2.5 py-2 text-[12px] font-medium text-white rounded-xl mx-1 transition-all duration-150 ease-out hover:bg-white/[0.08] active:scale-[0.97]',
                 TOPBAR_TRANSITION
               )}
               onClick={closeProfileMenu}
@@ -452,8 +451,7 @@ export default function Navbar({
               data-account-menu-item
               tabIndex={0}
               className={cn(
-                'flex w-full items-center gap-2.5 px-2 py-1.5 text-left text-[12px] sm:text-[12.5px] font-medium text-white hover:bg-white/[0.08]',
-                'sm:px-3.5 sm:py-2.5',
+                'flex w-full items-center gap-2.5 px-2.5 py-2 text-left text-[12px] font-medium text-white rounded-xl mx-1 transition-all duration-150 ease-out hover:bg-white/[0.08] active:scale-[0.97]',
                 TOPBAR_TRANSITION
               )}
               onClick={() => {
@@ -470,8 +468,7 @@ export default function Navbar({
               data-account-menu-item
               tabIndex={0}
               className={cn(
-                'flex items-center gap-2.5 px-2 py-1.5 text-[12px] sm:text-[12.5px] font-medium text-white hover:bg-white/[0.08]',
-                'sm:px-3.5 sm:py-2.5',
+                'flex items-center gap-2.5 px-2.5 py-2 text-[12px] font-medium text-white rounded-xl mx-1 transition-all duration-150 ease-out hover:bg-white/[0.08] active:scale-[0.97]',
                 TOPBAR_TRANSITION
               )}
               onClick={closeProfileMenu}
@@ -480,7 +477,7 @@ export default function Navbar({
               {t('nav.wallet')}
             </Link>
           </div>
-          <div className="border-t border-white/[0.06] py-1">
+          <div className="border-t border-white/[0.06] py-1.5">
             <button
               type="button"
               role="menuitem"
@@ -490,7 +487,7 @@ export default function Navbar({
                 void handleSignOut();
               }}
               className={cn(
-                'w-full px-2 py-1.5 text-left text-[12px] sm:text-[12.5px] font-medium text-red-400/95 hover:bg-red-500/10 sm:px-3.5 sm:py-2.5',
+                'w-full mx-1 rounded-xl px-2.5 py-2 text-left text-[12px] font-medium text-red-400/95 transition-all duration-150 ease-out hover:bg-red-500/10 active:scale-[0.97]',
                 TOPBAR_TRANSITION
               )}
             >

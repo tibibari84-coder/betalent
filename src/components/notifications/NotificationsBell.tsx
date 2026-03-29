@@ -13,7 +13,7 @@ type NotificationsBellProps = {
 type BellPanelState = { open: false } | { open: true; top: number; left: number; width: number };
 
 const PANEL_Z = 560;
-/** Viewport minus horizontal inset — reads wider on narrow phones without crowding edges. */
+/** Wider than profile menu — notification copy needs more horizontal room. */
 const PANEL_WIDTH_MOBILE_MAX = 340;
 const PANEL_WIDTH_DESKTOP = 380;
 
@@ -36,16 +36,20 @@ export default function NotificationsBell({ isOpen: controlledOpen, onOpenChange
   function getPanelWidth() {
     if (typeof window === 'undefined') return PANEL_WIDTH_DESKTOP;
     if (window.innerWidth < 640) {
-      return Math.min(window.innerWidth - 24, PANEL_WIDTH_MOBILE_MAX);
+      return Math.min(window.innerWidth - 20, PANEL_WIDTH_MOBILE_MAX);
     }
     return PANEL_WIDTH_DESKTOP;
   }
 
-  function getRightAnchoredLeft(r: DOMRect, width: number) {
-    const preferred = r.right - width;
-    const min = 8;
-    const max = Math.max(min, window.innerWidth - width - 8);
-    return Math.max(min, Math.min(max, preferred));
+  /**
+   * Left-align panel to bell trigger (distinct from profile menu, which is right-anchored to avatar).
+   * Clamp so the panel stays in the viewport.
+   */
+  function getBellLeftAnchoredLeft(r: DOMRect, width: number) {
+    const edge = 10;
+    const preferred = r.left;
+    const maxLeft = Math.max(edge, window.innerWidth - width - edge);
+    return Math.max(edge, Math.min(preferred, maxLeft));
   }
 
   function updateAnchor() {
@@ -53,7 +57,7 @@ export default function NotificationsBell({ isOpen: controlledOpen, onOpenChange
     if (!btn) return;
     const r = btn.getBoundingClientRect();
     const width = getPanelWidth();
-    setPanel({ open: true, top: r.bottom + 6, left: getRightAnchoredLeft(r, width), width });
+    setPanel({ open: true, top: r.bottom + 8, left: getBellLeftAnchoredLeft(r, width), width });
   }
 
   const fetchNotifications = async (): Promise<NotificationItem[]> => {
@@ -186,12 +190,12 @@ export default function NotificationsBell({ isOpen: controlledOpen, onOpenChange
             <div
               ref={panelRef}
               role="menu"
-              className="fixed overflow-hidden pointer-events-auto"
+              className="premium-dropdown-enter fixed overflow-hidden pointer-events-auto origin-top-left"
               style={{
                 top: panel.top,
                 left: panel.left,
                 width: panel.width,
-                maxWidth: 'min(calc(100vw - 24px), 380px)',
+                maxWidth: 'min(calc(100vw - 20px), 380px)',
                 zIndex: PANEL_Z,
               }}
             >
