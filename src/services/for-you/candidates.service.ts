@@ -2,13 +2,15 @@
  * For You V2 — Candidate Generation
  * Explicit buckets for ML-style ranking. Modular for future expansion.
  * Global buckets (retention, support, engagement, fresh, challenge, rising) are cached 60s.
+ *
+ * All buckets use {@link FOR_YOU_ELIGIBLE_VIDEO_WHERE} — only pipeline–public-ready videos.
  */
 
 import { prisma } from '@/lib/prisma';
 import { cacheGet, cacheSet, CACHE_TTL } from '@/lib/feed-cache';
-import { CANONICAL_PUBLIC_VIDEO_WHERE } from '@/lib/video-moderation';
+import { FOR_YOU_ELIGIBLE_VIDEO_WHERE } from '@/lib/for-you-pipeline';
 
-const baseWhere = CANONICAL_PUBLIC_VIDEO_WHERE;
+const baseWhere = FOR_YOU_ELIGIBLE_VIDEO_WHERE;
 
 const NEW_CREATOR_LIMIT = 3;
 const EARLY_TEST_HOURS = 48;

@@ -28,10 +28,10 @@ import {
 } from '@/constants/ranking';
 import { generateCandidates, type CandidateBucket } from './candidates.service';
 import { extractFeatures, type CandidateVideo, type VideoFeatures } from './features.service';
-import { computePrimaryScore } from './scoring.service';
+import { computePrimaryScore, type ScoreExplanation } from './scoring.service';
 import { getEarlyDistributionStatus } from './early-distribution.service';
 import { computeLightweightScore } from './lightweight-scoring.service';
-import { CANONICAL_PUBLIC_VIDEO_WHERE } from '@/lib/video-moderation';
+import { FOR_YOU_ELIGIBLE_VIDEO_WHERE } from '@/lib/for-you-pipeline';
 import {
   megaCreatorScoreMultiplier,
   underexposedDiscoveryMultiplier,
@@ -39,7 +39,7 @@ import {
   sortCandidatesForDeterministicExploration,
 } from '@/services/fair-discovery.service';
 
-const baseWhere = CANONICAL_PUBLIC_VIDEO_WHERE;
+const baseWhere = FOR_YOU_ELIGIBLE_VIDEO_WHERE;
 
 export interface ForYouV2Params {
   userId?: string | null;
@@ -50,6 +50,29 @@ export interface ForYouV2Params {
 
 /** Score breakdown for debug/validation. Exposed when debug=true. */
 export interface ScoreBreakdown {
+  /** Score after primary ranker (freshness decay, new-upload boost, safety; before personalization multipliers). */
+  primaryRankScore: number;
+  /** Product multipliers applied after primary score (session, fairness, early distribution, etc.). */
+  postHocMultipliers?: {
+    watchedVideo: number;
+    negativeCategory: number;
+    reportOrFlag: number;
+    adminRankingBoost: number;
+    sessionCreatorRepetition: number;
+    megaCreator: number;
+    underexposed: number;
+    earlyDistribution: number;
+  };
+  /** Subset of {@link ScoreExplanation} for grep-friendly logs. */
+  pipelineExplanation?: Pick<
+    ScoreExplanation,
+    | 'decayMultiplier'
+    | 'newUploadBoost'
+    | 'creatorBoost'
+    | 'challengeRelevance'
+    | 'safetyPenalty'
+    | 'earlyTestPhase'
+  >;
   retentionScore: number;
   engagementScore: number;
   supportScore: number;
@@ -319,24 +342,54 @@ export async function getForYouFeedV2(params: ForYouV2Params): Promise<{
       v.performanceStyle != null &&
       affinity.preferredStyleSlugs.has(v.performanceStyle);
 
-    let finalScore = score;
-    if (params.userId && watchedVideoIds.has(id)) finalScore *= 0.5;
-    if (params.userId && affinity.negativeCategoryIds.has(v.categoryId)) finalScore *= 0.7;
-    if (v.reportCount > 0 || v.isFlagged) finalScore *= 0.5;
+    const primaryRankScore = score;
+    const postHoc = {
+      watchedVideo: 1,
+      negativeCategory: 1,
+      reportOrFlag: 1,
+      adminRankingBoost: 1,
+      sessionCreatorRepetition: 1,
+      megaCreator: 1,
+      underexposed: 1,
+      earlyDistribution: 1,
+    };
+
+    let finalScore = primaryRankScore;
+    if (params.userId && watchedVideoIds.has(id)) {
+      finalScore *= 0.5;
+      postHoc.watchedVideo = 0.5;
+    }
+    if (params.userId && affinity.negativeCategoryIds.has(v.categoryId)) {
+      finalScore *= 0.7;
+      postHoc.negativeCategory = 0.7;
+    }
+    if (v.reportCount > 0 || v.isFlagged) {
+      finalScore *= 0.5;
+      postHoc.reportOrFlag = 0.5;
+    }
     const boostMult = v.rankingBoostMultiplier;
-    if (boostMult != null && boostMult > 0) finalScore *= boostMult;
+    if (boostMult != null && boostMult > 0) {
+      finalScore *= boostMult;
+      postHoc.adminRankingBoost = boostMult;
+    }
 
     const sessionRepetition = creatorCounts.get(v.creatorId) ?? 0;
-    finalScore *= sessionCreatorRepetitionMultiplier(sessionRepetition);
+    const sessionRepMult = sessionCreatorRepetitionMultiplier(sessionRepetition);
+    finalScore *= sessionRepMult;
+    postHoc.sessionCreatorRepetition = sessionRepMult;
 
-    finalScore *= megaCreatorScoreMultiplier(v.creatorFollowersCount ?? 0);
-    finalScore *= underexposedDiscoveryMultiplier(v.viewsCount, v.creatorFollowersCount ?? 0);
+    const megaMult = megaCreatorScoreMultiplier(v.creatorFollowersCount ?? 0);
+    const underMult = underexposedDiscoveryMultiplier(v.viewsCount, v.creatorFollowersCount ?? 0);
+    finalScore *= megaMult * underMult;
+    postHoc.megaCreator = megaMult;
+    postHoc.underexposed = underMult;
 
     const earlyDist = getEarlyDistributionStatus({
       watchStats: v.watchStats,
       ageHours: features.ageHours,
     });
     finalScore *= earlyDist.multiplier;
+    postHoc.earlyDistribution = earlyDist.multiplier;
 
     const retentionScore =
       features.completionRate * 0.5 +
@@ -358,6 +411,18 @@ export async function getForYouFeedV2(params: ForYouV2Params): Promise<{
     const scoreBreakdown: ScoreBreakdown | undefined =
       params.debug ?? false
         ? {
+            primaryRankScore,
+            postHocMultipliers: postHoc,
+            pipelineExplanation: explanation
+              ? {
+                  decayMultiplier: explanation.decayMultiplier,
+                  newUploadBoost: explanation.newUploadBoost,
+                  creatorBoost: explanation.creatorBoost,
+                  challengeRelevance: explanation.challengeRelevance,
+                  safetyPenalty: explanation.safetyPenalty,
+                  earlyTestPhase: explanation.earlyTestPhase,
+                }
+              : undefined,
             retentionScore,
             engagementScore,
             supportScore,
@@ -741,14 +806,29 @@ export async function getTopVideosWithBreakdown(params: {
     const features = extractFeatures(v, affinity, maxValues, now);
     const { score, explanation } = computePrimaryScore(features, v.creatorVideosCount, true);
 
-    let finalScore = score;
-    if (v.reportCount > 0 || v.isFlagged) finalScore *= 0.5;
+    const primaryRankScore = score;
+    const postHoc = {
+      watchedVideo: 1,
+      negativeCategory: 1,
+      reportOrFlag: 1,
+      adminRankingBoost: 1,
+      sessionCreatorRepetition: 1,
+      megaCreator: 1,
+      underexposed: 1,
+      earlyDistribution: 1,
+    };
+    let finalScore = primaryRankScore;
+    if (v.reportCount > 0 || v.isFlagged) {
+      finalScore *= 0.5;
+      postHoc.reportOrFlag = 0.5;
+    }
 
     const earlyDist = getEarlyDistributionStatus({
       watchStats: v.watchStats,
       ageHours: features.ageHours,
     });
     finalScore *= earlyDist.multiplier;
+    postHoc.earlyDistribution = earlyDist.multiplier;
 
     const retentionScore =
       features.completionRate * 0.5 +
@@ -782,6 +862,18 @@ export async function getTopVideosWithBreakdown(params: {
       isRising: v.creatorVideosCount <= NEW_CREATOR_UPLOAD_LIMIT,
       explanation: explanation as Record<string, number> | undefined,
       scoreBreakdown: {
+        primaryRankScore,
+        postHocMultipliers: postHoc,
+        pipelineExplanation: explanation
+          ? {
+              decayMultiplier: explanation.decayMultiplier,
+              newUploadBoost: explanation.newUploadBoost,
+              creatorBoost: explanation.creatorBoost,
+              challengeRelevance: explanation.challengeRelevance,
+              safetyPenalty: explanation.safetyPenalty,
+              earlyTestPhase: explanation.earlyTestPhase,
+            }
+          : undefined,
         retentionScore,
         engagementScore,
         supportScore,
@@ -890,14 +982,29 @@ export async function getVideoRankingSignals(
   const features = extractFeatures(v, affinity, maxValues, now);
   const { score, explanation } = computePrimaryScore(features, v.creatorVideosCount, true);
 
-  let finalScore = score;
-  if (v.reportCount > 0 || v.isFlagged) finalScore *= 0.5;
+  const primaryRankScore = score;
+  const postHoc = {
+    watchedVideo: 1,
+    negativeCategory: 1,
+    reportOrFlag: 1,
+    adminRankingBoost: 1,
+    sessionCreatorRepetition: 1,
+    megaCreator: 1,
+    underexposed: 1,
+    earlyDistribution: 1,
+  };
+  let finalScore = primaryRankScore;
+  if (v.reportCount > 0 || v.isFlagged) {
+    finalScore *= 0.5;
+    postHoc.reportOrFlag = 0.5;
+  }
 
   const earlyDist = getEarlyDistributionStatus({
     watchStats: v.watchStats,
     ageHours: features.ageHours,
   });
   finalScore *= earlyDist.multiplier;
+  postHoc.earlyDistribution = earlyDist.multiplier;
 
   const retentionScore =
     features.completionRate * 0.5 +
@@ -931,6 +1038,18 @@ export async function getVideoRankingSignals(
     creatorUsername: videoDetail?.creator.username ?? '(unknown)',
     bucket,
     scoreBreakdown: {
+      primaryRankScore,
+      postHocMultipliers: postHoc,
+      pipelineExplanation: explanation
+        ? {
+            decayMultiplier: explanation.decayMultiplier,
+            newUploadBoost: explanation.newUploadBoost,
+            creatorBoost: explanation.creatorBoost,
+            challengeRelevance: explanation.challengeRelevance,
+            safetyPenalty: explanation.safetyPenalty,
+            earlyTestPhase: explanation.earlyTestPhase,
+          }
+        : undefined,
       retentionScore,
       engagementScore,
       supportScore,
