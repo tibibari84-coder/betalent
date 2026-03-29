@@ -1,6 +1,6 @@
 /**
- * Safe upsert for vocal style Category rows (production / staging).
- * Run: npx tsx scripts/upsert-vocal-categories.ts
+ * Idempotent: upsert canonical vocal style Category rows from VOCAL_STYLE_CATALOG.
+ * Run after deploy or when adding styles: npx tsx scripts/upsert-vocal-categories.ts
  */
 import { PrismaClient } from '@prisma/client';
 import { VOCAL_STYLE_CATALOG } from '../src/constants/vocal-style-catalog';
@@ -8,19 +8,21 @@ import { VOCAL_STYLE_CATALOG } from '../src/constants/vocal-style-catalog';
 const prisma = new PrismaClient();
 
 async function main() {
-  for (const v of VOCAL_STYLE_CATALOG) {
+  for (const row of VOCAL_STYLE_CATALOG) {
     await prisma.category.upsert({
-      where: { slug: v.slug },
+      where: { slug: row.slug },
       create: {
-        name: v.name,
-        slug: v.slug,
-        description: `${v.name} — vocal performances on BETALENT.`,
+        name: row.name,
+        slug: row.slug,
+        description: `Vocal style: ${row.name}`,
       },
-      update: { name: v.name },
+      update: {
+        name: row.name,
+        description: `Vocal style: ${row.name}`,
+      },
     });
-    console.log('upsert', v.slug);
   }
-  console.log('Done.');
+  console.log(`Upserted ${VOCAL_STYLE_CATALOG.length} vocal categories.`);
 }
 
 main()
@@ -28,4 +30,4 @@ main()
     console.error(e);
     process.exit(1);
   })
-  .finally(() => void prisma.$disconnect());
+  .finally(() => prisma.$disconnect());

@@ -6,17 +6,11 @@
  * Do not change this pipeline for Phase 2; only pass a File from the new source.
  */
 
-import { getMimeTypeForUpload, MAX_VIDEO_FILE_SIZE } from '@/constants/upload';
+import { getMimeTypeForUpload } from '@/constants/upload';
 import type { AllowedVideoMimeType } from '@/constants/upload';
 import { interpretApiResponse } from '@/lib/api-json-client';
 
-export type ContentTypeUpload =
-  | 'ORIGINAL'
-  | 'COVER'
-  | 'REMIX'
-  | 'FREESTYLE'
-  | 'DUET'
-  | 'OTHER';
+export type ContentTypeUpload = 'ORIGINAL' | 'COVER' | 'REMIX';
 export type CommentPermissionUpload = 'EVERYONE' | 'FOLLOWERS' | 'FOLLOWING' | 'OFF';
 
 export type DirectUploadMetadata = {
@@ -31,19 +25,9 @@ export type DirectUploadMetadata = {
 };
 
 /** Chain: Upload → Save → Process → Thumbnail → READY → Feed → Open Performance. */
-export type DirectUploadFailureStep =
-  | 'init'
-  | 'put'
-  | 'complete'
-  /** Legacy / generic */
-  | 'save'
-  | 'storage'
-  | 'upload'
-  | 'process';
-
 export type DirectUploadResult =
   | { ok: true; videoId: string; ready: boolean }
-  | { ok: false; message: string; step?: DirectUploadFailureStep; code?: string };
+  | { ok: false; message: string; step?: string; code?: string };
 
 export type UploadProgressStep = 'preparing' | 'uploading' | 'processing';
 
@@ -96,6 +80,23 @@ type InitSuccessBody = {
   contentType?: string;
 };
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+function isTransientNetworkError(error: unknown): boolean {
+  const raw = error instanceof Error ? error.message : String(error);
+  const lower = raw.toLowerCase();
+  return (
+    lower.includes('failed to fetch') ||
+    lower.includes('networkerror') ||
+    lower.includes('load failed') ||
+    lower.includes('network request failed') ||
+    lower.includes('aborted') ||
+    lower.includes('timeout')
+  );
+}
+
 /** Cross-origin PUT often fails as opaque "Failed to fetch" — usually R2/S3 bucket CORS, not missing "S3 API" in the browser. */
 function messageForPresignedPutFailure(error: unknown): string {
   const raw = error instanceof Error ? error.message : String(error);
@@ -117,23 +118,9 @@ function messageForPresignedPutFailure(error: unknown): string {
   return raw.trim() ? raw : 'Upload failed while sending the file to storage.';
 }
 
-function isRetryableNetworkError(e: unknown): boolean {
-  const raw = e instanceof Error ? e.message : String(e);
-  const lower = raw.toLowerCase();
-  return (
-    lower.includes('failed to fetch') ||
-    lower.includes('networkerror') ||
-    lower.includes('load failed') ||
-    lower.includes('network request failed') ||
-    lower.includes('aborted') ||
-    lower.includes('timeout')
-  );
-}
-
 /**
  * PUT file bytes to the presigned storage URL.
  * Uses a single `fetch` with `File` as body (no ReadableStream / duplex) — streaming PUT hangs or fails on several mobile browsers.
- * One automatic retry on transient mobile / flaky network errors.
  */
 async function putFileToPresignedUrl(
   uploadUrl: string,
@@ -141,36 +128,55 @@ async function putFileToPresignedUrl(
   contentType: string,
   onProgress?: (percent: number) => void
 ): Promise<void> {
-  const run = async () => {
-    onProgress?.(5);
-    const res = await fetch(uploadUrl, {
-      method: 'PUT',
-      body: file,
-      headers: { 'Content-Type': contentType },
-      credentials: 'omit',
-      mode: 'cors',
-    });
-    if (!res.ok) {
-      const errText = await res.text().catch(() => '');
-      const err = new Error(`Storage PUT failed (${res.status}): ${errText.slice(0, 240)}`);
-      if (res.status >= 500 || res.status === 408) {
-        (err as Error & { retryable?: boolean }).retryable = true;
-      }
-      throw err;
-    }
-    onProgress?.(100);
-  };
-
-  try {
-    await run();
-  } catch (first) {
-    const canRetry =
-      isRetryableNetworkError(first) ||
-      (first instanceof Error && (first as Error & { retryable?: boolean }).retryable === true);
-    if (!canRetry) throw first;
-    await new Promise((r) => setTimeout(r, 650));
-    await run();
+  onProgress?.(5);
+  const res = await fetch(uploadUrl, {
+    method: 'PUT',
+    body: file,
+    headers: { 'Content-Type': contentType },
+    credentials: 'omit',
+    mode: 'cors',
+  });
+  if (!res.ok) {
+    const errText = await res.text().catch(() => '');
+    throw new Error(`Storage PUT failed (${res.status}): ${errText.slice(0, 240)}`);
   }
+  onProgress?.(100);
+}
+
+/** One automatic retry on transient mobile/network failures (same direct PUT). */
+async function putFileToPresignedUrlWithRetry(
+  uploadUrl: string,
+  file: File,
+  contentType: string,
+  onProgress?: (percent: number) => void
+): Promise<void> {
+  let lastErr: unknown;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      await putFileToPresignedUrl(uploadUrl, file, contentType, onProgress);
+      return;
+    } catch (e) {
+      lastErr = e;
+      if (attempt === 0 && isTransientNetworkError(e)) {
+        if (typeof console !== 'undefined') {
+          console.warn('[performDirectUpload] PUT transient error, retrying once', e);
+        }
+        onProgress?.(0);
+        await sleep(650);
+        continue;
+      }
+      throw e;
+    }
+  }
+  throw lastErr;
+}
+
+async function postUploadComplete(videoId: string): Promise<Response> {
+  return fetch('/api/videos/upload/complete', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ videoId }),
+  });
 }
 
 /**
@@ -182,24 +188,12 @@ export async function performDirectUpload(
   metadata: DirectUploadMetadata,
   options?: DirectUploadOptions
 ): Promise<DirectUploadResult> {
-  if (!file || file.size < 32) {
-    return { ok: false, message: 'Recording file is empty or too small. Please record again.', step: 'init' };
+  if (!file || file.size < 1) {
+    return { ok: false, message: 'Recording file is empty. Please record again.', step: 'init' };
   }
-  if (file.size > MAX_VIDEO_FILE_SIZE) {
-    return {
-      ok: false,
-      message: `File too large (max ${Math.round(MAX_VIDEO_FILE_SIZE / 1024 / 1024)} MB).`,
-      step: 'init',
-    };
-  }
-
   const mimeType = getMimeTypeForUpload(file);
   if (!mimeType) {
-    return {
-      ok: false,
-      message: 'Unsupported file type. Use MP4, MOV, M4V, WebM, or a supported audio file.',
-      step: 'init',
-    };
+    return { ok: false, message: 'Unsupported file type. Use MP4, MOV, M4V, WebM, or a supported audio file.', step: 'init' };
   }
 
   options?.onStatus?.('preparing');
@@ -275,7 +269,7 @@ export async function performDirectUpload(
   options?.onStatus?.('uploading');
   options?.onProgress?.(0);
   try {
-    await putFileToPresignedUrl(uploadUrl, file, putContentType, options?.onProgress);
+    await putFileToPresignedUrlWithRetry(uploadUrl, file, putContentType, options?.onProgress);
   } catch (e) {
     const msg = messageForPresignedPutFailure(e);
     if (typeof console !== 'undefined' && console.warn) {
@@ -285,12 +279,24 @@ export async function performDirectUpload(
   }
 
   options?.onStatus?.('processing');
-  const completeRes = await fetch('/api/videos/upload/complete', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ videoId }),
-  });
-  const completeParsed = await interpretApiResponse<{ ready?: boolean; step?: string }>(completeRes);
+  let completeParsed = await interpretApiResponse<{ ready?: boolean; step?: string }>(await postUploadComplete(videoId));
+
+  if (!completeParsed.ok) {
+    if (completeParsed.status >= 500) {
+      if (typeof console !== 'undefined') {
+        console.warn('[performDirectUpload] complete returned 5xx, retrying twice', {
+          status: completeParsed.status,
+          videoId,
+        });
+      }
+      await sleep(700);
+      completeParsed = await interpretApiResponse<{ ready?: boolean; step?: string }>(await postUploadComplete(videoId));
+    }
+    if (!completeParsed.ok && completeParsed.status >= 500) {
+      await sleep(1200);
+      completeParsed = await interpretApiResponse<{ ready?: boolean; step?: string }>(await postUploadComplete(videoId));
+    }
+  }
 
   if (!completeParsed.ok) {
     if (typeof console !== 'undefined' && console.warn) {
@@ -305,7 +311,7 @@ export async function performDirectUpload(
     return {
       ok: false,
       message: normalizeUploadMessage(completeParsed.message, completeParsed.step),
-      step: 'complete',
+      step: completeParsed.step ?? 'complete',
       code: completeParsed.code,
     };
   }

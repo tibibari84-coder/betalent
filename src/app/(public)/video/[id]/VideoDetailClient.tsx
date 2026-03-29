@@ -28,8 +28,9 @@ import CommentsPanel from '@/components/comments/CommentsPanel';
 import FollowButton from '@/components/profile/FollowButton';
 import { getFlagEmoji } from '@/lib/countries';
 import { CREATOR_TIER_LABELS } from '@/constants/app';
-import { CONTENT_TYPE_LABELS, type ContentTypeKey } from '@/constants/platform-rules';
+import { CONTENT_TYPE_LABELS } from '@/constants/platform-rules';
 import { isMobileOrTabletDevice } from '@/lib/device';
+import type { ContentType } from '@prisma/client';
 
 function formatCount(n: number) {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
@@ -73,7 +74,7 @@ type VideoData = {
     followersCount: number;
   };
   category: { id: string; name: string; slug: string };
-  contentType?: ContentTypeKey;
+  contentType?: ContentType;
   comments: Array<{
     id: string;
     body: string;
@@ -176,7 +177,9 @@ export default function VideoDetailClient({ video, related, initialLiked = false
               <span>{video.category.name}</span>
               {video.contentType && video.contentType !== 'ORIGINAL' && (
                 <span className="text-text-muted">
-                  {CONTENT_TYPE_LABELS[video.contentType as keyof typeof CONTENT_TYPE_LABELS] ?? video.contentType}
+                  {video.contentType && video.contentType in CONTENT_TYPE_LABELS
+                    ? CONTENT_TYPE_LABELS[video.contentType as keyof typeof CONTENT_TYPE_LABELS]
+                    : video.contentType}
                 </span>
               )}
               <span>{timeAgo(new Date(video.createdAt))}</span>

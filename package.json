@@ -19,6 +19,7 @@
     "db:migrate": "prisma migrate dev",
     "db:seed": "prisma db seed",
     "db:seed-gifts": "tsx scripts/seed-gifts.ts",
+    "db:upsert-vocal-categories": "tsx scripts/upsert-vocal-categories.ts",
     "job:maintenance": "tsx scripts/run-maintenance-job.ts"
   },
   "prisma": {

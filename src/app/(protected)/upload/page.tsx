@@ -9,7 +9,6 @@ import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import type { UploadProgressStep } from '@/lib/upload-client';
 import { getMimeTypeForUpload, MAX_VIDEO_FILE_SIZE } from '@/constants/upload';
-import type { ContentTypeKey } from '@/constants/platform-rules';
 import type { RecordingMode } from '@/constants/recording-modes';
 import {
   getLiveChallengeRecordingCapSec,
@@ -22,6 +21,8 @@ import { logUploadFlowEvent, writePostPublishHandoff } from '@/lib/upload-flow-l
 import { useI18n } from '@/contexts/I18nContext';
 import UploadFormContent from './UploadFormContent';
 import type { UploadEntryMode } from './UploadFormContent';
+import type { PublishContentKind } from '@/constants/platform-rules';
+import { mapPublishContentKindToApi } from '@/constants/platform-rules';
 
 type UploadPhase = 'idle' | 'uploading' | 'success' | 'failed';
 type ChallengeContext = {
@@ -32,29 +33,26 @@ type ChallengeContext = {
 };
 
 function toUiUploadError(message: string | undefined, step?: string): string {
-  const trimmed = (message ?? '').trim();
-  const raw = trimmed.toLowerCase();
+  const raw = (message ?? '').toLowerCase();
   if (step === 'put') {
-    if (raw.includes('upload blocked') || raw.includes('cors')) return trimmed;
-    if (raw.includes('storage put failed') || raw.includes('failed to fetch') || raw.includes('network'))
-      return 'Could not finish sending your video. Check your connection and tap Publish again.';
-    return trimmed || 'Could not send video to storage. Try again.';
+    return (
+      (message ?? '').trim() ||
+      'Could not finish uploading to storage. Check your connection and tap Publish again — we retry automatically once.'
+    );
   }
   if (step === 'init') {
-    if (!raw) return 'Could not start upload. Check your connection and try again.';
-    if (raw.includes('invalid style') || raw.includes('invalid category')) return 'Choose a vocal style and try again.';
-    if (raw.includes('max duration')) return 'This performance is too long for the current limit.';
-    if (raw.includes('file too large')) return 'This file is too large. Please choose a smaller one.';
-    if (raw.includes('verify your email')) return trimmed;
-    return trimmed;
+    if (raw.includes('login') || raw.includes('verify')) return (message ?? '').trim() || 'Sign in or verify email to publish.';
+    return (message ?? '').trim() || 'Could not start upload. Please try again.';
   }
-  if (step === 'complete') {
-    if (raw.includes('playback')) return trimmed;
-    return trimmed || 'Your video uploaded, but processing could not finish. Check My videos or try again.';
+  if (step === 'complete' || step === 'process') {
+    return (
+      (message ?? '').trim() ||
+      'Upload reached the server but finishing failed. Open My videos — your file may still appear shortly.'
+    );
   }
   if (!raw) return 'Upload failed. Please try again.';
   if (raw.includes('upload blocked:') && raw.includes('cors')) {
-    return trimmed;
+    return (message ?? '').trim();
   }
   if (raw.includes('storage') || raw.includes('direct upload')) return 'Upload service is temporarily unavailable. Please try again.';
   if (raw.includes('permission') || raw.includes('login required')) return 'Please sign in and try again.';
@@ -74,7 +72,7 @@ export default function UploadPage() {
   const [description, setDescription] = useState('');
   const [styleSlug, setStyleSlug] = useState('');
   const [challengeId, setChallengeId] = useState('');
-  const [contentType, setContentType] = useState<ContentTypeKey>('ORIGINAL');
+  const [publishContentKind, setPublishContentKind] = useState<PublishContentKind>('original');
   const [commentPermission, setCommentPermission] = useState<'EVERYONE' | 'FOLLOWERS' | 'FOLLOWING' | 'OFF'>('EVERYONE');
   const [rulesAcknowledged, setRulesAcknowledged] = useState(false);
   const [file, setFile] = useState<File | null>(null);
@@ -226,7 +224,7 @@ export default function UploadPage() {
           description: description.trim() || undefined,
           categorySlug: styleSlug,
           durationSec: sec,
-          contentType,
+          contentType: mapPublishContentKindToApi(publishContentKind),
           commentPermission,
           ...(hasChallengeSlug ? { challengeSlug } : {}),
         },
@@ -334,6 +332,7 @@ export default function UploadPage() {
     setUploadProgress(0);
     setSuccessVideoId(null);
     setSuccessReady(false);
+    setPublishContentKind('original');
     setUploadEntryMode('studio');
   }, []);
 
@@ -449,8 +448,8 @@ export default function UploadPage() {
       challengeId,
       setChallengeId,
       challengeContext,
-      contentType,
-      setContentType,
+      publishContentKind,
+      setPublishContentKind,
     commentPermission,
     setCommentPermission,
       rulesAcknowledged,

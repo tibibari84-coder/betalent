@@ -202,26 +202,16 @@ export async function POST(req: Request) {
       },
     });
 
-    try {
-      await prisma.$transaction(async (tx) => {
-        await tx.video.update({
-          where: { id: videoId },
-          data: dbPayload,
-        });
-        await tx.user.update({
-          where: { id: user.id },
-          data: { videosCount: { increment: 1 } },
-        });
+    await prisma.$transaction(async (tx) => {
+      await tx.video.update({
+        where: { id: videoId },
+        data: dbPayload,
       });
-    } catch (txErr) {
-      const msg = txErr instanceof Error ? txErr.message : String(txErr);
-      logComplete('error', 'post-upload DB transaction failed', { videoId, userId: user.id, message: msg });
-      logOpsEvent('publish_failed', { videoId, userId: user.id, errorCode: 'COMPLETE_DB_TX_FAILED' });
-      return NextResponse.json(
-        { ok: false, message: 'Could not save video after upload', step: 'save', code: 'COMPLETE_DB_TX_FAILED' },
-        { status: 500 }
-      );
-    }
+      await tx.user.update({
+        where: { id: user.id },
+        data: { videosCount: { increment: 1 } },
+      });
+    });
 
     await rewardUpload(user.id, videoId);
 
@@ -368,7 +358,10 @@ export async function POST(req: Request) {
     if (e instanceof z.ZodError) {
       return NextResponse.json({ ok: false, message: 'Invalid input', step: 'upload', errors: e.errors }, { status: 400 });
     }
-    logComplete('error', 'complete failed', { error: e instanceof Error ? e.message : String(e) });
+    logComplete('error', 'complete failed', {
+      error: e instanceof Error ? e.message : String(e),
+      stack: e instanceof Error ? e.stack : undefined,
+    });
     logOpsEvent('publish_failed', { errorCode: 'COMPLETE_UNHANDLED' });
     logOpsEvent('processing_failed', { errorCode: 'COMPLETE_UNHANDLED' });
     logOpsEvent('upload_failed', { errorCode: 'COMPLETE_UNHANDLED' });

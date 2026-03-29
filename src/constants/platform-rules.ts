@@ -21,28 +21,43 @@ export const PLATFORM_RULES = {
 export const PLATFORM_RULES_ACKNOWLEDGMENT =
   'I confirm this is my real performance (no playback or lip-sync). I understand that submissions may be reviewed, and violations may result in content removal or account restrictions.';
 
-export type ContentTypeKey =
-  | 'ORIGINAL'
-  | 'COVER'
-  | 'REMIX'
-  | 'FREESTYLE'
-  | 'DUET'
-  | 'OTHER';
+/** Compact checkbox label for mobile publish (full text still in terms / reporting). */
+export const PLATFORM_RULES_ACKNOWLEDGMENT_SHORT =
+  'This is my real performance — no playback or lip-sync.';
+
+export type ContentTypeKey = 'ORIGINAL' | 'COVER' | 'REMIX';
 
 export const CONTENT_TYPE_LABELS: Record<ContentTypeKey, string> = {
   ORIGINAL: 'Original',
   COVER: 'Cover',
   REMIX: 'Remix',
-  FREESTYLE: 'Freestyle',
-  DUET: 'Duet',
-  OTHER: 'Other',
 };
 
 export const CONTENT_TYPE_DESCRIPTIONS: Record<ContentTypeKey, string> = {
   ORIGINAL: 'Your own composition or original performance',
   COVER: 'Cover of an existing song or work',
   REMIX: 'Remix or adaptation of existing material',
-  FREESTYLE: 'Improvised or unscripted performance',
-  DUET: 'Collaborative performance with another artist',
-  OTHER: 'Use when none of the above apply',
 };
+
+/** Publish UI chips (5) → Prisma ContentType (3). Freestyle / Duet / Other store as REMIX. */
+export type PublishContentKind = 'original' | 'cover' | 'freestyle' | 'duet' | 'other';
+
+export const PUBLISH_CONTENT_CHIPS: { kind: PublishContentKind; label: string }[] = [
+  { kind: 'original', label: 'Original' },
+  { kind: 'cover', label: 'Cover' },
+  { kind: 'freestyle', label: 'Freestyle' },
+  { kind: 'duet', label: 'Duet' },
+  { kind: 'other', label: 'Other' },
+];
+
+export function mapPublishContentKindToApi(kind: PublishContentKind): ContentTypeKey {
+  if (kind === 'original') return 'ORIGINAL';
+  if (kind === 'cover') return 'COVER';
+  return 'REMIX';
+}
+
+export function apiContentTypeToPublishKind(ct: ContentTypeKey): PublishContentKind {
+  if (ct === 'ORIGINAL') return 'original';
+  if (ct === 'COVER') return 'cover';
+  return 'freestyle';
+}

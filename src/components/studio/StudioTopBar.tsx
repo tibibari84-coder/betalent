@@ -8,7 +8,6 @@ export type StudioTopBarProps = {
   className?: string;
 };
 
-/** Minimal studio chrome: close only (no placeholder actions). */
 export default function StudioTopBar({ onClose, className }: StudioTopBarProps) {
   return (
     <header

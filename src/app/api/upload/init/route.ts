@@ -23,8 +23,9 @@ import { getLiveChallengeRecordingCapSec } from '@/constants/recording-modes';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { logger } from '@/lib/logger';
 import { logOpsEvent } from '@/lib/ops-events';
+import { isVocalPerformanceStyleSlug } from '@/constants/vocal-style-catalog';
 
-const CONTENT_TYPES = ['ORIGINAL', 'COVER', 'REMIX', 'FREESTYLE', 'DUET', 'OTHER'] as const;
+const CONTENT_TYPES = ['ORIGINAL', 'COVER', 'REMIX'] as const;
 const COMMENT_PERMISSIONS = ['EVERYONE', 'FOLLOWERS', 'FOLLOWING', 'OFF'] as const;
 
 const initSchema = z.object({
@@ -106,8 +107,7 @@ export async function POST(req: Request) {
     }
 
     const contentType = parsed.contentType ?? 'ORIGINAL';
-    const contentLicensingEligible =
-      contentType === 'ORIGINAL' || contentType === 'FREESTYLE' || contentType === 'OTHER';
+    const contentLicensingEligible = contentType === 'ORIGINAL';
 
     const userPrefs = await prisma.user.findUnique({
       where: { id: user.id },
@@ -117,6 +117,7 @@ export async function POST(req: Request) {
       parsed.commentPermission ?? userPrefs?.defaultCommentPermission ?? 'EVERYONE';
 
     const publicId = `betalent/${user.id}/${Date.now()}`;
+    const performanceStyle = isVocalPerformanceStyleSlug(category.slug) ? category.slug : null;
     const video = await prisma.video.create({
       data: {
         creatorId: user.id,
@@ -127,7 +128,7 @@ export async function POST(req: Request) {
         durationSec: parsed.durationSec,
         fileSize: parsed.fileSize,
         mimeType: mimeTypeNorm,
-        performanceStyle: category.slug,
+        performanceStyle,
         contentType,
         commentPermission,
         contentLicensingEligible,
