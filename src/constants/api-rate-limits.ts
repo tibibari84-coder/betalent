@@ -40,3 +40,6 @@ export const RATE_LIMIT_COMMENT_REACTION_PER_USER_PER_HOUR = 600;
 
 // Search (GET — IP-based to limit enumeration / DB load)
 export const RATE_LIMIT_SEARCH_PER_IP_PER_MINUTE = 90;
+
+// Direct messages (authenticated — per-user burst control)
+export const RATE_LIMIT_DM_SEND_PER_USER_PER_MINUTE = 30;

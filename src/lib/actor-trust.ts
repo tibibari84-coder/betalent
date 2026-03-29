@@ -21,7 +21,7 @@ export function isUntrustedActor(actor: ActorTrustInput | null | undefined): boo
   if (actor.isSeedAccount === true) return true;
 
   const email = actor.email;
-  if (!email || typeof email !== 'string') return true;
+  if (!email || typeof email !== 'string') return false;
 
   const e = email.toLowerCase().trim();
   if (e.endsWith('@betalent.local')) return true;

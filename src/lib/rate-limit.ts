@@ -100,12 +100,27 @@ export async function checkRateLimit(
 }
 
 /**
- * Get client IP from request (Vercel, Cloudflare, or x-forwarded-for).
+ * When false, `X-Forwarded-For` is ignored so clients cannot spoof IPs for DB rate limits
+ * (relevant on self-hosted stacks without a trusted edge). Vercel sets `VERCEL=1`.
+ */
+export function shouldTrustForwardedClientIp(): boolean {
+  return (
+    process.env.VERCEL === '1' ||
+    process.env.TRUST_PROXY_HEADERS === '1' ||
+    process.env.TRUST_PROXY === '1'
+  );
+}
+
+/**
+ * Client IP for rate limiting and abuse signals.
+ * Prefer trusting `X-Forwarded-For` only behind a known proxy (Vercel / explicit opt-in).
  */
 export function getClientIp(req: Request): string {
-  const forwarded = req.headers.get('x-forwarded-for');
-  if (forwarded) return forwarded.split(',')[0].trim();
+  if (shouldTrustForwardedClientIp()) {
+    const forwarded = req.headers.get('x-forwarded-for');
+    if (forwarded) return forwarded.split(',')[0].trim();
+  }
   const realIp = req.headers.get('x-real-ip');
-  if (realIp) return realIp;
+  if (realIp) return realIp.trim();
   return 'unknown';
 }

@@ -9,11 +9,11 @@ import { isUntrustedActor } from '@/lib/actor-trust';
 const NOTIFICATION_MAX_AGE_DAYS = 90;
 
 /** User select for actor trust (schema-level + email fallback). */
+/** No email — trust flags + optional email heuristic only when other code passes email. */
 const ACTOR_SELECT = {
   id: true,
   displayName: true,
   username: true,
-  email: true,
   isTestAccount: true,
   isSeedAccount: true,
 } as const;

@@ -1,9 +1,17 @@
 import { NextResponse } from 'next/server';
+import { z } from 'zod';
 import { getCurrentUser } from '@/lib/auth';
 import { DM_CONTENT_MAX } from '@/lib/chat-constants';
 import { sendDmMessage } from '@/services/chat.service';
 import { isSchemaDriftError } from '@/lib/runtime-config';
 import { isDatabaseUnavailableError } from '@/lib/db-errors';
+import { checkRateLimit } from '@/lib/rate-limit';
+import { RATE_LIMIT_DM_SEND_PER_USER_PER_MINUTE } from '@/constants/api-rate-limits';
+
+const dmSendSchema = z.object({
+  receiverId: z.string().min(1).max(128),
+  content: z.string().max(DM_CONTENT_MAX),
+});
 
 export async function POST(req: Request) {
   try {
@@ -12,15 +20,38 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, message: 'Unauthorized' }, { status: 401 });
     }
 
-    let body: { receiverId?: string; content?: string };
+    if (
+      !(await checkRateLimit(
+        'dm-send-user',
+        sessionUser.id,
+        RATE_LIMIT_DM_SEND_PER_USER_PER_MINUTE,
+        60_000
+      ))
+    ) {
+      return NextResponse.json(
+        { ok: false, message: 'Too many messages. Slow down and try again shortly.' },
+        { status: 429 }
+      );
+    }
+
+    let body: unknown;
     try {
       body = await req.json();
     } catch {
       return NextResponse.json({ ok: false, message: 'Invalid JSON' }, { status: 400 });
     }
 
-    const receiverId = typeof body.receiverId === 'string' ? body.receiverId.trim() : '';
-    const content = typeof body.content === 'string' ? body.content : '';
+    const parsed = dmSendSchema.safeParse(body);
+    if (!parsed.success) {
+      const first = parsed.error.errors[0];
+      return NextResponse.json(
+        { ok: false, message: first?.message ?? 'Invalid request' },
+        { status: 400 }
+      );
+    }
+
+    const receiverId = parsed.data.receiverId.trim();
+    const content = parsed.data.content;
     if (!receiverId) {
       return NextResponse.json({ ok: false, message: 'receiverId required' }, { status: 400 });
     }

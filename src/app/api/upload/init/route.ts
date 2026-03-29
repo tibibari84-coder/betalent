@@ -68,8 +68,18 @@ export async function POST(req: Request) {
       );
     }
 
-    const body = await req.json();
-    const parsed = initSchema.parse(body);
+    let body: unknown;
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json({ ok: false, message: 'Invalid JSON' }, { status: 400 });
+    }
+    const parseResult = initSchema.safeParse(body);
+    if (!parseResult.success) {
+      const msg = parseResult.error.errors[0]?.message ?? 'Invalid input';
+      return NextResponse.json({ ok: false, message: msg, errors: parseResult.error.errors }, { status: 400 });
+    }
+    const parsed = parseResult.data;
     if (!isSafeUploadFilename(parsed.filename)) {
       return NextResponse.json(
         { ok: false, message: 'Invalid filename. Use a simple name without paths or special control characters.' },

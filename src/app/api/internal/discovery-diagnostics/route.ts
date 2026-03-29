@@ -7,13 +7,15 @@ import { NextResponse } from 'next/server';
 import { generateCandidates } from '@/services/for-you/candidates.service';
 import { getUserAffinity } from '@/services/user-affinity.service';
 
+const MIN_SECRET_LEN = 16;
+
 export async function GET(req: Request) {
-  const secret = process.env.DISCOVERY_DIAGNOSTICS_SECRET;
-  if (!secret) {
+  const secret = process.env.DISCOVERY_DIAGNOSTICS_SECRET?.trim();
+  if (!secret || secret.length < MIN_SECRET_LEN) {
     return NextResponse.json({ ok: false }, { status: 404 });
   }
-  const h = req.headers.get('x-bt-discovery-diagnostics');
-  if (h !== secret) {
+  const h = req.headers.get('x-bt-discovery-diagnostics')?.trim();
+  if (!h || h.length < MIN_SECRET_LEN || h !== secret) {
     return NextResponse.json({ ok: false }, { status: 403 });
   }
 
