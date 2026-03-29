@@ -110,7 +110,7 @@ export default function CreatorAnalyticsPage() {
     return (
       <div className="w-full max-w-[900px] mx-auto px-4 md:px-6 py-6 pb-24" style={{ backgroundColor: '#0D0D0E' }}>
         <Link
-          href="/dashboard"
+          href="/feed"
           className="inline-flex items-center gap-2 text-text-secondary hover:text-accent text-[14px] mb-6"
         >
           <IconArrowLeft className="w-4 h-4" />
@@ -126,7 +126,7 @@ export default function CreatorAnalyticsPage() {
   return (
     <div className="w-full max-w-[900px] mx-auto px-4 md:px-6 py-6 pb-24" style={{ backgroundColor: '#0D0D0E' }}>
       <Link
-        href="/dashboard"
+        href="/feed"
         className="inline-flex items-center gap-2 text-text-secondary hover:text-accent text-[14px] mb-6 transition-colors"
       >
         <IconArrowLeft className="w-4 h-4" />

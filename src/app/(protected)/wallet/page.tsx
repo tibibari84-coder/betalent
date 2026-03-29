@@ -583,8 +583,8 @@ export default function WalletPage() {
           <Link href="/feed" className="text-[13px] font-medium text-white/60 hover:text-white transition-colors">
             ← Back to Feed
           </Link>
-          <Link href="/dashboard" className="text-[13px] font-medium text-white/60 hover:text-white transition-colors">
-            Dashboard
+          <Link href="/my-videos" className="text-[13px] font-medium text-white/60 hover:text-white transition-colors">
+            My performances
           </Link>
         </div>
       </div>

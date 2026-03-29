@@ -139,7 +139,7 @@ function VerifyEmailContent() {
       <AuthGlassCard>
         {gateRequired && status !== 'success' ? (
           <AuthAlert tone="warning" key="gate">
-            Confirm your email to open protected routes (for example dashboard, upload, profile, wallet, settings, and creator tools).
+            Confirm your email to open protected routes (for example feed, upload, profile, wallet, settings, and creator tools).
             Public pages stay available.
           </AuthAlert>
         ) : null}

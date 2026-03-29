@@ -16,7 +16,7 @@ import MobileNav from '@/components/layout/MobileNav';
 import Footer from '@/components/layout/Footer';
 import PerformanceModal from '@/components/performance/PerformanceModal';
 import { SidebarDrawer } from '@/components/layout/SidebarDrawer';
-import { isMobileOrTabletDevice } from '@/lib/device';
+import { useCompactNavChrome } from '@/hooks/useCompactNavChrome';
 
 function RootShellContent({
   children,
@@ -28,7 +28,7 @@ function RootShellContent({
   shellVariant?: 'primary' | 'detail';
 }) {
   const { videoId, onClose } = usePerformanceModal();
-  const [hasMobileNav, setHasMobileNav] = useState(false);
+  const hasMobileNav = useCompactNavChrome();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const pathname = usePathname();
   const isImmersiveFeedRoute = pathname === '/feed';
@@ -39,10 +39,6 @@ function RootShellContent({
   const showSidebar = isPrimaryShell;
   const showBottomNav = isPrimaryShell;
   const hideGlobalRightPanel = isDetailShell || isImmersiveFeedRoute || isSettingsRoute;
-
-  useEffect(() => {
-    setHasMobileNav(isMobileOrTabletDevice());
-  }, []);
 
   useEffect(() => {
     setDrawerOpen(false);

@@ -41,6 +41,31 @@ import {
 
 const baseWhere = FOR_YOU_ELIGIBLE_VIDEO_WHERE;
 
+/** When candidate pools are empty (e.g. cold catalog), still surface public-ready videos. */
+async function getFallbackForYouVideoIds(limit: number, userId: string | null): Promise<string[]> {
+  const cap = Math.min(Math.max(limit * 3, 24), 100);
+  const exclude =
+    userId != null ? await getRecentlyWatchedVideoIds(userId) : new Set<string>();
+  let rows = await prisma.video.findMany({
+    where: {
+      ...baseWhere,
+      ...(exclude.size > 0 ? { id: { notIn: Array.from(exclude) } } : {}),
+    },
+    select: { id: true },
+    orderBy: [{ talentScore: 'desc' }, { createdAt: 'desc' }],
+    take: cap,
+  });
+  if (rows.length === 0) {
+    rows = await prisma.video.findMany({
+      where: baseWhere,
+      select: { id: true },
+      orderBy: { createdAt: 'desc' },
+      take: cap,
+    });
+  }
+  return rows.map((r) => r.id).slice(0, limit);
+}
+
 export interface ForYouV2Params {
   userId?: string | null;
   sessionCreatorIds?: string[];
@@ -261,7 +286,14 @@ export async function getForYouFeedV2(params: ForYouV2Params): Promise<{
   const candidateIds = Array.from(new Set(candidates.map((c) => c.videoId))).slice(0, 1500);
   const bucketByVideo = new Map(candidates.map((c) => [c.videoId, c.bucket]));
 
-  if (candidateIds.length === 0) return { videoIds: [] };
+  if (candidateIds.length === 0) {
+    const fallbackIds = await getFallbackForYouVideoIds(limit, params.userId ?? null);
+    const out = { videoIds: fallbackIds };
+    if (cacheKey && fallbackIds.length > 0) {
+      cacheSet(cacheKey, out, CACHE_TTL.FEED);
+    }
+    return out;
+  }
 
   // ─── Stage B: Fetch + Lightweight Scoring (fast filter) ─────────────────────
   const videoMap = await fetchCandidateVideos(candidateIds, now);

@@ -1,6 +1,5 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import PerformanceModal from '@/components/performance/PerformanceModal';
@@ -9,18 +8,14 @@ import Footer from '@/components/layout/Footer';
 import PublicNavbar from '@/components/layout/PublicNavbar';
 import PublicMobileNav from '@/components/layout/PublicMobileNav';
 import { ShellProviders } from '@/components/layout/ShellProviders';
-import { isMobileOrTabletDevice } from '@/lib/device';
+import { useCompactNavChrome } from '@/hooks/useCompactNavChrome';
 import GlobalGiftCelebrationHost from '@/components/gift/GlobalGiftCelebrationHost';
 
 function PublicShellInner({ children }: { children: React.ReactNode }) {
   const { videoId, onClose } = usePerformanceModal();
-  const [hasMobileNav, setHasMobileNav] = useState(false);
+  const hasMobileNav = useCompactNavChrome();
   const pathname = usePathname();
   const isImmersiveFeedRoute = pathname === '/feed';
-
-  useEffect(() => {
-    setHasMobileNav(isMobileOrTabletDevice());
-  }, []);
 
   return (
     <>

@@ -25,6 +25,7 @@ import {
 const NOTIFY_API_KEY: Record<keyof NotificationsPrefs, string> = {
   challenges: 'notifyChallenges',
   votes: 'notifyVotes',
+  gifts: 'notifyGifts',
   followers: 'notifyFollowers',
   comments: 'notifyComments',
   announcements: 'notifyAnnouncements',
@@ -83,9 +84,9 @@ const SETTINGS_GROUPS = [
     title: 'Support & Legal',
     items: [
       { id: 'help', label: 'Help Center', icon: IconAward, href: '/contact' },
-      { id: 'terms', label: 'Terms of Service', icon: IconShieldCheck, href: '/legal/terms' },
+      { id: 'terms', label: 'Terms of Service', icon: IconShieldCheck, href: '/terms' },
       { id: 'creatorRules', label: 'Creator Rules', icon: IconShieldCheck, href: '/legal/creator-rules' },
-      { id: 'privacyCenter', label: 'Privacy Policy', icon: IconShieldCheck, href: '/legal/privacy' },
+      { id: 'privacyCenter', label: 'Privacy Policy', icon: IconShieldCheck, href: '/privacy' },
     ],
   },
   {
@@ -186,7 +187,7 @@ export default function SettingsPage() {
   const [notifications, setNotifications] = useState<
     Array<{
       id: string;
-      type: 'follow' | 'vote' | 'comment' | 'gift';
+      type: 'follow' | 'vote' | 'comment' | 'gift' | 'challenge' | 'security';
       message: string;
       actorName: string;
       timestamp: string;
@@ -1269,11 +1270,16 @@ export default function SettingsPage() {
                   <div className="space-y-2">
                     {(
                       [
-                        { id: 'challenges' as const, label: 'Challenge reminders', desc: 'Reserved for future challenge alerts' },
-                        { id: 'votes' as const, label: 'Votes & gifts', desc: 'Likes on your videos and gifts received' },
+                        {
+                          id: 'challenges' as const,
+                          label: 'Challenges',
+                          desc: 'Placements, star ratings on your entries, and challenge results',
+                        },
+                        { id: 'votes' as const, label: 'Likes', desc: 'Likes on your performances' },
+                        { id: 'gifts' as const, label: 'Gifts', desc: 'Coin gifts on your performances' },
                         { id: 'followers' as const, label: 'New followers', desc: 'When someone follows you' },
                         { id: 'comments' as const, label: 'Comments', desc: 'Comments, replies, and mentions' },
-                        { id: 'announcements' as const, label: 'Announcements', desc: 'Reserved for product announcements' },
+                        { id: 'announcements' as const, label: 'Announcements', desc: 'Product and account announcements' },
                       ] as const
                     ).map((item) => (
                       <label

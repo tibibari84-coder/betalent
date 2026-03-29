@@ -35,11 +35,11 @@ function getStatusMessage(status: MicCheckStatus): string {
     case 'too_low':
       return 'Too quiet. Move closer, sing louder, or increase mic level.';
     case 'good':
-      return 'Level good. Your voice is clear – ready to go live.';
+      return 'Level good. Your voice is clear — ready for your slot.';
     case 'too_high':
       return 'Too loud. Lower input so belted notes don’t clip.';
     case 'clipping':
-      return 'Clipping detected. Lower mic level before going live.';
+      return 'Clipping detected. Lower mic level before you perform.';
     case 'error':
       return 'Could not access microphone. Check permissions.';
     default:

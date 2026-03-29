@@ -52,7 +52,7 @@ function timeAgo(d: Date) {
 
 export type NotificationPayload = {
   id: string;
-  type: 'follow' | 'vote' | 'comment' | 'gift' | 'security';
+  type: 'follow' | 'vote' | 'comment' | 'gift' | 'security' | 'challenge';
   message: string;
   actorName: string;
   timestamp: string;
@@ -81,6 +81,7 @@ export async function GET() {
       select: {
         notifyChallenges: true,
         notifyVotes: true,
+        notifyGifts: true,
         notifyFollowers: true,
         notifyComments: true,
         notifyAnnouncements: true,
@@ -89,6 +90,7 @@ export async function GET() {
     const prefs = notifyPrefs ?? {
       notifyChallenges: true,
       notifyVotes: true,
+      notifyGifts: true,
       notifyFollowers: true,
       notifyComments: true,
       notifyAnnouncements: true,
@@ -98,7 +100,17 @@ export async function GET() {
   const recentWhere = { createdAt: { gte: cutoff } } as const;
   const takeLimit = 100;
 
-  const [likes, commentsOnMyVideos, commentRepliesToMe, mentions, follows, gifts, signInAudits] = await Promise.all([
+  const [
+    likes,
+    commentsOnMyVideos,
+    commentRepliesToMe,
+    mentions,
+    follows,
+    gifts,
+    signInAudits,
+    challengeWinners,
+    challengeStarVotes,
+  ] = await Promise.all([
     prisma.like.findMany({
       where: { video: { creatorId: uid }, ...recentWhere },
       include: { user: { select: ACTOR_SELECT }, video: true },
@@ -164,6 +176,22 @@ export async function GET() {
       orderBy: { createdAt: 'desc' },
       take: takeLimit,
       select: { id: true, action: true, meta: true, createdAt: true },
+    }),
+    prisma.challengeWinner.findMany({
+      where: { creatorId: uid, createdAt: { gte: cutoff } },
+      include: { challenge: { select: { slug: true, title: true } } },
+      orderBy: { createdAt: 'desc' },
+      take: takeLimit,
+    }),
+    prisma.challengeVote.findMany({
+      where: { creatorUserId: uid, createdAt: { gte: cutoff } },
+      include: {
+        voter: { select: ACTOR_SELECT },
+        challenge: { select: { slug: true, title: true } },
+        video: { select: { id: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: takeLimit,
     }),
   ]);
 
@@ -307,9 +335,44 @@ export async function GET() {
     });
   }
 
-  items.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  for (const w of challengeWinners) {
+    items.push({
+      id: `challenge-place-${w.id}`,
+      type: 'challenge',
+      message: `You placed #${w.rank} in ${w.challenge.title}`,
+      actorName: 'BETALENT',
+      timestamp: timeAgo(w.createdAt),
+      href: `/challenges/${w.challenge.slug}`,
+      recipientId: uid,
+      createdAt: w.createdAt,
+    });
+  }
 
-    const filtered = items.filter((item) => {
+  for (const cv of challengeStarVotes) {
+    if (isUntrustedActor(cv.voter)) continue;
+    items.push({
+      id: `challenge-star-${cv.id}`,
+      type: 'challenge',
+      message: `${actor(cv.voter)} rated your challenge entry (${cv.stars}★ · ${cv.challenge.title})`,
+      actorName: actor(cv.voter),
+      timestamp: timeAgo(cv.createdAt),
+      href: `/video/${cv.video.id}`,
+      recipientId: uid,
+      actorId: cv.voterUserId,
+      relatedVideoId: cv.video.id,
+      createdAt: cv.createdAt,
+    });
+  }
+
+  const deduped = new Map<string, (typeof items)[0]>();
+  for (const it of items) {
+    if (!deduped.has(it.id)) deduped.set(it.id, it);
+  }
+  const uniqueItems = Array.from(deduped.values());
+
+  uniqueItems.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+
+    const filtered = uniqueItems.filter((item) => {
       switch (item.type) {
         case 'vote':
           return prefs.notifyVotes;
@@ -318,7 +381,9 @@ export async function GET() {
         case 'follow':
           return prefs.notifyFollowers;
         case 'gift':
-          return prefs.notifyVotes;
+          return prefs.notifyGifts;
+        case 'challenge':
+          return prefs.notifyChallenges;
         case 'security':
           return true;
         default:

@@ -15,7 +15,6 @@ import {
 import { isMutationOriginAllowed } from '@/lib/mutation-origin';
 
 const PROTECTED_PREFIXES = [
-  '/dashboard',
   '/feed',
   '/following',
   '/upload',
@@ -194,7 +193,6 @@ export const config = {
     '/api/:path*',
     '/',
     '/welcome',
-    '/dashboard/:path*',
     '/feed',
     '/following',
     '/feed/:path*',

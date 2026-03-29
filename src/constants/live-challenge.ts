@@ -1,6 +1,6 @@
 /**
- * Live Challenge system constants
- * Real-time competitive performance: voting, gifts, scoring
+ * Live Challenge system — synchronized arena sessions (polling-based state).
+ * Voting and gifts update in near real time; this is not broadcast live streaming.
  */
 
 import { getRecordingMaxDurationSec } from './recording-modes';

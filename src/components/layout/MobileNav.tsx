@@ -2,11 +2,10 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useEffect, useState } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import { Home, MessageSquare, PlusSquare, Search, User } from 'lucide-react';
 import { useI18n } from '@/contexts/I18nContext';
-import { isMobileOrTabletDevice } from '@/lib/device';
+import { useCompactNavChrome } from '@/hooks/useCompactNavChrome';
 import { cn } from '@/lib/utils';
 
 const ICON_STROKE = 1.5;
@@ -34,11 +33,7 @@ function isActive(pathname: string | null, href: string): boolean {
 export default function MobileNav() {
   const pathname = usePathname();
   const { t } = useI18n();
-  const [enabled, setEnabled] = useState(false);
-
-  useEffect(() => {
-    setEnabled(isMobileOrTabletDevice());
-  }, []);
+  const enabled = useCompactNavChrome();
 
   if (!enabled) return null;
 

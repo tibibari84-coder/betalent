@@ -10,7 +10,14 @@ import { requireVerifiedUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
 import { checkRateLimit } from '@/lib/rate-limit';
-import { buildPublicPlaybackUrl, getPlaybackUrl, getStorageConfig, isValidVideoStorageKeyForUser } from '@/lib/storage';
+import {
+  buildPublicPlaybackUrl,
+  getPlaybackUrl,
+  getStorageConfig,
+  headStorageObject,
+  isValidVideoStorageKeyForUser,
+} from '@/lib/storage';
+import { isAllowedMimeType, MAX_VIDEO_FILE_SIZE, normalizeVideoMimeType } from '@/constants/upload';
 import { rewardUpload } from '@/services/coin.service';
 import { RATE_LIMIT_UPLOAD_COMPLETE_PER_HOUR } from '@/constants/api-rate-limits';
 import { logOpsEvent } from '@/lib/ops-events';
@@ -24,10 +31,10 @@ const completeSchema = z.object({
 });
 
 function logComplete(level: 'info' | 'warn' | 'error', msg: string, data?: Record<string, unknown>) {
-  const payload = { msg, ...data, timestamp: new Date().toISOString() };
-  if (level === 'error') console.error('[upload/complete]', payload);
-  else if (level === 'warn') console.warn('[upload/complete]', payload);
-  else console.log('[upload/complete]', payload);
+  const payload = { msg, ...data, channel: 'upload_complete' };
+  if (level === 'error') logger.error('UPLOAD_COMPLETE', payload);
+  else if (level === 'warn') logger.warn('UPLOAD_COMPLETE', payload);
+  else logger.info('UPLOAD_COMPLETE', payload);
 }
 
 /** Mandatory trace: full Video row fields for debugging upload/feed eligibility. */
@@ -102,7 +109,14 @@ export async function POST(req: Request) {
 
     const video = await prisma.video.findUnique({
       where: { id: videoId },
-      select: { id: true, creatorId: true, uploadStatus: true, storageKey: true },
+      select: {
+        id: true,
+        creatorId: true,
+        uploadStatus: true,
+        storageKey: true,
+        fileSize: true,
+        mimeType: true,
+      },
     });
 
     if (!video) {
@@ -140,9 +154,70 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, message: 'Missing storage key', step: 'save' }, { status: 400 });
     }
 
-    logOpsEvent('processing_started', { videoId, userId: user.id });
-
     const storageKey = video.storageKey;
+
+    const head = await headStorageObject(storageKey);
+    if (!head) {
+      await prisma.video.update({
+        where: { id: videoId },
+        data: { uploadStatus: 'FAILED', processingError: 'Upload not found in storage' },
+      });
+      logOpsEvent('upload_failed', { userId: user.id, videoId, errorCode: 'STORAGE_HEAD_MISS' });
+      logger.error('VIDEO_UPLOAD_FINALIZE_FAILED', { videoId, userId: user.id, code: 'STORAGE_HEAD_MISS' });
+      return NextResponse.json(
+        {
+          ok: false,
+          message: 'Upload not found in storage. Try uploading again.',
+          step: 'storage',
+          code: 'STORAGE_HEAD_MISS',
+        },
+        { status: 400 }
+      );
+    }
+    if (head.contentLength > MAX_VIDEO_FILE_SIZE) {
+      await prisma.video.update({
+        where: { id: videoId },
+        data: { uploadStatus: 'FAILED', processingError: 'File exceeds maximum allowed size' },
+      });
+      logOpsEvent('upload_failed', { userId: user.id, videoId, errorCode: 'STORAGE_SIZE_CAP' });
+      return NextResponse.json(
+        { ok: false, message: 'Uploaded file is too large.', step: 'storage', code: 'STORAGE_SIZE_CAP' },
+        { status: 400 }
+      );
+    }
+    const headMime = head.contentType ? normalizeVideoMimeType(head.contentType) : '';
+    if (!headMime || !isAllowedMimeType(headMime)) {
+      await prisma.video.update({
+        where: { id: videoId },
+        data: { uploadStatus: 'FAILED', processingError: 'Invalid video type in storage' },
+      });
+      logOpsEvent('upload_failed', { userId: user.id, videoId, errorCode: 'STORAGE_MIME_INVALID' });
+      return NextResponse.json(
+        { ok: false, message: 'Invalid video type after upload.', step: 'storage', code: 'STORAGE_MIME_INVALID' },
+        { status: 400 }
+      );
+    }
+    if (video.fileSize != null) {
+      const tol = Math.max(2048, Math.floor(video.fileSize * 0.04));
+      if (Math.abs(head.contentLength - video.fileSize) > tol) {
+        await prisma.video.update({
+          where: { id: videoId },
+          data: { uploadStatus: 'FAILED', processingError: 'Uploaded size does not match expected size' },
+        });
+        logOpsEvent('upload_failed', { userId: user.id, videoId, errorCode: 'STORAGE_SIZE_MISMATCH' });
+        return NextResponse.json(
+          {
+            ok: false,
+            message: 'Uploaded file size does not match. Try uploading again.',
+            step: 'storage',
+            code: 'STORAGE_SIZE_MISMATCH',
+          },
+          { status: 400 }
+        );
+      }
+    }
+
+    logOpsEvent('processing_started', { videoId, userId: user.id });
 
     let playbackUrl: string;
     let playbackSource: 'public' | 'presigned';

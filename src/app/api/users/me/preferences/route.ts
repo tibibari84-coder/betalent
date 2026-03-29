@@ -10,6 +10,7 @@ const preferencesSelect = {
   allowVotesOnPerformances: true,
   notifyChallenges: true,
   notifyVotes: true,
+  notifyGifts: true,
   notifyFollowers: true,
   notifyComments: true,
   notifyAnnouncements: true,

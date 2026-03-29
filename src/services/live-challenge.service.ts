@@ -1,6 +1,6 @@
 /**
- * Live Challenge service: sessions, voting, gifts, scoring
- * Real-time competitive performance system
+ * Live Challenge service: sessions, voting, gifts, scoring.
+ * Synchronized show / arena slots (not traditional RTMP live streaming).
  */
 
 import { prisma } from '@/lib/prisma';

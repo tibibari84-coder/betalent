@@ -14,6 +14,7 @@ export {
   type PresignedUploadResult,
   type PlaybackUrlResult,
 } from './presign';
+export { headStorageObject, type HeadObjectResult } from './head-object';
 export { uploadThumbnail, uploadProcessedVideo, uploadAvatar, type UploadThumbnailResult, type UploadProcessedVideoResult, type UploadAvatarResult } from './upload';
 export {
   deleteStorageObject,

@@ -18,6 +18,7 @@ export const DEFAULT_PRIVACY_SETTINGS: PrivacySettings = {
 export type NotificationsPrefs = {
   challenges: boolean;
   votes: boolean;
+  gifts: boolean;
   followers: boolean;
   comments: boolean;
   announcements: boolean;
@@ -26,6 +27,7 @@ export type NotificationsPrefs = {
 export const DEFAULT_NOTIFICATIONS_PREFS: NotificationsPrefs = {
   challenges: true,
   votes: true,
+  gifts: true,
   followers: true,
   comments: true,
   announcements: true,
@@ -72,6 +74,8 @@ export function mapPrefsFromApi(p: {
   allowVotesOnPerformances: boolean;
   notifyChallenges: boolean;
   notifyVotes: boolean;
+  /** Present after DB migration; default true when absent. */
+  notifyGifts?: boolean;
   notifyFollowers: boolean;
   notifyComments: boolean;
   notifyAnnouncements: boolean;
@@ -85,6 +89,7 @@ export function mapPrefsFromApi(p: {
     notifications: {
       challenges: p.notifyChallenges,
       votes: p.notifyVotes,
+      gifts: p.notifyGifts ?? true,
       followers: p.notifyFollowers,
       comments: p.notifyComments,
       announcements: p.notifyAnnouncements,
@@ -96,6 +101,7 @@ export function notificationsToApiPatch(prefs: NotificationsPrefs): Record<strin
   return {
     notifyChallenges: prefs.challenges,
     notifyVotes: prefs.votes,
+    notifyGifts: prefs.gifts,
     notifyFollowers: prefs.followers,
     notifyComments: prefs.comments,
     notifyAnnouncements: prefs.announcements,

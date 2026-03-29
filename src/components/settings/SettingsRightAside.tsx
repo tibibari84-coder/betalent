@@ -35,10 +35,10 @@ export function SettingsRightAside() {
       >
         <p className="text-[11px] font-semibold uppercase tracking-wider text-white/35">Legal</p>
         <div className="flex flex-col gap-1.5">
-          <Link href="/legal/privacy" className="text-white/55 hover:text-white/85 transition-colors">
+          <Link href="/privacy" className="text-white/55 hover:text-white/85 transition-colors">
             Privacy Policy
           </Link>
-          <Link href="/legal/terms" className="text-white/55 hover:text-white/85 transition-colors">
+          <Link href="/terms" className="text-white/55 hover:text-white/85 transition-colors">
             Terms of Service
           </Link>
         </div>

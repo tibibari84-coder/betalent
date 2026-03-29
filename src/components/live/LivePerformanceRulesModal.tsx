@@ -9,9 +9,9 @@ interface LivePerformanceRulesModalProps {
 }
 
 const RULES = [
-  'No playback – real performance only',
-  'Real voice required – submit a live vocal performance',
-  'Camera must be active',
+  'No playback — perform during your slot, not a recording',
+  'Use your real voice for the performance',
+  'Camera must be active for the arena format',
 ];
 
 export default function LivePerformanceRulesModal({ isOpen, onClose, onAccept }: LivePerformanceRulesModalProps) {
@@ -32,9 +32,7 @@ export default function LivePerformanceRulesModal({ isOpen, onClose, onAccept }:
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-5">
-          <h2 className="font-display text-[20px] font-semibold text-text-primary">
-            Live Performance Rules
-          </h2>
+          <h2 className="font-display text-[20px] font-semibold text-text-primary">Arena performance rules</h2>
           <button
             type="button"
             onClick={onClose}
@@ -57,7 +55,9 @@ export default function LivePerformanceRulesModal({ isOpen, onClose, onAccept }:
         </ul>
 
         <p className="text-[13px] text-text-muted mb-6">
-          By going live, you confirm your performance is real. Submissions may be reviewed for authenticity, and violations may result in content removal or account restrictions.
+          By continuing, you confirm your performance is authentic. Sessions are part of the scheduled live challenge
+          show (not a separate broadcast platform). Submissions may be reviewed; violations may result in removal or
+          account restrictions.
         </p>
 
         <div className="flex gap-3">
@@ -76,7 +76,7 @@ export default function LivePerformanceRulesModal({ isOpen, onClose, onAccept }:
             }}
             className="flex-1 py-3 rounded-xl bg-accent text-white font-medium text-[14px] hover:bg-accent/90 transition-colors"
           >
-            Accept & Go Live
+            Accept &amp; continue
           </button>
         </div>
       </div>

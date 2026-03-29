@@ -78,6 +78,16 @@ const nextConfig = {
       { source: '/:path*', headers: securityHeaders },
     ];
   },
+  async redirects() {
+    return [
+      /** Single home for creator hub — /dashboard duplicated feed/profile shortcuts */
+      { source: '/dashboard', destination: '/feed', permanent: false },
+      { source: '/dashboard/:path*', destination: '/feed', permanent: false },
+      /** Canonical legal URLs — /terms and /privacy are source of truth */
+      { source: '/legal/terms', destination: '/terms', permanent: true },
+      { source: '/legal/privacy', destination: '/privacy', permanent: true },
+    ];
+  },
   async rewrites() {
     return [
       /** Legacy comment POST — single handler: POST /api/comment */

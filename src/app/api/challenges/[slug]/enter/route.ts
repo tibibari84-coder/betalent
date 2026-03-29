@@ -1,8 +1,15 @@
 import { NextResponse } from 'next/server';
+import { z } from 'zod';
 import { requireVerifiedUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { createEntry, resolveArenaEligibleWindowForCountry } from '@/services/challenge.service';
 import { CHALLENGE_STATUS_ALLOW_ENTRY } from '@/constants/challenge';
+import { prismaIdString } from '@/lib/api-schemas';
+
+const enterBodySchema = z.object({
+  videoId: prismaIdString,
+  styleSlug: z.string().min(1).max(120).optional(),
+});
 
 /**
  * POST /api/challenges/[slug]/enter
@@ -40,16 +47,20 @@ export async function POST(
       return NextResponse.json({ ok: false, code: 'NO_ELIGIBLE_WINDOW' }, { status: 400 });
     }
 
-    const body = (await req.json()) as { videoId?: string; styleSlug?: string };
-    const videoId = typeof body.videoId === 'string' ? body.videoId.trim() : '';
-    const styleSlug = typeof body.styleSlug === 'string' ? body.styleSlug.trim() || undefined : undefined;
-
-    if (!videoId) {
+    let raw: unknown;
+    try {
+      raw = await req.json();
+    } catch {
+      return NextResponse.json({ ok: false, code: 'INVALID_JSON' }, { status: 400 });
+    }
+    const parsed = enterBodySchema.safeParse(raw);
+    if (!parsed.success) {
       return NextResponse.json(
-        { ok: false, code: 'MISSING_VIDEO_ID' },
+        { ok: false, code: 'INVALID_BODY', errors: parsed.error.flatten() },
         { status: 400 }
       );
     }
+    const { videoId, styleSlug } = parsed.data;
 
     const result = await createEntry({
       challengeId: challenge.id,

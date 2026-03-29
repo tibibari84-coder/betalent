@@ -3,7 +3,7 @@ const STALE_UPLOADING_MS = 10 * 60 * 1000; // 10 minutes
 /**
  * Map video upload/processing state to a short label for creator-facing badges.
  * Pipeline: UPLOADING → UPLOADED → PENDING_PROCESSING → GENERATING_THUMBNAIL → PROCESSING_AUDIO → ANALYZING_AUDIO → READY.
- * Used on own profile, my-videos, dashboard. Public feed never shows non-READY content.
+ * Used on own profile and my-videos. Public feed never shows non-READY content.
  * If uploadStatus is UPLOADING and createdAt is older than 10 min, treats as stale and returns "Upload failed".
  */
 export function getVideoProcessingLabel(

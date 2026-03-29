@@ -6,6 +6,7 @@ export const patchUserPreferencesSchema = z.object({
   allowVotesOnPerformances: z.boolean().optional(),
   notifyChallenges: z.boolean().optional(),
   notifyVotes: z.boolean().optional(),
+  notifyGifts: z.boolean().optional(),
   notifyFollowers: z.boolean().optional(),
   notifyComments: z.boolean().optional(),
   notifyAnnouncements: z.boolean().optional(),

@@ -242,8 +242,10 @@ model User {
   /// When false, other users cannot submit talent votes (1–10) on this creator's performances.
   allowVotesOnPerformances Boolean     @default(true)
   notifyChallenges         Boolean     @default(true)
-  /// Likes-as-vote + gift alerts on your performances (in-app notification list).
+  /// Likes on your performances (in-app notification list).
   notifyVotes              Boolean     @default(true)
+  /// Coin gifts on your performances (separate from likes).
+  notifyGifts              Boolean     @default(true)
   notifyFollowers          Boolean     @default(true)
   notifyComments           Boolean     @default(true)
   notifyAnnouncements      Boolean     @default(true)

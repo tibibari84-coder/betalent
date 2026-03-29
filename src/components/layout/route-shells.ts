@@ -56,8 +56,6 @@ const PRIMARY_APP_MATCHERS: Matcher[] = [
   starts('/following/'),
   exact('/creator'),
   starts('/creator/'),
-  exact('/dashboard'),
-  starts('/dashboard/'),
   exact('/my-videos'),
   starts('/my-videos/'),
   exact('/notifications'),

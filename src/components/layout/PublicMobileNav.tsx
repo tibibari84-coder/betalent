@@ -9,8 +9,7 @@ import type { ComponentType } from 'react';
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useEffect, useState } from 'react';
-import { isMobileOrTabletDevice } from '@/lib/device';
+import { useCompactNavChrome } from '@/hooks/useCompactNavChrome';
 
 const IconHome = ({ className = 'w-6 h-6' }: { className?: string }) => (
   <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
@@ -55,11 +54,7 @@ function isActive(pathname: string | null, href: string): boolean {
 
 export default function PublicMobileNav() {
   const pathname = usePathname();
-  const [enabled, setEnabled] = useState(false);
-
-  useEffect(() => {
-    setEnabled(isMobileOrTabletDevice());
-  }, []);
+  const enabled = useCompactNavChrome();
 
   if (!enabled) return null;
 

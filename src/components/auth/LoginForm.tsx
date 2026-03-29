@@ -73,7 +73,7 @@ export default function LoginForm() {
     }
     if (searchParams?.get('notice') === 'verify') {
       setInfo(
-        'Confirm your email to use protected areas (dashboard, uploads, wallet, settings, and similar). Open the link we sent or resend from the verification screen.',
+        'Confirm your email to use protected areas (feed, uploads, wallet, settings, and similar). Open the link we sent or resend from the verification screen.',
       );
     }
   }, [searchParams]);
