@@ -11,6 +11,12 @@ import { requireAuth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { CANONICAL_PUBLIC_VIDEO_WHERE } from '@/lib/video-moderation';
 import { logOpsAbuse, logOpsEvent } from '@/lib/ops-events';
+import { checkRateLimit } from '@/lib/rate-limit';
+import { blockDisallowedMutationOrigin } from '@/lib/mutation-origin';
+import { RATE_LIMIT_VIDEO_LIKE_PER_USER_PER_HOUR } from '@/constants/api-rate-limits';
+import { z } from 'zod';
+
+const likeBodySchema = z.object({ videoId: z.string().cuid() });
 
 async function getVideoLikesCount(videoId: string): Promise<number> {
   const v = await prisma.video.findUnique({
@@ -23,12 +29,21 @@ async function getVideoLikesCount(videoId: string): Promise<number> {
 /** POST /api/like – add like. Body: { videoId }. */
 export async function POST(req: Request) {
   try {
+    const originDeny = blockDisallowedMutationOrigin(req);
+    if (originDeny) return originDeny;
+
     const user = await requireAuth();
-    const body = (await req.json()) as { videoId?: string };
-    const videoId = body?.videoId?.trim();
-    if (!videoId) {
-      return NextResponse.json({ ok: false, message: 'videoId required' }, { status: 400 });
+    if (!(await checkRateLimit('video-like-user', user.id, RATE_LIMIT_VIDEO_LIKE_PER_USER_PER_HOUR, 60 * 60 * 1000))) {
+      return NextResponse.json(
+        { ok: false, message: 'Too many like actions. Please try again later.', code: 'RATE_LIMIT_LIKE' },
+        { status: 429 }
+      );
     }
+    const parsed = likeBodySchema.safeParse(await req.json());
+    if (!parsed.success) {
+      return NextResponse.json({ ok: false, message: 'Invalid videoId' }, { status: 400 });
+    }
+    const { videoId } = parsed.data;
 
     const video = await prisma.video.findFirst({
       where: { id: videoId, ...CANONICAL_PUBLIC_VIDEO_WHERE },
@@ -77,17 +92,34 @@ export async function POST(req: Request) {
 /** DELETE /api/like – remove like. Body: { videoId }. */
 export async function DELETE(req: Request) {
   try {
+    const originDeny = blockDisallowedMutationOrigin(req);
+    if (originDeny) return originDeny;
+
     const user = await requireAuth();
-    let body: { videoId?: string };
+    if (!(await checkRateLimit('video-like-user', user.id, RATE_LIMIT_VIDEO_LIKE_PER_USER_PER_HOUR, 60 * 60 * 1000))) {
+      return NextResponse.json(
+        { ok: false, message: 'Too many like actions. Please try again later.', code: 'RATE_LIMIT_LIKE' },
+        { status: 429 }
+      );
+    }
+    let raw: unknown;
     try {
-      body = await req.json();
+      raw = await req.json();
     } catch {
-      body = {};
+      raw = {};
     }
-    const videoId = (body?.videoId ?? (req.url && new URL(req.url).searchParams.get('videoId')))?.trim();
-    if (!videoId) {
-      return NextResponse.json({ ok: false, message: 'videoId required' }, { status: 400 });
+    const fromQuery = req.url ? new URL(req.url).searchParams.get('videoId') : null;
+    const parsed = likeBodySchema.safeParse(
+      typeof raw === 'object' && raw !== null && 'videoId' in raw && (raw as { videoId?: string }).videoId
+        ? raw
+        : fromQuery
+          ? { videoId: fromQuery }
+          : {}
+    );
+    if (!parsed.success) {
+      return NextResponse.json({ ok: false, message: 'Invalid videoId' }, { status: 400 });
     }
+    const { videoId } = parsed.data;
 
     const video = await prisma.video.findFirst({
       where: { id: videoId, ...CANONICAL_PUBLIC_VIDEO_WHERE },

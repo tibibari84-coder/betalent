@@ -25,3 +25,18 @@ export const RATE_LIMIT_TALENT_VOTE_PER_IP_PER_HOUR = 300;
 
 // Public contact form (spam prevention)
 export const RATE_LIMIT_CONTACT_PER_IP_PER_HOUR = 8;
+
+// Comments (spam / automation)
+export const RATE_LIMIT_COMMENT_POST_PER_USER_PER_HOUR = 180;
+
+// Follow / unfollow toggles
+export const RATE_LIMIT_FOLLOW_PER_USER_PER_HOUR = 400;
+
+// Video likes
+export const RATE_LIMIT_VIDEO_LIKE_PER_USER_PER_HOUR = 600;
+
+// Comment reactions (emoji / heart)
+export const RATE_LIMIT_COMMENT_REACTION_PER_USER_PER_HOUR = 600;
+
+// Search (GET — IP-based to limit enumeration / DB load)
+export const RATE_LIMIT_SEARCH_PER_IP_PER_MINUTE = 90;

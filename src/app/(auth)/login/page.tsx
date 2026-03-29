@@ -27,7 +27,7 @@ export default function LoginPage() {
         <AuthCardHeader
           eyebrow="Access"
           title="Sign in"
-          subtitle="Google or email — authenticator after password if you use 2FA"
+          subtitle="Google: one-step sign-in · Email: password then authenticator code if your account has 2FA"
         />
         <GoogleContinueButton />
         <AuthDivider />

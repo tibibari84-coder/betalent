@@ -22,6 +22,28 @@ export function buildVideoStorageKey(userId: string, videoId: string, extension:
   return `${VIDEO_KEY_PREFIX}${userId}/${videoId}.${safe}`;
 }
 
+/**
+ * Verifies `storageKey` matches the canonical pattern for this user/video (direct upload).
+ * Prevents completing with an arbitrary key that does not belong to the upload path.
+ */
+export function isValidVideoStorageKeyForUser(userId: string, videoId: string, storageKey: string): boolean {
+  if (!storageKey || storageKey.length > 512) return false;
+  if (!storageKey.startsWith(VIDEO_KEY_PREFIX)) return false;
+  const withoutPrefix = storageKey.slice(VIDEO_KEY_PREFIX.length);
+  const slashIdx = withoutPrefix.indexOf('/');
+  if (slashIdx <= 0) return false;
+  const uid = withoutPrefix.slice(0, slashIdx);
+  const rest = withoutPrefix.slice(slashIdx + 1);
+  if (uid !== userId) return false;
+  const dot = rest.lastIndexOf('.');
+  if (dot <= 0) return false;
+  const vid = rest.slice(0, dot);
+  const ext = rest.slice(dot + 1);
+  if (vid !== videoId) return false;
+  if (!/^[a-z0-9]+$/i.test(ext)) return false;
+  return true;
+}
+
 export function buildThumbnailStorageKey(userId: string, videoId: string): string {
   return `${THUMBNAIL_KEY_PREFIX}${userId}/${videoId}.jpg`;
 }

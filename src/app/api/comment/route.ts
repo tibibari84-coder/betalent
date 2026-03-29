@@ -13,20 +13,40 @@ import { z } from 'zod';
 import { isSchemaDriftError } from '@/lib/runtime-config';
 import { logger } from '@/lib/logger';
 import { logOpsEvent } from '@/lib/ops-events';
+import { checkRateLimit } from '@/lib/rate-limit';
+import { blockDisallowedMutationOrigin } from '@/lib/mutation-origin';
+import { stripUnsafeTextControls } from '@/lib/security/sanitize';
+import { RATE_LIMIT_COMMENT_POST_PER_USER_PER_HOUR } from '@/constants/api-rate-limits';
 
 const bodySchema = z.object({
-  videoId: z.string().min(1, 'videoId required'),
+  videoId: z.string().cuid(),
   body: z.string().min(1, 'Comment cannot be empty').max(MAX_BODY_LENGTH),
-  parentId: z.string().optional().nullable(),
+  parentId: z.string().cuid().optional().nullable(),
 });
 
 export async function POST(req: Request) {
   const startedAt = performance.now();
   try {
+    const originDeny = blockDisallowedMutationOrigin(req);
+    if (originDeny) return originDeny;
+
     const user = await requireAuth();
+    if (
+      !(await checkRateLimit(
+        'comment-post-user',
+        user.id,
+        RATE_LIMIT_COMMENT_POST_PER_USER_PER_HOUR,
+        60 * 60 * 1000
+      ))
+    ) {
+      return NextResponse.json(
+        { ok: false, message: 'Too many comments. Please try again later.' },
+        { status: 429 }
+      );
+    }
     const body = await req.json();
     const parsed = bodySchema.parse(body);
-    const commentBody = parsed.body.trim();
+    const commentBody = stripUnsafeTextControls(parsed.body).trim();
     const { videoId, parentId } = parsed;
 
     if (!commentBody) {

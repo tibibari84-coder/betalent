@@ -11,6 +11,12 @@ import { requireAuth } from '@/lib/auth';
 import { isSchemaDriftError } from '@/lib/runtime-config';
 import { reactionSummaryForSingleComment } from '@/lib/comment-reaction-summary';
 import { isCommentReactionType } from '@/constants/comment-reactions';
+import { checkRateLimit } from '@/lib/rate-limit';
+import { blockDisallowedMutationOrigin } from '@/lib/mutation-origin';
+import { RATE_LIMIT_COMMENT_REACTION_PER_USER_PER_HOUR } from '@/constants/api-rate-limits';
+import { z } from 'zod';
+
+const commentIdParamSchema = z.string().cuid();
 
 function serializeSummary(s: Record<string, number>): Record<string, number> {
   const o: Record<string, number> = {};
@@ -25,8 +31,22 @@ export async function POST(
   { params }: { params: Promise<{ commentId: string }> }
 ) {
   try {
+    const originDeny = blockDisallowedMutationOrigin(req);
+    if (originDeny) return originDeny;
+
     const user = await requireAuth();
-    const { commentId } = await params;
+    if (!(await checkRateLimit('comment-reaction-user', user.id, RATE_LIMIT_COMMENT_REACTION_PER_USER_PER_HOUR, 60 * 60 * 1000))) {
+      return NextResponse.json(
+        { ok: false, message: 'Too many reactions. Please try again later.' },
+        { status: 429 }
+      );
+    }
+    const rawId = (await params).commentId;
+    const commentIdParsed = commentIdParamSchema.safeParse(rawId);
+    if (!commentIdParsed.success) {
+      return NextResponse.json({ ok: false, message: 'Invalid comment' }, { status: 400 });
+    }
+    const commentId = commentIdParsed.data;
 
     let body: { reaction?: unknown } = {};
     try {

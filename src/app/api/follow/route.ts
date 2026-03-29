@@ -14,20 +14,36 @@ import { requireAuth } from '@/lib/auth';
 import { followCreatorOrNoOp, unfollowCreatorOrNoOp } from '@/services/follow.service';
 import { isDatabaseUnavailableError } from '@/lib/db-errors';
 import { stampApiResponse } from '@/lib/api-route-observe';
+import { checkRateLimit } from '@/lib/rate-limit';
+import { blockDisallowedMutationOrigin } from '@/lib/mutation-origin';
+import { RATE_LIMIT_FOLLOW_PER_USER_PER_HOUR } from '@/constants/api-rate-limits';
+import { z } from 'zod';
+
+const followBodySchema = z.object({ creatorId: z.string().cuid() });
 
 export async function POST(req: Request) {
   const startedAt = performance.now();
   try {
-    const user = await requireAuth();
-    const { creatorId } = (await req.json()) as { creatorId?: string };
+    const originDeny = blockDisallowedMutationOrigin(req);
+    if (originDeny) return stampApiResponse(originDeny, req, { routeKey: 'POST /api/follow', cachePolicy: 'none', startedAt });
 
-    if (!creatorId) {
+    const user = await requireAuth();
+    if (!(await checkRateLimit('follow-toggle-user', user.id, RATE_LIMIT_FOLLOW_PER_USER_PER_HOUR, 60 * 60 * 1000))) {
       return stampApiResponse(
-        NextResponse.json({ ok: false, message: 'creatorId is required' }, { status: 400 }),
+        NextResponse.json({ ok: false, message: 'Too many follow actions. Please try again later.' }, { status: 429 }),
         req,
         { routeKey: 'POST /api/follow', cachePolicy: 'none', startedAt }
       );
     }
+    const parsed = followBodySchema.safeParse(await req.json());
+    if (!parsed.success) {
+      return stampApiResponse(
+        NextResponse.json({ ok: false, message: 'Invalid creatorId' }, { status: 400 }),
+        req,
+        { routeKey: 'POST /api/follow', cachePolicy: 'none', startedAt }
+      );
+    }
+    const { creatorId } = parsed.data;
 
     if (creatorId === user.id) {
       return stampApiResponse(
@@ -73,16 +89,26 @@ export async function POST(req: Request) {
 export async function DELETE(req: Request) {
   const startedAt = performance.now();
   try {
-    const user = await requireAuth();
-    const { creatorId } = (await req.json()) as { creatorId?: string };
+    const originDeny = blockDisallowedMutationOrigin(req);
+    if (originDeny) return stampApiResponse(originDeny, req, { routeKey: 'DELETE /api/follow', cachePolicy: 'none', startedAt });
 
-    if (!creatorId) {
+    const user = await requireAuth();
+    if (!(await checkRateLimit('follow-toggle-user', user.id, RATE_LIMIT_FOLLOW_PER_USER_PER_HOUR, 60 * 60 * 1000))) {
       return stampApiResponse(
-        NextResponse.json({ ok: false, message: 'creatorId is required' }, { status: 400 }),
+        NextResponse.json({ ok: false, message: 'Too many follow actions. Please try again later.' }, { status: 429 }),
         req,
         { routeKey: 'DELETE /api/follow', cachePolicy: 'none', startedAt }
       );
     }
+    const parsed = followBodySchema.safeParse(await req.json());
+    if (!parsed.success) {
+      return stampApiResponse(
+        NextResponse.json({ ok: false, message: 'Invalid creatorId' }, { status: 400 }),
+        req,
+        { routeKey: 'DELETE /api/follow', cachePolicy: 'none', startedAt }
+      );
+    }
+    const { creatorId } = parsed.data;
 
     if (creatorId === user.id) {
       return stampApiResponse(

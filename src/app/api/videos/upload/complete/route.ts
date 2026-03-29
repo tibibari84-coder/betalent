@@ -12,7 +12,8 @@ import { requireVerifiedUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
 import { checkRateLimit } from '@/lib/rate-limit';
-import { buildPublicPlaybackUrl, getPlaybackUrl, getStorageConfig } from '@/lib/storage';
+import { buildPublicPlaybackUrl, getPlaybackUrl, getStorageConfig, isValidVideoStorageKeyForUser } from '@/lib/storage';
+import { blockDisallowedMutationOrigin } from '@/lib/mutation-origin';
 import { checkFfmpegAvailable } from '@/lib/ffmpeg';
 import { rewardUpload } from '@/services/coin.service';
 import { enqueueAnalysis } from '@/services/vocal-scoring.service';
@@ -25,8 +26,8 @@ import { logOpsEvent } from '@/lib/ops-events';
 const completeSchema = z.object({
   /** Prisma @default(cuid()) — allow full id string (avoid z.cuid() mismatch with cuid2). */
   videoId: z.string().min(1).max(128),
-  /** Optional; when sent, must match the Video row (client received it from POST /api/upload/init). */
-  storageKey: z.string().min(1).max(512).optional(),
+  /** Required — must match the object key from POST /api/upload/init (binds finalize to the presigned upload). */
+  storageKey: z.string().min(1).max(512),
 });
 
 function logComplete(level: 'info' | 'warn' | 'error', msg: string, data?: Record<string, unknown>) {
@@ -68,6 +69,9 @@ async function logVideoDbRow(videoId: string, label: string): Promise<void> {
 
 export async function POST(req: Request) {
   try {
+    const originDeny = blockDisallowedMutationOrigin(req);
+    if (originDeny) return originDeny;
+
     const user = await requireVerifiedUser();
     if (
       !(await checkRateLimit(
@@ -90,6 +94,12 @@ export async function POST(req: Request) {
     }
     const body = await req.json();
     const { videoId, storageKey: storageKeyFromClient } = completeSchema.parse(body);
+    if (!isValidVideoStorageKeyForUser(user.id, videoId, storageKeyFromClient)) {
+      return NextResponse.json(
+        { ok: false, message: 'Invalid storage key', step: 'save', code: 'STORAGE_KEY_INVALID' },
+        { status: 400 }
+      );
+    }
     const storageConfig = getStorageConfig();
     logComplete('info', 'complete called', {
       videoId,
@@ -111,7 +121,7 @@ export async function POST(req: Request) {
     if (video.creatorId !== user.id) {
       return NextResponse.json({ ok: false, message: 'Forbidden', step: 'save' }, { status: 403 });
     }
-    if (storageKeyFromClient && video.storageKey && storageKeyFromClient !== video.storageKey) {
+    if (video.storageKey && storageKeyFromClient !== video.storageKey) {
       return NextResponse.json(
         { ok: false, message: 'Storage key mismatch', step: 'save', code: 'STORAGE_KEY_MISMATCH' },
         { status: 400 }

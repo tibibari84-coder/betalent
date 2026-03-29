@@ -13,15 +13,20 @@ import {
   RATE_LIMIT_REPORTS_PER_USER_PER_HOUR,
 } from '@/constants/api-rate-limits';
 import { z } from 'zod';
+import { blockDisallowedMutationOrigin } from '@/lib/mutation-origin';
+import { stripUnsafeTextControls } from '@/lib/security/sanitize';
 
 const reportSchema = z.object({
-  videoId: z.string().min(1).max(128),
+  videoId: z.string().cuid(),
   reportType: z.enum(['FAKE_PERFORMANCE', 'COPYRIGHT', 'INAPPROPRIATE', 'OTHER']),
   details: z.string().max(1000).optional(),
 });
 
 export async function POST(req: Request) {
   try {
+    const originDeny = blockDisallowedMutationOrigin(req);
+    if (originDeny) return originDeny;
+
     const user = await requireAuth();
     const ip = getClientIp(req);
     if (
@@ -35,6 +40,8 @@ export async function POST(req: Request) {
     }
     const body = await req.json();
     const parsed = reportSchema.parse(body);
+    const details =
+      parsed.details != null ? stripUnsafeTextControls(parsed.details).trim().slice(0, 1000) || null : null;
 
     const video = await prisma.video.findUnique({
       where: { id: parsed.videoId },
@@ -78,10 +85,10 @@ export async function POST(req: Request) {
           reporterId: user.id,
           videoId: parsed.videoId,
           reportType: parsed.reportType,
-          details: parsed.details ?? null,
+          details,
         },
         update: {
-          details: parsed.details ?? undefined,
+          details: details ?? undefined,
           status: 'PENDING',
           reviewedBy: null,
           reviewedAt: null,

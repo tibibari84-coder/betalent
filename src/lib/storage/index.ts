@@ -1,5 +1,12 @@
 export { getStorageConfig, isStorageConfigured, VIDEO_KEY_PREFIX, THUMBNAIL_KEY_PREFIX } from './config';
-export { buildVideoStorageKey, buildThumbnailStorageKey, buildAvatarStorageKey, getExtensionFromMime, getAvatarExtensionFromMime } from './keys';
+export {
+  buildVideoStorageKey,
+  buildThumbnailStorageKey,
+  buildAvatarStorageKey,
+  getExtensionFromMime,
+  getAvatarExtensionFromMime,
+  isValidVideoStorageKeyForUser,
+} from './keys';
 export {
   getPresignedUploadUrl,
   getPlaybackUrl,

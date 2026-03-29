@@ -24,6 +24,8 @@ import { checkRateLimit } from '@/lib/rate-limit';
 import { logger } from '@/lib/logger';
 import { logOpsEvent } from '@/lib/ops-events';
 import { isVocalPerformanceStyleSlug } from '@/constants/vocal-style-catalog';
+import { blockDisallowedMutationOrigin } from '@/lib/mutation-origin';
+import { isSafeUploadFilename, stripUnsafeTextControls } from '@/lib/security/sanitize';
 
 const CONTENT_TYPES = ['ORIGINAL', 'COVER', 'REMIX'] as const;
 const COMMENT_PERMISSIONS = ['EVERYONE', 'FOLLOWERS', 'FOLLOWING', 'OFF'] as const;
@@ -47,11 +49,14 @@ const initSchema = z.object({
   fileSize: z.number().int().positive(),
   mimeType: z.string().min(1),
   durationSec: z.number().int().min(1),
-  challengeSlug: z.string().min(1).optional(),
+  challengeSlug: z.string().min(1).max(120).regex(/^[a-zA-Z0-9_-]+$/).optional(),
 });
 
 export async function POST(req: Request) {
   try {
+    const originDeny = blockDisallowedMutationOrigin(req);
+    if (originDeny) return originDeny;
+
     const user = await requireVerifiedUser();
     if (!(await checkRateLimit('upload-init-user', user.id, RATE_LIMIT_UPLOAD_INIT_PER_HOUR, 60 * 60 * 1000))) {
       logOpsEvent('upload_failed', { userId: user.id, errorCode: 'RATE_LIMIT_UPLOAD_INIT' });
@@ -69,9 +74,18 @@ export async function POST(req: Request) {
 
     const body = await req.json();
     const parsed = initSchema.parse(body);
-    const caption = parsed.caption?.trim() ?? '';
-    const title = (parsed.title?.trim() || caption.split('\n').map((line) => line.trim()).find(Boolean) || 'New performance').slice(0, 150);
-    const description = parsed.description?.trim() || caption || undefined;
+    if (!isSafeUploadFilename(parsed.filename)) {
+      return NextResponse.json(
+        { ok: false, message: 'Invalid filename. Use a simple name without paths or special control characters.' },
+        { status: 400 }
+      );
+    }
+    const caption = stripUnsafeTextControls(parsed.caption?.trim() ?? '');
+    const title = stripUnsafeTextControls(
+      (parsed.title?.trim() || caption.split('\n').map((line) => line.trim()).find(Boolean) || 'New performance').slice(0, 150)
+    );
+    const descriptionRaw = parsed.description?.trim() || caption || undefined;
+    const description = descriptionRaw != null ? stripUnsafeTextControls(descriptionRaw) : undefined;
     const categorySlug = parsed.vocalStyle?.trim() || parsed.categorySlug?.trim() || '';
     if (!categorySlug) {
       return NextResponse.json({ ok: false, message: 'Invalid style' }, { status: 400 });
@@ -125,8 +139,11 @@ export async function POST(req: Request) {
     const contentType = parsed.contentType;
     const contentLicensingEligible = contentType === 'ORIGINAL';
     const coverOriginalArtistName =
-      contentType === 'COVER' ? (parsed.coverOriginalArtistName?.trim() || null) : null;
-    const coverSongTitle = contentType === 'COVER' ? (parsed.coverSongTitle?.trim() || null) : null;
+      contentType === 'COVER'
+        ? stripUnsafeTextControls(parsed.coverOriginalArtistName?.trim() || '') || null
+        : null;
+    const coverSongTitle =
+      contentType === 'COVER' ? stripUnsafeTextControls(parsed.coverSongTitle?.trim() || '') || null : null;
 
     const userPrefs = await prisma.user.findUnique({
       where: { id: user.id },

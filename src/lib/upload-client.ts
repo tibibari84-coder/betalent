@@ -176,14 +176,11 @@ async function putFileToPresignedUrlWithRetry(
   throw lastErr;
 }
 
-async function postUploadComplete(videoId: string, storageKey?: string): Promise<Response> {
+async function postUploadComplete(videoId: string, storageKey: string): Promise<Response> {
   return fetch('/api/upload/complete', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      videoId,
-      ...(storageKey ? { storageKey } : {}),
-    }),
+    body: JSON.stringify({ videoId, storageKey }),
   });
 }
 
@@ -280,8 +277,12 @@ export async function performDirectUpload(
   /** Must match what was signed in PutObject (server returns normalized MIME). */
   const putContentType = (initData.contentType || mimeType).trim();
 
-  if (!uploadUrl || !videoId) {
-    return { ok: false, message: 'Upload could not start. Please try again.', step: 'init' };
+  if (!uploadUrl || !videoId || !storageKeyFromInit) {
+    return {
+      ok: false,
+      message: 'Upload could not start. Please try again.',
+      step: 'init',
+    };
   }
 
   options?.onStatus?.('uploading');

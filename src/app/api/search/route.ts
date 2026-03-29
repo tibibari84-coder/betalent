@@ -12,6 +12,8 @@ import { CANONICAL_PUBLIC_VIDEO_WHERE } from '@/lib/video-moderation';
 import { userDiscoveryVisibilityWhere, videoDiscoveryVisibilityWhere } from '@/lib/discovery-visibility';
 import { isDatabaseUnavailableError } from '@/lib/db-errors';
 import { stampApiResponse } from '@/lib/api-route-observe';
+import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
+import { RATE_LIMIT_SEARCH_PER_IP_PER_MINUTE } from '@/constants/api-rate-limits';
 
 const READY_WHERE = CANONICAL_PUBLIC_VIDEO_WHERE;
 const ROUTE_KEY = 'GET /api/search';
@@ -23,6 +25,15 @@ function normalizeQuery(q: string): string {
 export async function GET(req: Request) {
   const startedAt = performance.now();
   try {
+    const ip = getClientIp(req);
+    if (!(await checkRateLimit('search-ip', ip, RATE_LIMIT_SEARCH_PER_IP_PER_MINUTE, 60 * 1000))) {
+      return stampApiResponse(
+        NextResponse.json({ ok: false, message: 'Too many searches. Please slow down.' }, { status: 429 }),
+        req,
+        { routeKey: ROUTE_KEY, cachePolicy: 'personalized', startedAt }
+      );
+    }
+
     const viewer = await getCurrentUser();
     const viewerId = viewer?.id ?? null;
     const { searchParams } = new URL(req.url);
