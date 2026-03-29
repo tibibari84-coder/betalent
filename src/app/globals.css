@@ -769,3 +769,58 @@ body.studio-mode-active nav[aria-label="Mobile navigation"] {
     transform: translateY(0);
   }
 }
+
+/* Challenges hub (/challenges) — cinematic hero + content reveal */
+@keyframes challenges-hero-blob-a {
+  0%,
+  100% {
+    transform: translate(-12%, -18%) scale(1);
+    opacity: 0.42;
+  }
+  50% {
+    transform: translate(8%, 12%) scale(1.15);
+    opacity: 0.55;
+  }
+}
+@keyframes challenges-hero-blob-b {
+  0%,
+  100% {
+    transform: translate(18%, 8%) scale(1.05);
+    opacity: 0.28;
+  }
+  50% {
+    transform: translate(-10%, -6%) scale(1.12);
+    opacity: 0.4;
+  }
+}
+@keyframes challenges-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.challenges-reveal {
+  animation: challenges-fade-up 0.65s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.challenges-reveal-delay-1 {
+  animation-delay: 0.06s;
+}
+.challenges-reveal-delay-2 {
+  animation-delay: 0.12s;
+}
+.challenges-reveal-delay-3 {
+  animation-delay: 0.18s;
+}
+.challenges-reveal-delay-4 {
+  animation-delay: 0.24s;
+}
+.challenges-hero-blob-a {
+  animation: challenges-hero-blob-a 14s ease-in-out infinite;
+}
+.challenges-hero-blob-b {
+  animation: challenges-hero-blob-b 18s ease-in-out infinite;
+}

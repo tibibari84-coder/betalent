@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { LiveWindowDisplay } from '@/components/challenge/LiveWindowDisplay';
 import { ChallengeHeroBackdrop } from '@/components/challenge/ChallengeHeroBackdrop';
+import { cn } from '@/lib/utils';
 
 type ChallengeWindowItem = {
   id: string;
@@ -37,20 +38,67 @@ function formatCountdown(endAt: string): string {
   const diff = Math.max(0, end - now);
   const d = Math.floor(diff / 86400000);
   const h = Math.floor((diff % 86400000) / 3600000);
+  const m = Math.floor((diff % 3600000) / 60000);
   if (d > 0) return `${d}d ${h}h`;
-  if (h > 0) return `${h}h`;
-  return 'Ending soon';
+  if (h > 0) return `${h}h ${m}m`;
+  if (m > 0) return `${m}m`;
+  return 'Soon';
 }
 
-function statusBadge(status: string): { label: string; tone: string } {
-  if (status === 'ENTRY_OPEN') return { label: 'Open for entries', tone: 'text-emerald-200 bg-emerald-500/20 border-emerald-400/35' };
-  if (status === 'LIVE_ACTIVE') return { label: 'Live now', tone: 'text-rose-100 bg-rose-500/20 border-rose-400/35' };
-  if (status === 'LIVE_UPCOMING') return { label: 'Live upcoming', tone: 'text-sky-100 bg-sky-500/20 border-sky-400/35' };
-  if (status === 'ENTRY_CLOSED') return { label: 'Entry closed', tone: 'text-amber-100 bg-amber-500/20 border-amber-400/35' };
-  if (status === 'VOTING_CLOSED') return { label: 'Voting closed', tone: 'text-white/90 bg-white/10 border-white/20' };
-  if (status === 'SCHEDULED' || status === 'DRAFT') return { label: 'Upcoming', tone: 'text-white/80 bg-white/10 border-white/20' };
-  return { label: status.replaceAll('_', ' '), tone: 'text-white/75 bg-white/10 border-white/20' };
+type PillVariant = 'live' | 'open' | 'upcoming' | 'neutral';
+
+function pillVariant(status: string): PillVariant {
+  if (status === 'LIVE_ACTIVE') return 'live';
+  if (status === 'ENTRY_OPEN') return 'open';
+  if (status === 'LIVE_UPCOMING' || status === 'SCHEDULED' || status === 'DRAFT') return 'upcoming';
+  return 'neutral';
 }
+
+function statusLabel(status: string): string {
+  if (status === 'ENTRY_OPEN') return 'Open';
+  if (status === 'LIVE_ACTIVE') return 'Live';
+  if (status === 'LIVE_UPCOMING') return 'Live soon';
+  if (status === 'ENTRY_CLOSED') return 'Closed';
+  if (status === 'VOTING_CLOSED') return 'Voting';
+  if (status === 'SCHEDULED' || status === 'DRAFT') return 'Upcoming';
+  if (status === 'WINNERS_LOCKED' || status === 'ARCHIVED') return 'Archive';
+  return status.replaceAll('_', ' ');
+}
+
+function StatusPill({ status, className }: { status: string; className?: string }) {
+  const v = pillVariant(status);
+  const label = statusLabel(status);
+  return (
+    <span
+      className={cn(
+        'inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.06em]',
+        v === 'live' &&
+          'border-red-400/55 bg-red-950/50 text-red-100 shadow-[0_0_20px_rgba(239,68,68,0.35)] live-badge-pulse',
+        v === 'open' &&
+          'border-emerald-400/45 bg-emerald-950/40 text-emerald-100 shadow-[0_0_18px_rgba(52,211,153,0.22)]',
+        v === 'upcoming' &&
+          'border-sky-400/45 bg-sky-950/35 text-sky-100 shadow-[0_0_18px_rgba(56,189,248,0.22)]',
+        v === 'neutral' && 'border-white/15 bg-white/[0.06] text-white/75',
+        className
+      )}
+    >
+      {label}
+    </span>
+  );
+}
+
+const primaryBtn =
+  'flex w-full max-w-[min(100%,320px)] min-h-[52px] items-center justify-center rounded-[18px] text-[15px] font-bold tracking-[0.02em] text-white transition-transform duration-150 active:scale-[0.96] sm:mx-auto';
+const primaryBtnStyle = {
+  background: 'linear-gradient(135deg,#c4122f 0%,#e11d48 55%,#be123c 100%)',
+  boxShadow: '0 0 40px rgba(196,18,47,0.42), 0 12px 32px rgba(0,0,0,0.45)',
+};
+
+const ghostBtn =
+  'flex w-full max-w-[min(100%,320px)] min-h-[44px] items-center justify-center rounded-[14px] border border-white/[0.12] bg-white/[0.04] text-[13px] font-semibold text-white/75 transition-all duration-150 active:scale-[0.96] hover:border-white/20 hover:bg-white/[0.07] hover:text-white sm:mx-auto';
+
+const tileBase =
+  'group relative block overflow-hidden rounded-[20px] border border-white/[0.08] transition-transform duration-200 active:scale-[0.98] md:hover:scale-[1.01] md:hover:border-accent/25';
 
 export default function ChallengesPage() {
   const [challenges, setChallenges] = useState<ChallengeItem[]>([]);
@@ -73,198 +121,212 @@ export default function ChallengesPage() {
   const upcoming = challenges.filter((c) => c.status === 'DRAFT' || c.status === 'SCHEDULED');
   const past = challenges.filter((c) => c.status === 'WINNERS_LOCKED' || c.status === 'ARCHIVED');
   const totalEntries = challenges.reduce((sum, c) => sum + (c.entriesCount || 0), 0);
-  const heroStatus = currentChallenge ? statusBadge(currentChallenge.status) : null;
+
+  const primaryHref = currentChallenge ? `/challenges/${currentChallenge.slug}` : '/upload';
+  const primaryLabel = currentChallenge ? 'ENTER NOW' : 'START YOUR PERFORMANCE';
+
+  const feedList = currentChallenge ? [...upcoming, ...past] : challenges;
 
   return (
-    <div className="min-h-screen pb-24 md:pb-12 min-w-0 overflow-x-hidden" style={{ backgroundColor: '#0D0D0E' }}>
+    <div className="min-h-screen min-w-0 overflow-x-hidden bg-[#070707] pb-24 md:pb-14">
       <ChallengeHeroBackdrop
+        cinematic
         imageUrl={null}
-        className="pt-7 md:pt-9 laptop:pt-12 pb-10 md:pb-12 min-h-[280px] md:min-h-[360px] rounded-b-2xl md:rounded-b-3xl border-b border-white/[0.08]"
+        className="min-h-[min(90svh,820px)] md:min-h-[min(72svh,600px)]"
       >
-        <div className="mobile-page-column w-full max-w-[var(--layout-content-max,1320px)] min-w-0">
-          <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_340px] gap-5 lg:gap-6 items-end">
-            <div className="min-w-0">
-              <p className="text-[11px] uppercase tracking-[0.22em] text-white/65 font-semibold mb-2">
-                Weekly Live Cover Challenge
-              </p>
-              <h1 className="font-display text-[30px] md:text-[42px] laptop:text-[52px] leading-[1.03] font-bold text-white mb-3">
-                Compete. Perform. Rise.
-              </h1>
-              <p className="text-[15px] md:text-[16px] text-white/80 max-w-[760px] mb-4 leading-[1.6]">
-                High-energy weekly artist themes, live windows, and creator-vs-creator momentum.
-                Enter now, publish your best short-form performance, and climb the challenge stage.
-              </p>
-              <div className="flex flex-wrap items-center gap-2.5">
-                {heroStatus ? (
-                  <span className={`inline-flex items-center rounded-full border px-3 py-1 text-[12px] font-semibold ${heroStatus.tone}`}>
-                    {heroStatus.label}
-                  </span>
-                ) : null}
-                {currentChallenge?.artistTheme ? (
-                  <span className="inline-flex items-center rounded-full border border-white/20 bg-black/25 px-3 py-1 text-[12px] font-medium text-white/85">
-                    Theme: {currentChallenge.artistTheme}
-                  </span>
-                ) : null}
-                {currentChallenge?.maxDurationSec ? (
-                  <span className="inline-flex items-center rounded-full border border-white/20 bg-black/25 px-3 py-1 text-[12px] font-medium text-white/85">
-                    Max duration: {currentChallenge.maxDurationSec}s
-                  </span>
-                ) : null}
-              </div>
-              <div className="mt-5 flex flex-wrap gap-2.5">
-                <Link
-                  href={currentChallenge ? `/challenges/${currentChallenge.slug}` : '/upload'}
-                  className="inline-flex items-center justify-center min-h-[42px] px-4 rounded-[12px] text-[13px] font-semibold text-white border border-white/10"
-                  style={{ background: 'linear-gradient(135deg,#c4122f,#e11d48)', boxShadow: '0 14px 30px rgba(196,18,47,0.35)' }}
-                >
-                  {currentChallenge ? 'View weekly challenge' : 'Start competing'}
-                </Link>
-                <Link
-                  href="/upload"
-                  className="inline-flex items-center justify-center min-h-[42px] px-4 rounded-[12px] text-[13px] font-semibold text-white/90 border border-white/[0.2] bg-black/20 hover:bg-white/[0.08] transition-colors"
-                >
-                  Upload entry
-                </Link>
-              </div>
-            </div>
+        <div className="flex min-h-[min(90svh,820px)] flex-col justify-end px-[var(--layout-pad)] pb-10 pt-6 md:min-h-[min(72svh,600px)] md:px-8 md:pb-14">
+          <div className="mx-auto flex w-full max-w-[var(--layout-content-max,1320px)] flex-col">
+            <p className="challenges-reveal text-[10px] font-semibold uppercase tracking-[0.32em] text-white/50">
+              Weekly Live Cover
+            </p>
+            <h1 className="challenges-reveal challenges-reveal-delay-1 mt-2 font-display text-[clamp(1.85rem,6.5vw,3rem)] font-bold leading-[1.08] tracking-[-0.02em] text-white">
+              Step into the stage
+            </h1>
 
-            <div
-              className="rounded-[18px] border p-4 md:p-5"
-              style={{
-                background: 'linear-gradient(160deg, rgba(17,18,24,0.82) 0%, rgba(12,12,14,0.92) 100%)',
-                borderColor: 'rgba(255,255,255,0.14)',
-                boxShadow: '0 16px 34px rgba(0,0,0,0.42)',
-              }}
-            >
-              <p className="text-[11px] uppercase tracking-[0.16em] text-white/55 mb-3">Challenge pulse</p>
-              <div className="grid grid-cols-2 gap-2.5">
-                <div className="rounded-[12px] border border-white/10 bg-black/20 px-3 py-2.5">
-                  <p className="text-[11px] text-white/60">Active week</p>
-                  <p className="text-[14px] font-semibold text-white truncate">{currentChallenge?.title ?? 'No active week yet'}</p>
-                </div>
-                <div className="rounded-[12px] border border-white/10 bg-black/20 px-3 py-2.5">
-                  <p className="text-[11px] text-white/60">Total entries</p>
-                  <p className="text-[18px] font-bold text-white">{totalEntries.toLocaleString()}</p>
-                </div>
-                <div className="rounded-[12px] border border-white/10 bg-black/20 px-3 py-2.5">
-                  <p className="text-[11px] text-white/60">Upcoming weeks</p>
-                  <p className="text-[18px] font-bold text-white">{upcoming.length}</p>
-                </div>
-                <div className="rounded-[12px] border border-white/10 bg-black/20 px-3 py-2.5">
-                  <p className="text-[11px] text-white/60">Past weeks</p>
-                  <p className="text-[18px] font-bold text-white">{past.length}</p>
-                </div>
+            {currentChallenge ? (
+              <div className="challenges-reveal challenges-reveal-delay-2 mt-5 flex flex-wrap items-center gap-2">
+                <StatusPill status={currentChallenge.status} />
+                {currentChallenge.artistTheme ? (
+                  <span className="rounded-full border border-white/15 bg-black/30 px-2.5 py-1 text-[11px] font-medium text-white/80">
+                    {currentChallenge.artistTheme}
+                  </span>
+                ) : null}
+                {currentChallenge.maxDurationSec ? (
+                  <span className="text-[11px] font-medium tabular-nums text-white/45">
+                    {currentChallenge.maxDurationSec}s max
+                  </span>
+                ) : null}
               </div>
+            ) : (
+              <p className="challenges-reveal challenges-reveal-delay-2 mt-4 text-[13px] text-white/45">
+                New themes drop weekly — be first in line.
+              </p>
+            )}
+
+            <div className="challenges-reveal challenges-reveal-delay-3 mt-10 flex w-full flex-col gap-3 sm:items-center">
+              <Link href={primaryHref} className={primaryBtn} style={primaryBtnStyle}>
+                {primaryLabel}
+              </Link>
+              <Link href="/explore" className={ghostBtn}>
+                Explore
+              </Link>
             </div>
           </div>
         </div>
       </ChallengeHeroBackdrop>
 
-      <div className="mobile-page-column w-full max-w-[var(--layout-content-max,1320px)] pt-5 laptop:pt-7 pb-8 space-y-7 md:space-y-8">
+      {/* Snapshot strip — thumb-scale metrics */}
+      <div className="relative z-[1] -mt-3 px-[var(--layout-pad)] md:px-8">
+        <div
+          className="challenges-reveal challenges-reveal-delay-4 mx-auto grid max-w-[var(--layout-content-max,1320px)] grid-cols-3 gap-px overflow-hidden rounded-[18px] border border-white/[0.08] bg-white/[0.06]"
+          style={{
+            boxShadow: '0 20px 48px rgba(0,0,0,0.35)',
+          }}
+        >
+          <div className="bg-[#101012]/95 px-3 py-3.5 text-center md:px-4">
+            <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-white/40">Entries</p>
+            <p className="mt-1 font-display text-[22px] font-bold tabular-nums text-white md:text-[24px]">
+              {loading ? '—' : totalEntries.toLocaleString()}
+            </p>
+          </div>
+          <div className="bg-[#101012]/95 px-2 py-3.5 text-center md:px-4">
+            <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-white/40">This week</p>
+            <p className="mt-1 truncate text-[13px] font-semibold text-white md:text-[14px]">
+              {loading ? '…' : currentChallenge?.title ?? '—'}
+            </p>
+          </div>
+          <div className="bg-[#101012]/95 px-3 py-3.5 text-center md:px-4">
+            <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-white/40">Ends</p>
+            <p className="mt-1 text-[13px] font-semibold tabular-nums text-white/90 md:text-[14px]">
+              {loading || !currentChallenge
+                ? '—'
+                : formatCountdown(currentChallenge.votingCloseAt ?? currentChallenge.endAt)}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="mx-auto w-full max-w-[var(--layout-content-max,1320px)] space-y-8 px-[var(--layout-pad)] pb-6 pt-10 md:px-8 md:pt-12">
         {loading ? (
-          <p className="text-white/55 text-[15px]">Loading challenges…</p>
+          <div className="space-y-4">
+            <div className="h-4 w-32 animate-pulse rounded bg-white/10" />
+            <div className="h-36 animate-pulse rounded-[20px] bg-white/[0.06]" />
+            <div className="h-28 animate-pulse rounded-[20px] bg-white/[0.05]" />
+          </div>
         ) : (
           <>
-            <section
-              className="rounded-[18px] border p-4 md:p-5"
-              style={{
-                background: 'linear-gradient(145deg, rgba(17,18,24,0.62) 0%, rgba(12,12,14,0.86) 100%)',
-                borderColor: 'rgba(255,255,255,0.08)',
-              }}
-            >
-              <h2 className="font-display text-[20px] font-semibold text-white mb-3">Rules & Guidelines</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 text-[14px] text-white/75">
-                <p>• Submit your own performance. Originality and authenticity are required.</p>
-                <p>• Follow weekly artist/theme constraints shown in the challenge details.</p>
-                <p>• Keep video duration within the challenge cap for fair ranking eligibility.</p>
-                <p>• Respect platform conduct rules. Violations can lead to removal or suspension.</p>
-              </div>
-            </section>
-
             {currentChallenge && (
-              <section>
-                <div className="flex items-end justify-between gap-3 mb-4">
-                  <h2 className="font-display text-[20px] font-semibold text-white">Weekly Headliner</h2>
-                  <Link href="/upload" className="text-[13px] font-medium text-accent hover:text-accent-hover">
-                    Ready to compete →
-                  </Link>
-                </div>
+              <section aria-label="Featured challenge">
+                <h2 className="mb-3 text-[10px] font-semibold uppercase tracking-[0.2em] text-white/35">Now playing</h2>
                 <Link
                   href={`/challenges/${currentChallenge.slug}`}
-                  className="block rounded-[20px] border p-6 transition-all hover:border-accent/35"
+                  className={cn(
+                    tileBase,
+                    'p-5 md:p-6'
+                  )}
                   style={{
                     background:
-                      'radial-gradient(circle at 10% 10%, rgba(196,18,47,0.22), transparent 48%), linear-gradient(135deg, rgba(28,22,26,0.95) 0%, rgba(20,18,22,0.92) 100%)',
-                    borderColor: 'rgba(177,18,38,0.34)',
-                    boxShadow: '0 18px 38px rgba(0,0,0,0.36)',
+                      'radial-gradient(ellipse 80% 80% at 20% 0%, rgba(196,18,47,0.35), transparent 50%), linear-gradient(165deg, rgba(22,18,24,0.98) 0%, rgba(10,10,12,0.96) 100%)',
+                    boxShadow: '0 24px 56px rgba(0,0,0,0.42), inset 0 1px 0 rgba(255,255,255,0.06)',
                   }}
                 >
-                  <div className="flex flex-wrap items-center gap-2.5 mb-2">
-                    <span className={`inline-flex items-center rounded-full border px-3 py-1 text-[12px] font-semibold ${statusBadge(currentChallenge.status).tone}`}>
-                      {statusBadge(currentChallenge.status).label}
-                    </span>
-                    <span className="text-[12px] text-white/65">
-                      Ends in {formatCountdown(currentChallenge.votingCloseAt ?? currentChallenge.endAt)}
-                    </span>
-                  </div>
-                  <h3 className="font-display text-[24px] md:text-[28px] font-bold text-white mb-1">{currentChallenge.title}</h3>
-                  <p className="text-[14px] text-white/70 mb-2">
-                    {currentChallenge.artistTheme
-                      ? `Theme week: ${currentChallenge.artistTheme}`
-                      : 'Weekly live challenge event'}
-                  </p>
-                  <p className="text-[13px] text-white/55">
-                    {currentChallenge.entriesCount.toLocaleString()} entries · Max duration{' '}
-                    {(currentChallenge.maxDurationSec ?? 150).toLocaleString()}s
-                  </p>
-                  {currentChallenge.windows && currentChallenge.windows.length > 0 && (
-                    <div className="mt-3">
-                      <LiveWindowDisplay windows={currentChallenge.windows} showEventTimezone={false} variant="compact" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-90" />
+                  <div className="relative flex flex-col gap-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <StatusPill status={currentChallenge.status} />
+                      <span className="text-[12px] tabular-nums text-white/50">
+                        {formatCountdown(currentChallenge.votingCloseAt ?? currentChallenge.endAt)} left
+                      </span>
                     </div>
-                  )}
-                  <div className="mt-4 flex flex-wrap gap-2.5">
-                    <span className="inline-flex items-center justify-center min-h-[40px] px-4 rounded-[11px] text-[13px] font-semibold text-white border border-white/10 bg-white/[0.07]">
-                      Watch entries
-                    </span>
-                    <span className="inline-flex items-center justify-center min-h-[40px] px-4 rounded-[11px] text-[13px] font-semibold text-white border border-white/10 bg-gradient-to-r from-[#c4122f] to-[#e11d48]">
-                      Join this week
+                    <h3 className="font-display text-[1.35rem] font-bold leading-tight text-white md:text-[1.65rem]">
+                      {currentChallenge.title}
+                    </h3>
+                    <p className="text-[13px] text-white/55">
+                      {currentChallenge.entriesCount.toLocaleString()} entries
+                      {currentChallenge.artistTheme ? ` · ${currentChallenge.artistTheme}` : ''}
+                      {currentChallenge.maxDurationSec
+                        ? ` · ${currentChallenge.maxDurationSec}s cap`
+                        : ''}
+                    </p>
+                    {currentChallenge.windows && currentChallenge.windows.length > 0 ? (
+                      <div className="pt-1">
+                        <LiveWindowDisplay
+                          windows={currentChallenge.windows}
+                          showEventTimezone={false}
+                          variant="compact"
+                        />
+                      </div>
+                    ) : null}
+                    <span className="mt-2 inline-flex items-center gap-1 text-[13px] font-semibold text-accent">
+                      Open challenge
+                      <span aria-hidden className="transition-transform group-hover:translate-x-0.5">
+                        →
+                      </span>
                     </span>
                   </div>
                 </Link>
               </section>
             )}
 
-            <section>
-              <h2 className="font-display text-[18px] font-semibold text-white mb-4">
-                {currentChallenge ? 'Upcoming & Past Weeks' : 'All Weeks'}
+            <section aria-label="More challenges">
+              <h2 className="mb-4 text-[10px] font-semibold uppercase tracking-[0.2em] text-white/35">
+                {currentChallenge ? 'More weeks' : 'All challenges'}
               </h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
-                {(currentChallenge ? [...upcoming, ...past] : challenges).map((c) => (
-                  <Link
-                    key={c.id}
-                    href={`/challenges/${c.slug}`}
-                    className="block rounded-[16px] border p-4 transition-all hover:border-accent/20"
-                    style={{
-                      background:
-                        'radial-gradient(circle at 5% 0%, rgba(196,18,47,0.10), transparent 42%), rgba(26,26,28,0.72)',
-                      borderColor: 'rgba(255,255,255,0.08)',
-                    }}
-                  >
-                    <p className="text-[11px] text-white/55 mb-1 uppercase tracking-[0.08em]">
-                      {statusBadge(c.status).label}
-                    </p>
-                    <h3 className="font-display text-[16px] font-semibold text-white truncate">{c.title}</h3>
-                    {c.artistTheme && (
-                      <p className="text-[12px] text-white/60 mt-0.5 truncate">{c.artistTheme}</p>
-                    )}
-                    <p className="text-[11px] text-white/45 mt-2">
-                      {c.entriesCount.toLocaleString()} entries
-                      {c.status === 'ENTRY_OPEN' ? ` · ${formatCountdown(c.entryCloseAt ?? c.endAt)}` : c.status === 'VOTING_CLOSED' ? ' · Voting closed' : ` · ${c.status}`}
-                    </p>
-                  </Link>
-                ))}
-              </div>
+
+              {feedList.length === 0 ? (
+                <p className="rounded-[18px] border border-white/[0.06] bg-white/[0.03] px-4 py-8 text-center text-[14px] text-white/45">
+                  No other weeks yet.
+                </p>
+              ) : (
+                <div className="flex flex-col gap-3 md:grid md:grid-cols-2 md:gap-4 lg:grid-cols-3">
+                  {feedList.map((c) => (
+                    <Link
+                      key={c.id}
+                      href={`/challenges/${c.slug}`}
+                      className={cn(tileBase, 'p-4 md:p-5')}
+                      style={{
+                        background:
+                          'linear-gradient(155deg, rgba(28,24,30,0.92) 0%, rgba(12,12,14,0.94) 100%)',
+                        boxShadow: '0 16px 40px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.04)',
+                      }}
+                    >
+                      <div
+                        className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-200 group-hover:opacity-100"
+                        style={{
+                          background:
+                            'radial-gradient(ellipse 100% 80% at 50% -20%, rgba(196,18,47,0.15), transparent 55%)',
+                        }}
+                      />
+                      <div className="relative">
+                        <div className="mb-2 flex items-center justify-between gap-2">
+                          <StatusPill status={c.status} />
+                          <span className="text-[11px] tabular-nums text-white/40">
+                            {c.entriesCount.toLocaleString()} in
+                          </span>
+                        </div>
+                        <h3 className="font-display text-[16px] font-semibold leading-snug text-white md:text-[17px]">
+                          {c.title}
+                        </h3>
+                        {c.artistTheme ? (
+                          <p className="mt-1 truncate text-[12px] text-white/45">{c.artistTheme}</p>
+                        ) : null}
+                        <p className="mt-3 text-[11px] text-white/35">
+                          {c.status === 'ENTRY_OPEN'
+                            ? `Ends ${formatCountdown(c.entryCloseAt ?? c.endAt)}`
+                            : c.status === 'VOTING_CLOSED'
+                              ? 'Voting closed'
+                              : statusLabel(c.status)}
+                        </p>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              )}
             </section>
+
+            <p className="text-center text-[10px] text-white/25">
+              Own your performance · Authentic entries only · Respect community guidelines
+            </p>
           </>
         )}
       </div>
