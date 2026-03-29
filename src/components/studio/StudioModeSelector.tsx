@@ -47,26 +47,10 @@ export default function StudioModeSelector({
     >
       <div
         className={cn(
-          'flex snap-x snap-mandatory items-center justify-start gap-2 overflow-x-auto pb-1',
+          'flex snap-x snap-mandatory items-center justify-center gap-2 overflow-x-auto pb-1',
           '[-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
         )}
       >
-        <button
-          type="button"
-          disabled
-          className="snap-center shrink-0 touch-manipulation rounded-full border border-white/15 bg-white/[0.06] px-4 py-2 text-[15px] font-semibold text-white/40"
-          title="Coming soon"
-        >
-          Text
-        </button>
-        <button
-          type="button"
-          disabled
-          className="snap-center shrink-0 touch-manipulation rounded-full border border-white/15 bg-white/[0.06] px-4 py-2 text-[15px] font-semibold text-white/40"
-          title="Coming soon"
-        >
-          Photo
-        </button>
         {durationSlots.map((slot) => {
           const active = slot.sec === value;
           return (

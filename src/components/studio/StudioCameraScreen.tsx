@@ -7,7 +7,6 @@ import type {
   StudioRecorderPhase,
 } from '@/lib/studio/studio-recorder-types';
 import { cn } from '@/lib/utils';
-import { IconSparkles, IconUpload } from '@/components/ui/Icons';
 import CameraPreview from '@/components/studio/CameraPreview';
 import StudioTopBar from '@/components/studio/StudioTopBar';
 import StudioSideControls from '@/components/studio/StudioSideControls';
@@ -380,16 +379,7 @@ export default function StudioCameraScreen(props: StudioCameraScreenProps) {
                 className="relative z-[1]"
               />
             ) : null}
-            <div className="relative z-[1] mt-1 flex w-full max-w-md items-end justify-center gap-8 px-5">
-              <button
-                type="button"
-                disabled
-                className="mb-3 flex h-12 w-12 shrink-0 touch-manipulation items-center justify-center rounded-full border border-white/20 bg-black/45 text-white/50 shadow-[0_4px_16px_rgba(0,0,0,0.35)] backdrop-blur-md"
-                aria-label="Effects"
-                title="Coming soon"
-              >
-                <IconSparkles className="h-6 w-6 drop-shadow-[0_1px_2px_rgba(0,0,0,0.65)]" />
-              </button>
+            <div className="relative z-[1] mt-1 flex w-full max-w-md items-end justify-center px-5">
               <StudioRecordControls
                 recPhase={recPhase}
                 maxDurationSec={recordingCapSec}
@@ -398,15 +388,6 @@ export default function StudioCameraScreen(props: StudioCameraScreenProps) {
                 onStart={onStartRecording}
                 onStop={() => void onStop()}
               />
-              <button
-                type="button"
-                disabled
-                className="mb-3 flex h-12 w-12 shrink-0 touch-manipulation items-center justify-center rounded-xl border border-white/22 bg-black/50 text-white/40 shadow-[0_4px_16px_rgba(0,0,0,0.35)] backdrop-blur-md"
-                aria-label="Gallery"
-                title="Device upload coming soon"
-              >
-                <IconUpload className="h-6 w-6 drop-shadow-[0_1px_2px_rgba(0,0,0,0.65)]" />
-              </button>
             </div>
           </div>
 
