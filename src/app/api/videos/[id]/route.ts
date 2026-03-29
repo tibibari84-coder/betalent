@@ -7,13 +7,25 @@ import { prisma } from '@/lib/prisma';
 import { deleteVideoStorageObjects } from '@/services/storage-lifecycle.service';
 import { isDatabaseUnavailableError } from '@/lib/db-errors';
 import { stampApiResponse } from '@/lib/api-route-observe';
+import { isVocalPerformanceStyleSlug } from '@/constants/vocal-style-catalog';
 
 const VIDEO_GET_ROUTE = 'GET /api/videos/[id]';
 
-const patchVideoSchema = z.object({
-  visibility: z.enum(['PUBLIC', 'PRIVATE']).optional(),
-  commentPermission: z.enum(['EVERYONE', 'FOLLOWERS', 'FOLLOWING', 'OFF']).optional(),
-});
+const patchVideoSchema = z
+  .object({
+    visibility: z.enum(['PUBLIC', 'PRIVATE']).optional(),
+    commentPermission: z.enum(['EVERYONE', 'FOLLOWERS', 'FOLLOWING', 'OFF']).optional(),
+    /** Draft metadata while uploadStatus is UPLOADING (before POST /api/upload/complete). */
+    title: z.string().min(1).max(150).optional(),
+    description: z.string().max(500).optional().nullable(),
+    categorySlug: z.string().min(1).max(120).optional(),
+    contentType: z.enum(['ORIGINAL', 'COVER', 'REMIX']).optional(),
+    coverOriginalArtistName: z.string().max(200).optional().nullable(),
+    coverSongTitle: z.string().max(200).optional().nullable(),
+  })
+  .refine((d) => Object.values(d).some((v) => v !== undefined), {
+    message: 'No changes provided',
+  });
 
 const EMPTY_GIFT_SUMMARY = {
   totalCoinsReceived: 0,
@@ -114,7 +126,7 @@ export async function GET(
 }
 
 /**
- * PATCH — owner (or admin): update visibility. Session-only auth; never trust client-only checks.
+ * PATCH — owner (or admin): visibility / comment rules anytime; title/category/cover while upload still UPLOADING.
  */
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
   try {
@@ -125,13 +137,10 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     }
     const body = await req.json();
     const parsed = patchVideoSchema.parse(body);
-    if (!parsed.visibility && !parsed.commentPermission) {
-      return NextResponse.json({ ok: false, message: 'No changes provided' }, { status: 400 });
-    }
 
     const row = await prisma.video.findUnique({
       where: { id },
-      select: { id: true, creatorId: true },
+      select: { id: true, creatorId: true, uploadStatus: true, contentType: true },
     });
     if (!row) {
       return NextResponse.json({ ok: false, message: 'Video not found' }, { status: 404 });
@@ -141,12 +150,67 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       return NextResponse.json({ ok: false, message: 'Forbidden' }, { status: 403 });
     }
 
+    const hasDraftPatch =
+      parsed.title !== undefined ||
+      parsed.description !== undefined ||
+      parsed.categorySlug !== undefined ||
+      parsed.contentType !== undefined ||
+      parsed.coverOriginalArtistName !== undefined ||
+      parsed.coverSongTitle !== undefined;
+
+    if (hasDraftPatch && row.uploadStatus !== 'UPLOADING') {
+      return NextResponse.json(
+        { ok: false, message: 'Performance details can only be edited while the upload is still finishing.' },
+        { status: 400 }
+      );
+    }
+
+    const data: Parameters<typeof prisma.video.update>[0]['data'] = {
+      ...(parsed.visibility ? { visibility: parsed.visibility } : {}),
+      ...(parsed.commentPermission ? { commentPermission: parsed.commentPermission } : {}),
+    };
+
+    if (parsed.title !== undefined) {
+      data.title = parsed.title;
+    }
+    if (parsed.description !== undefined) {
+      data.description = parsed.description;
+    }
+
+    if (parsed.categorySlug !== undefined) {
+      const category = await prisma.category.findUnique({
+        where: { slug: parsed.categorySlug },
+        select: { id: true, slug: true },
+      });
+      if (!category) {
+        return NextResponse.json({ ok: false, message: 'Invalid style' }, { status: 400 });
+      }
+      data.categoryId = category.id;
+      data.performanceStyle = isVocalPerformanceStyleSlug(category.slug) ? category.slug : null;
+    }
+
+    if (parsed.contentType !== undefined) {
+      data.contentType = parsed.contentType;
+      data.contentLicensingEligible = parsed.contentType === 'ORIGINAL';
+      if (parsed.contentType !== 'COVER') {
+        data.coverOriginalArtistName = null;
+        data.coverSongTitle = null;
+      }
+    }
+
+    const effectiveContentType = parsed.contentType ?? row.contentType;
+    if (effectiveContentType === 'COVER') {
+      if (parsed.coverOriginalArtistName !== undefined) {
+        data.coverOriginalArtistName = parsed.coverOriginalArtistName?.trim() || null;
+      }
+      if (parsed.coverSongTitle !== undefined) {
+        data.coverSongTitle = parsed.coverSongTitle?.trim() || null;
+      }
+    }
+
     await prisma.video.update({
       where: { id },
-      data: {
-        ...(parsed.visibility ? { visibility: parsed.visibility } : {}),
-        ...(parsed.commentPermission ? { commentPermission: parsed.commentPermission } : {}),
-      },
+      data,
     });
     return NextResponse.json({
       ok: true,

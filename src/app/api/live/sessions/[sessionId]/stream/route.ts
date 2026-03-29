@@ -1,6 +1,9 @@
 /**
  * GET /api/live/sessions/[sessionId]/stream
- * Server-Sent Events stream for real-time session updates
+ * Server-Sent Events for live session hints (leaderboard refreshes, session transitions).
+ *
+ * Uses in-process EventEmitter — best-effort only; multiple app instances do not share events.
+ * Clients should rely on polling (`LIVE_POLL_INTERVAL_MS`) as the reliable source of truth; see LiveChallengeView.
  */
 
 import { subscribeLiveSession } from '@/lib/live-session-events';
@@ -15,8 +18,6 @@ export async function GET(
   { params }: { params: { sessionId: string } }
 ) {
   try {
-    // Auth requirement: `sessionId` alone must not allow subscriptions.
-    // We require a valid app session cookie (same pattern as other protected live endpoints).
     await requireAuth();
 
     const sessionId = params.sessionId?.trim();
@@ -44,13 +45,20 @@ export async function GET(
 
         const unsubscribe = subscribeLiveSession(sessionId, (event) => {
           try {
-            if (event.type === 'leaderboard' && 'payload' in event) {
-              send(event.payload);
-            } else if (event.type === 'vote' || event.type === 'gift') {
-              getLiveLeaderboard(sessionId).then((lb) => send({ leaderboard: lb }));
+            const { sessionId: _sid, ...rest } = event;
+            if (rest.type === 'leaderboard' && 'payload' in rest && rest.payload && typeof rest.payload === 'object') {
+              const lb = (rest.payload as { leaderboard?: unknown }).leaderboard;
+              if (lb) send({ type: 'leaderboard', leaderboard: lb });
+              return;
             }
-          }
-          catch {
+            if (rest.type === 'session_update' || rest.type === 'current_performer') {
+              send(rest);
+              return;
+            }
+            if (rest.type === 'vote' || rest.type === 'gift') {
+              getLiveLeaderboard(sessionId).then((lb) => send({ type: 'leaderboard', leaderboard: lb }));
+            }
+          } catch {
             // ignore
           }
         });
@@ -63,7 +71,6 @@ export async function GET(
           }
         }, 15000);
 
-        // Cleanup on close (Next.js may not always call this)
         const originalClose = controller.close?.bind(controller);
         controller.close = () => {
           clearInterval(keepalive);

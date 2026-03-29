@@ -93,17 +93,24 @@ export function LiveChallengeView({
       es = new EventSource(`/api/live/sessions/${sessionId}/stream`);
       es.onmessage = (e) => {
         try {
-          const d = JSON.parse(e.data);
-          if (d.leaderboard) setLeaderboard(d.leaderboard);
+          const d = JSON.parse(e.data) as {
+            type?: string;
+            leaderboard?: LeaderboardEntry[];
+            payload?: { status?: string; currentPerformerId?: string | null };
+          };
+          if (Array.isArray(d.leaderboard)) setLeaderboard(d.leaderboard);
+          if (d.type === 'session_update' || d.type === 'current_performer') {
+            void load();
+          }
         } catch {
           // ignore
         }
       };
     } catch {
-      // SSE not supported, polling only
+      // SSE optional — polling is authoritative
     }
     return () => es?.close();
-  }, [sessionId]);
+  }, [sessionId, load]);
 
   // Countdown tick + urgency
   useEffect(() => {

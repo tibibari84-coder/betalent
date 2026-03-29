@@ -6,6 +6,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getLiveLeaderboard } from '@/services/live-challenge.service';
+import { tryAutoAdvanceExpiredSlotOnPoll } from '@/services/live-challenge-orchestration.service';
 
 export async function GET(
   _req: Request,
@@ -15,6 +16,9 @@ export async function GET(
   if (!sessionId) {
     return NextResponse.json({ ok: false }, { status: 400 });
   }
+
+  /** Expired LIVE slots advance here (poll-driven); cron job is backup for idle rooms. */
+  await tryAutoAdvanceExpiredSlotOnPoll(sessionId);
 
   const session = await prisma.liveChallengeSession.findUnique({
     where: { id: sessionId },

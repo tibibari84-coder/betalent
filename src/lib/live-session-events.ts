@@ -1,6 +1,6 @@
 /**
- * In-memory event emitter for SSE / real-time broadcast.
- * Single-instance: for multi-instance use Redis pub/sub.
+ * In-memory event emitter for SSE hints to connected clients on the same Node process.
+ * Not shared across horizontal replicas — treat SSE as best-effort; UI must poll session state.
  */
 
 import { EventEmitter } from 'events';

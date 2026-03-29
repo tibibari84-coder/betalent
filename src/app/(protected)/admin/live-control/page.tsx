@@ -173,7 +173,8 @@ export default function AdminLiveControlPage() {
       <header className="mb-6 rounded-2xl border border-white/10 bg-[#141418] p-5">
         <h1 className="text-xl font-semibold text-white">Live Session Admin Control</h1>
         <p className="mt-1 text-sm text-white/60">
-          Operate weekly live challenge sessions without manual API calls.
+          Orchestrates the synchronized show (pre-recorded entries on the stage). This is not a WebRTC/RTMP control
+          room. Slots advance automatically when their duration elapses; Start / Next / End remain manual overrides.
         </p>
       </header>
 

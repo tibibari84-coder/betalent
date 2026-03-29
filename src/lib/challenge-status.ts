@@ -4,8 +4,8 @@
  * - **DB status** (`Challenge.status`): operational lifecycle (ENTRY_OPEN, LIVE_ACTIVE, …). Authoritative for
  *   join/vote rules in APIs — not the same as “a stream is live”.
  * - **Regional windows** (`ChallengeWindow` startsAt/endsAt): schedule-only; use `isRegionalWindowOpenNow`.
- * - **LiveChallengeSession.status**: operator-controlled stage UI; only when session is LIVE does the arena
- *   show the interactive `LiveChallengeView` — not implied by LIVE_ACTIVE alone.
+ * - **LiveChallengeSession.status**: synchronized stage / watch-party (pre-recorded clips), not RTMP/WebRTC ingest.
+ *   Slots auto-advance when `endTime` passes (poll + cron); admin actions remain overrides. `LiveChallengeView` only when session is LIVE — not implied by LIVE_ACTIVE alone.
  *
  * `getChallengeDisplayStatus` is **timestamp-derived** (countdown / phase copy), not DB status.
  */

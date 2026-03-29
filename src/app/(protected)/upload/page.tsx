@@ -1,14 +1,14 @@
 'use client';
 
 /**
- * Creator publish: Recording Studio → File from blob → performDirectUpload.
- * Pipeline: INIT (POST /api/upload/init) → PUT presigned URL → FINALIZE (POST /api/upload/complete).
- * Uses mounted state to defer searchParams read and avoid hydration mismatch.
+ * Creator publish: Recording Studio → background direct upload (init + PUT) while the user
+ * fills a 3-step stepper → PATCH draft metadata → POST /api/upload/complete → challenge enter.
  */
 
-import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import type { UploadPipelineStep } from '@/lib/upload-client';
+import { finalizeDirectUpload, startBackgroundUpload } from '@/lib/upload-client';
 import { getMimeTypeForUpload, MAX_VIDEO_FILE_SIZE } from '@/constants/upload';
 import type { RecordingMode } from '@/constants/recording-modes';
 import {
@@ -16,13 +16,13 @@ import {
   getRecordingMaxDurationSec,
   LIVE_RECORDING_MAX_DURATION_SEC,
 } from '@/constants/recording-modes';
-import { performDirectUpload } from '@/lib/upload-client';
 import { showBetalentToast } from '@/lib/betalent-toast';
 import { logUploadFlowEvent, writePostPublishHandoff } from '@/lib/upload-flow-log';
 import { useI18n } from '@/contexts/I18nContext';
 import UploadFormContent from './UploadFormContent';
 import type { UploadEntryMode } from './UploadFormContent';
 import type { UploadPagePhase } from './upload-phase';
+import type { VisibilityUpload } from './upload-types';
 
 type ChallengeContext = {
   slug: string;
@@ -67,10 +67,14 @@ export default function UploadPage() {
   const searchParams = useSearchParams();
   const { t } = useI18n();
   const [mounted, setMounted] = useState(false);
+  const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [styleSlug, setStyleSlug] = useState('');
   const [coverOriginalArtistName, setCoverOriginalArtistName] = useState('');
   const [coverSongTitle, setCoverSongTitle] = useState('');
+  const [visibility, setVisibility] = useState<VisibilityUpload>('PUBLIC');
+  const [rightsConfirmed, setRightsConfirmed] = useState(false);
+  const [wizardStep, setWizardStep] = useState(0);
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [durationSec, setDurationSec] = useState(0);
@@ -80,6 +84,10 @@ export default function UploadPage() {
   const [uploadStep, setUploadStep] = useState<UploadPipelineStep>('initializing');
   const [challengeContext, setChallengeContext] = useState<ChallengeContext | null>(null);
   const [uploadEntryMode, setUploadEntryMode] = useState<UploadEntryMode>('studio');
+  const [draftVideoId, setDraftVideoId] = useState<string | null>(null);
+  const [draftStorageKey, setDraftStorageKey] = useState<string | null>(null);
+  const [bgError, setBgError] = useState('');
+  const bgUploadAbortRef = useRef(false);
 
   useEffect(() => setMounted(true), []);
   const challengeSlug = mounted ? (searchParams?.get('challenge')?.trim() ?? '') : '';
@@ -147,15 +155,54 @@ export default function UploadPage() {
     return () => URL.revokeObjectURL(url);
   }, [file]);
 
+  const runBackgroundUpload = useCallback(
+    (uploadFile: File, sec: number) => {
+      setBgError('');
+      setDraftVideoId(null);
+      setDraftStorageKey(null);
+      setUploadProgress(0);
+      setUploadStep('initializing');
+      bgUploadAbortRef.current = false;
+      const duration = sec >= 1 ? sec : 1;
+      void (async () => {
+        const r = await startBackgroundUpload(uploadFile, {
+          durationSec: duration,
+          challengeSlug: challengeSlug || undefined,
+          onProgress: (p) => {
+            if (!bgUploadAbortRef.current) setUploadProgress(p);
+          },
+          onStatus: (s) => {
+            if (!bgUploadAbortRef.current) setUploadStep(s);
+          },
+        });
+        if (bgUploadAbortRef.current) return;
+        if (!r.ok) {
+          setBgError(toUiUploadError(r.message, r.step));
+          return;
+        }
+        if (!('storageKey' in r)) return;
+        setDraftVideoId(r.videoId);
+        setDraftStorageKey(r.storageKey);
+        setUploadProgress(100);
+      })();
+    },
+    [challengeSlug]
+  );
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError('');
+    if (wizardStep < 2) return;
     if (!file) {
       setError(t('upload.errorChooseFile'));
       return;
     }
     if (!styleSlug) {
       setError(t('upload.errorChooseStyle'));
+      return;
+    }
+    if (!rightsConfirmed) {
+      setError(t('upload.hintAcknowledgeRules'));
       return;
     }
     if (challengeSlug && challengeContext && challengeContext.status !== 'ENTRY_OPEN') {
@@ -182,6 +229,14 @@ export default function UploadPage() {
       );
       return;
     }
+    if (!draftVideoId || !draftStorageKey) {
+      setError(t('upload.waitForUpload'));
+      return;
+    }
+    if (bgError) {
+      setError(bgError);
+      return;
+    }
 
     const captionFirst =
       description
@@ -190,39 +245,53 @@ export default function UploadPage() {
         .find(Boolean)
         ?.slice(0, 150)
         .trim() ?? '';
-    const effectiveTitle = captionFirst || 'New performance';
+    const effectiveTitle = (title.trim() || captionFirst || 'New performance').slice(0, 150);
     const coverArtist = coverOriginalArtistName.trim();
     const coverSong = coverSongTitle.trim();
-    const contentType = 'COVER' as const;
+    const isCover = coverArtist.length > 0 || coverSong.length > 0;
+    const contentType = isCover ? ('COVER' as const) : ('ORIGINAL' as const);
+    if (isCover && !coverArtist) {
+      setError('Add the original artist for a cover, or clear cover fields for an original performance.');
+      return;
+    }
 
     logUploadFlowEvent('publish_clicked', { challengeSlug: challengeSlug || undefined });
-    setPhase('initializing');
-    setUploadStep('initializing');
-    setUploadProgress(0);
+    setPhase('finalizing');
+    setUploadStep('finalizing');
+    setUploadProgress(100);
 
     try {
+      const patchBody: Record<string, unknown> = {
+        title: effectiveTitle,
+        description: description.trim() ? description.trim() : null,
+        categorySlug: styleSlug,
+        contentType,
+        visibility,
+        commentPermission: 'EVERYONE',
+        ...(contentType === 'COVER'
+          ? {
+              coverOriginalArtistName: coverArtist || null,
+              coverSongTitle: coverSong || null,
+            }
+          : {}),
+      };
+
+      const patchRes = await fetch(`/api/videos/${encodeURIComponent(draftVideoId)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(patchBody),
+      });
+      const patchData = await patchRes.json().catch(() => ({}));
+      if (!patchRes.ok || !patchData?.ok) {
+        throw new Error(typeof patchData?.message === 'string' ? patchData.message : 'Could not save performance details.');
+      }
+
       logUploadFlowEvent('upload_started', { size: file.size });
-      const result = await performDirectUpload(
-        file,
-        {
-          title: effectiveTitle,
-          description: description.trim() || undefined,
-          categorySlug: styleSlug,
-          durationSec: sec,
-          contentType,
-          commentPermission: 'EVERYONE',
-          ...(hasChallengeSlug ? { challengeSlug } : {}),
-          coverOriginalArtistName: coverArtist || undefined,
-          coverSongTitle: coverSong || undefined,
+      const result = await finalizeDirectUpload(draftVideoId, draftStorageKey, {
+        onStatus: (step) => {
+          setUploadStep(step);
         },
-        {
-          onProgress: setUploadProgress,
-          onStatus: (step) => {
-            setUploadStep(step);
-            setPhase(step);
-          },
-        }
-      );
+      });
 
       if (!result.ok) {
         if (result.message === 'Login required') {
@@ -300,7 +369,7 @@ export default function UploadPage() {
       console.error('[upload] publish failed', err);
       logUploadFlowEvent('upload_failed', { reason: 'exception' });
       setPhase('error');
-      setError('Upload failed. Please try again.');
+      setError(err instanceof Error ? err.message : 'Upload failed. Please try again.');
       showBetalentToast({
         message: 'Upload failed — tap to retry',
         durationMs: 0,
@@ -314,70 +383,138 @@ export default function UploadPage() {
     }
   };
 
-  const onBackToStudio = useCallback(() => {
+  const onBackToStudio = useCallback(async () => {
+    bgUploadAbortRef.current = true;
+    const vid = draftVideoId;
     setUploadEntryMode('studio');
     setFile(null);
     setDurationSec(0);
     setError('');
-  }, []);
+    setBgError('');
+    setDraftVideoId(null);
+    setDraftStorageKey(null);
+    setTitle('');
+    setDescription('');
+    setStyleSlug('');
+    setCoverOriginalArtistName('');
+    setCoverSongTitle('');
+    setVisibility('PUBLIC');
+    setWizardStep(0);
+    setRightsConfirmed(false);
+    if (vid) {
+      try {
+        await fetch(`/api/videos/${encodeURIComponent(vid)}`, { method: 'DELETE' });
+      } catch {
+        /* ignore */
+      }
+    }
+  }, [draftVideoId]);
 
   const onExitCreation = useCallback(() => {
     router.back();
   }, [router]);
 
-  const onStudioAcceptTake = useCallback((accepted: File, sec: number, meta?: { caption?: string }) => {
-    setFile(accepted);
-    setDurationSec(sec);
-    if (meta?.caption) setDescription(meta.caption);
-    setUploadEntryMode('publish');
-    setError('');
-  }, []);
+  const onStudioAcceptTake = useCallback(
+    (accepted: File, sec: number, meta?: { caption?: string }) => {
+      setFile(accepted);
+      setDurationSec(sec);
+      if (meta?.caption) setDescription(meta.caption);
+      setUploadEntryMode('publish');
+      setError('');
+      setTitle('');
+      setCoverOriginalArtistName('');
+      setCoverSongTitle('');
+      setStyleSlug('');
+      setWizardStep(0);
+      setRightsConfirmed(false);
+      runBackgroundUpload(accepted, sec);
+    },
+    [runBackgroundUpload]
+  );
+
+  const retryBackgroundUpload = useCallback(() => {
+    if (!file) return;
+    runBackgroundUpload(file, durationSec);
+  }, [file, durationSec, runBackgroundUpload]);
 
   const handleTryAgain = useCallback(() => {
     setError('');
     setPhase('idle');
   }, []);
 
-  const pipelineBusy =
-    phase === 'initializing' || phase === 'uploading' || phase === 'finalizing';
+  const publishFinalizing = phase === 'finalizing';
 
-  const canSubmit =
+  const canPublish = Boolean(
     uploadEntryMode === 'publish' &&
-    !pipelineBusy &&
-    file &&
-    Boolean(styleSlug) &&
-    durationSec >= 1 &&
-    durationSec <= maxStudioDurationSec &&
-    (!challengeSlug || !challengeContext || challengeContext.status === 'ENTRY_OPEN');
+      !publishFinalizing &&
+      wizardStep === 2 &&
+      file &&
+      styleSlug &&
+      draftVideoId &&
+      draftStorageKey &&
+      !bgError &&
+      rightsConfirmed &&
+      durationSec >= 1 &&
+      durationSec <= maxStudioDurationSec &&
+      (!challengeSlug || !challengeContext || challengeContext.status === 'ENTRY_OPEN')
+  );
+
+  const canContinueStep = useMemo(() => {
+    if (wizardStep === 0) return true;
+    if (wizardStep === 1) return Boolean(styleSlug);
+    return false;
+  }, [wizardStep, styleSlug]);
 
   const publishGateHints = useMemo(() => {
-    if (uploadEntryMode !== 'publish' || !file || pipelineBusy || canSubmit) return [];
+    if (wizardStep !== 2 || uploadEntryMode !== 'publish' || !file || publishFinalizing || canPublish) return [];
     const hints: string[] = [];
     if (!styleSlug) hints.push(t('upload.errorChooseStyle'));
     if (durationSec < 1 || durationSec > maxStudioDurationSec) hints.push(t('upload.hintDurationOutOfRange'));
     if (challengeSlug && challengeContext && challengeContext.status !== 'ENTRY_OPEN') {
       hints.push(t('upload.hintChallengeNotOpen'));
     }
+    if (!draftVideoId || bgError) hints.push(t('upload.waitForUpload'));
+    if (!rightsConfirmed) hints.push(t('upload.hintAcknowledgeRules'));
     return hints;
   }, [
     uploadEntryMode,
     file,
-    pipelineBusy,
-    canSubmit,
+    publishFinalizing,
+    canPublish,
     styleSlug,
     durationSec,
     maxStudioDurationSec,
     challengeSlug,
     challengeContext,
+    draftVideoId,
+    bgError,
+    rightsConfirmed,
+    wizardStep,
     t,
   ]);
 
   let progressLabel = '';
-  if (pipelineBusy) {
+  if (publishFinalizing) {
+    progressLabel = t('upload.processing');
+  } else if (file && uploadEntryMode === 'publish' && !draftVideoId && !bgError) {
     if (uploadStep === 'initializing') progressLabel = t('upload.preparing');
-    else if (uploadStep === 'uploading') progressLabel = t('upload.uploading') + ' ' + uploadProgress + '%';
-    else progressLabel = t('upload.processing');
+    else if (uploadStep === 'uploading') progressLabel = `${t('upload.uploading')} ${uploadProgress}%`;
+    else progressLabel = t('upload.uploading');
+  } else if (draftVideoId && !bgError && !publishFinalizing) {
+    progressLabel = t('upload.bgReady');
   }
+
+  const showBottomProgress = uploadEntryMode === 'publish' && Boolean(file);
+
+  const progressBarPercent = publishFinalizing
+    ? 100
+    : uploadStep === 'uploading'
+      ? uploadProgress
+      : uploadStep === 'finalizing'
+        ? 100
+        : draftVideoId && !bgError
+          ? 100
+          : 12;
 
   const formProps = {
     onSubmit: handleSubmit,
@@ -385,18 +522,24 @@ export default function UploadPage() {
       'block w-full min-h-0 min-w-0 overflow-x-hidden pb-[calc(7.75rem+env(safe-area-inset-bottom,0px))] scroll-pb-[calc(7.75rem+env(safe-area-inset-bottom,0px))] md:pb-32 md:scroll-pb-28 min-h-[calc(100dvh_-_var(--topbar-height)_-_var(--shell-content-gap-mobile))] md:min-h-[calc(100dvh_-_var(--topbar-height)_-_var(--shell-content-gap-desktop))]',
     style: { backgroundColor: '#0D0D0E' },
   };
+
   return React.createElement(
     'form',
     formProps,
     React.createElement(UploadFormContent, {
       t,
-      loading: pipelineBusy,
-      canSubmit: Boolean(canSubmit),
+      loading: publishFinalizing,
+      canPublish,
+      canContinueStep,
       publishGateHints,
       progressLabel,
+      showBottomProgress,
+      progressBarPercent,
       error,
       phase,
       handleTryAgain,
+      title,
+      setTitle,
       description,
       setDescription,
       styleSlug,
@@ -406,18 +549,25 @@ export default function UploadPage() {
       setCoverOriginalArtistName,
       coverSongTitle,
       setCoverSongTitle,
+      visibility,
+      setVisibility,
+      rightsConfirmed,
+      setRightsConfirmed,
+      wizardStep,
+      setWizardStep,
       file,
       previewUrlStable,
       durationSec,
-      uploadStep,
-      uploadProgress,
       uploadEntryMode,
       maxStudioDurationSec,
       studioRecordingMode,
       challengeSlug,
+      draftVideoId,
+      bgError,
       onBackToStudio,
       onExitCreation,
       onStudioAcceptTake,
+      onRetryBackgroundUpload: retryBackgroundUpload,
     })
   );
 }

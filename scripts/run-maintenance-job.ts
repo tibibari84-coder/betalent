@@ -13,7 +13,7 @@ async function main() {
   const job = process.argv[2]?.trim();
   if (!job || !isMaintenanceJobName(job)) {
     console.error(
-      'Usage: npx tsx scripts/run-maintenance-job.ts <talent_ranking|challenge_lifecycle|share_velocity>'
+      'Usage: npx tsx scripts/run-maintenance-job.ts <talent_ranking|challenge_lifecycle|share_velocity|live_session_auto_advance>'
     );
     process.exit(1);
   }

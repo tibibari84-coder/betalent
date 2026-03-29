@@ -33,8 +33,13 @@ export type DirectUploadResult =
   | { ok: true; videoId: string; ready: boolean }
   | { ok: false; message: string; step?: string; code?: string };
 
-/** YouTube-style pipeline phases after Publish (init → PUT → complete). */
+/** Pipeline phases: init → PUT (can run while user fills the stepper) → complete (finalize). */
 export type UploadPipelineStep = 'initializing' | 'uploading' | 'finalizing';
+
+/** Default placeholder style for POST /api/upload/init before the user picks Pop/R&B/etc. Must exist in DB. */
+export const DEFAULT_UPLOAD_DRAFT_STYLE_SLUG = 'pop';
+
+export const UPLOAD_DRAFT_TITLE = 'Untitled performance';
 
 export type DirectUploadOptions = {
   onProgress?: (percent: number) => void;
@@ -185,6 +190,137 @@ async function postUploadComplete(videoId: string, storageKey: string): Promise<
 }
 
 /**
+ * Start upload in the background: init + PUT only (no complete). Use while the user fills metadata steps.
+ * Init uses placeholder title/style; PATCH /api/videos/[id] before finalizeDirectUpload.
+ */
+export async function startBackgroundUpload(
+  file: File,
+  options: {
+    durationSec: number;
+    challengeSlug?: string;
+    onProgress?: (percent: number) => void;
+    onStatus?: (step: UploadPipelineStep) => void;
+  }
+): Promise<{ ok: true; videoId: string; storageKey: string } | DirectUploadResult> {
+  if (!file || file.size < 1) {
+    return { ok: false, message: 'Recording file is empty. Please record again.', step: 'init' };
+  }
+  const mimeType = getMimeTypeForUpload(file);
+  if (!mimeType) {
+    return { ok: false, message: 'Unsupported file type. Use MP4, MOV, M4V, WebM, or a supported audio file.', step: 'init' };
+  }
+
+  options.onStatus?.('initializing');
+  const durationSecInt = Math.max(1, Math.round(Number(options.durationSec) || 1));
+
+  const initRes = await fetch('/api/upload/init', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      caption: UPLOAD_DRAFT_TITLE,
+      title: UPLOAD_DRAFT_TITLE,
+      description: undefined,
+      vocalStyle: DEFAULT_UPLOAD_DRAFT_STYLE_SLUG,
+      categorySlug: DEFAULT_UPLOAD_DRAFT_STYLE_SLUG,
+      contentType: 'ORIGINAL',
+      commentPermission: 'EVERYONE',
+      filename: file.name,
+      fileSize: file.size,
+      mimeType: mimeType as AllowedVideoMimeType,
+      durationSec: durationSecInt,
+      ...(options.challengeSlug?.trim() ? { challengeSlug: options.challengeSlug.trim() } : {}),
+    }),
+  });
+  const initParsed = await interpretApiResponse<InitSuccessBody>(initRes);
+
+  if (!initParsed.ok) {
+    if (initParsed.status === 401) return { ok: false, message: 'Login required', step: 'init' };
+    if (initParsed.status === 403) {
+      return {
+        ok: false,
+        message: initParsed.message || 'Verify your email before uploading performances.',
+        step: 'init',
+      };
+    }
+    if (initParsed.status === 503) {
+      return {
+        ok: false,
+        message: 'Upload service is temporarily unavailable. Please try again.',
+        step: 'storage',
+      };
+    }
+    return {
+      ok: false,
+      message: normalizeUploadMessage(initParsed.message, 'save'),
+      step: 'init',
+      code: initParsed.code,
+    };
+  }
+
+  const initData = initParsed.data;
+  const uploadUrl = initData.uploadUrl;
+  const videoId = initData.videoId;
+  const storageKeyFromInit = initData.storageKey?.trim();
+  const putContentType = (initData.contentType || mimeType).trim();
+
+  if (!uploadUrl || !videoId || !storageKeyFromInit) {
+    return { ok: false, message: 'Upload could not start. Please try again.', step: 'init' };
+  }
+
+  options.onStatus?.('uploading');
+  options.onProgress?.(0);
+  try {
+    await putFileToPresignedUrlWithRetry(uploadUrl, file, putContentType, options.onProgress);
+  } catch (e) {
+    const msg = messageForPresignedPutFailure(e);
+    return { ok: false, message: msg, step: 'put' };
+  }
+
+  return { ok: true, videoId, storageKey: storageKeyFromInit };
+}
+
+/**
+ * Finalize after file is in storage: POST /api/upload/complete (processing pipeline).
+ */
+export async function finalizeDirectUpload(
+  videoId: string,
+  storageKey: string,
+  options?: Pick<DirectUploadOptions, 'onStatus'>
+): Promise<DirectUploadResult> {
+  options?.onStatus?.('finalizing');
+  let completeParsed = await interpretApiResponse<{ ready?: boolean; step?: string }>(
+    await postUploadComplete(videoId, storageKey)
+  );
+
+  if (!completeParsed.ok) {
+    if (completeParsed.status >= 500) {
+      await sleep(700);
+      completeParsed = await interpretApiResponse<{ ready?: boolean; step?: string }>(
+        await postUploadComplete(videoId, storageKey)
+      );
+    }
+    if (!completeParsed.ok && completeParsed.status >= 500) {
+      await sleep(1200);
+      completeParsed = await interpretApiResponse<{ ready?: boolean; step?: string }>(
+        await postUploadComplete(videoId, storageKey)
+      );
+    }
+  }
+
+  if (!completeParsed.ok) {
+    return {
+      ok: false,
+      message: normalizeUploadMessage(completeParsed.message, completeParsed.step),
+      step: completeParsed.step ?? 'complete',
+      code: completeParsed.code,
+    };
+  }
+
+  const completeData = completeParsed.data;
+  return { ok: true, videoId, ready: completeData.ready === true };
+}
+
+/**
  * Run the full direct upload: POST /api/upload/init, PUT file to presigned URL, POST complete.
  * Accepts `File` from `createFileForUpload(blob, …)` after Recording Studio, or any valid video `File`.
  */
@@ -297,52 +433,7 @@ export async function performDirectUpload(
     return { ok: false, message: msg, step: 'put' };
   }
 
-  options?.onStatus?.('finalizing');
-  let completeParsed = await interpretApiResponse<{ ready?: boolean; step?: string }>(
-    await postUploadComplete(videoId, storageKeyFromInit)
-  );
-
-  if (!completeParsed.ok) {
-    if (completeParsed.status >= 500) {
-      if (typeof console !== 'undefined') {
-        console.warn('[performDirectUpload] complete returned 5xx, retrying twice', {
-          status: completeParsed.status,
-          videoId,
-        });
-      }
-      await sleep(700);
-      completeParsed = await interpretApiResponse<{ ready?: boolean; step?: string }>(
-        await postUploadComplete(videoId, storageKeyFromInit)
-      );
-    }
-    if (!completeParsed.ok && completeParsed.status >= 500) {
-      await sleep(1200);
-      completeParsed = await interpretApiResponse<{ ready?: boolean; step?: string }>(
-        await postUploadComplete(videoId, storageKeyFromInit)
-      );
-    }
-  }
-
-  if (!completeParsed.ok) {
-    if (typeof console !== 'undefined' && console.warn) {
-      console.warn('[performDirectUpload] complete failed', {
-        status: completeParsed.status,
-        code: completeParsed.code,
-        step: completeParsed.step,
-        message: completeParsed.message,
-        videoId,
-      });
-    }
-    return {
-      ok: false,
-      message: normalizeUploadMessage(completeParsed.message, completeParsed.step),
-      step: completeParsed.step ?? 'complete',
-      code: completeParsed.code,
-    };
-  }
-
-  const completeData = completeParsed.data;
-  return { ok: true, videoId, ready: completeData.ready === true };
+  return finalizeDirectUpload(videoId, storageKeyFromInit, { onStatus: options?.onStatus });
 }
 
 /**

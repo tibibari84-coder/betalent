@@ -32,6 +32,7 @@ async function getLatestSession(challengeId: string) {
   });
 }
 
+/** Creates a session without `windowId` — optional regional ChallengeWindow linking is a separate admin/data concern. */
 async function createSessionFromChallenge(challenge: {
   id: string;
   entries: Array<{ creatorId: string; videoId: string | null }>;
