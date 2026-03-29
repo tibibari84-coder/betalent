@@ -2,12 +2,7 @@
 
 import { useEffect } from 'react';
 import { VOCAL_STYLES_UPLOAD } from '@/constants/categories';
-import {
-  CONTENT_TYPE_LABELS,
-  CONTENT_TYPE_DESCRIPTIONS,
-  PLATFORM_RULES_ACKNOWLEDGMENT,
-  type ContentTypeKey,
-} from '@/constants/platform-rules';
+import { CONTENT_TYPE_LABELS, CONTENT_TYPE_DESCRIPTIONS, PLATFORM_RULES_ACKNOWLEDGMENT } from '@/constants/platform-rules';
 
 const inputClass =
   'w-full h-12 px-4 rounded-[12px] bg-canvas-tertiary border border-[rgba(255,255,255,0.08)] text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent/40 text-[15px] min-h-[48px]';
@@ -30,8 +25,8 @@ export type UploadMetadataFieldsProps = {
   challengeId: string;
   setChallengeId: (v: string) => void;
   challengeContext: ChallengeContextLite;
-  contentType: ContentTypeKey;
-  setContentType: (v: ContentTypeKey) => void;
+  contentType: 'ORIGINAL' | 'COVER' | 'REMIX';
+  setContentType: (v: 'ORIGINAL' | 'COVER' | 'REMIX') => void;
   rulesAcknowledged: boolean;
   setRulesAcknowledged: (v: boolean) => void;
   titleLabel: string;
@@ -104,11 +99,11 @@ export default function UploadMetadataFields(props: UploadMetadataFieldsProps) {
           <select
             id="contentType"
             value={contentType}
-            onChange={(e) => setContentType(e.target.value as ContentTypeKey)}
+            onChange={(e) => setContentType(e.target.value as 'ORIGINAL' | 'COVER' | 'REMIX')}
             className={inputClass}
             disabled={disabled}
           >
-            {(['ORIGINAL', 'COVER', 'REMIX', 'FREESTYLE', 'DUET', 'OTHER'] as const).map((k) => (
+            {(['ORIGINAL', 'COVER', 'REMIX'] as const).map((k) => (
               <option key={k} value={k}>
                 {CONTENT_TYPE_LABELS[k]}
               </option>
