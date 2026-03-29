@@ -96,11 +96,34 @@ export default function ProfileHeader({
           <h1 className="text-center font-display text-[1.75rem] font-bold leading-[1.15] tracking-tight text-white">
             {displayName}
           </h1>
-          {flag ? <span className="text-[22px] leading-none" aria-hidden>{flag}</span> : null}
           <VerifiedBadge verified={!!isVerified} verificationLevel={verificationLevel ?? undefined} size="md" />
         </div>
 
-        <p className="mt-1.5 font-sans text-[15px] font-medium text-white/50">{handle}</p>
+        {/* Brand wordmark + flag — minden profilon; luxus tipográfia */}
+        <div
+          className="mt-4 flex flex-wrap items-center justify-center gap-x-3 gap-y-1"
+          aria-label="BETALENT"
+        >
+          {flag ? (
+            <span className="select-none text-[clamp(1.75rem,6vw,2.25rem)] leading-none" aria-hidden>
+              {flag}
+            </span>
+          ) : null}
+          <span
+            className={cn(
+              'select-none text-center font-display font-semibold uppercase',
+              'text-[clamp(1.625rem,5.5vw,2.125rem)] leading-none tracking-[0.24em] text-white/95'
+            )}
+            style={{
+              textShadow:
+                '0 1px 0 rgba(255,255,255,0.14), 0 4px 28px rgba(0,0,0,0.55), 0 0 56px rgba(176,16,40,0.22)',
+            }}
+          >
+            BETALENT
+          </span>
+        </div>
+
+        <p className="mt-3 font-sans text-[15px] font-medium text-white/50">{handle}</p>
 
         {subtitle ? (
           <p className="mt-1 max-w-[280px] text-center font-sans text-[13px] text-white/38">{subtitle}</p>
