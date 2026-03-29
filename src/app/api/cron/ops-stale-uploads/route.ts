@@ -29,12 +29,14 @@ export async function GET(req: Request) {
     const [uploadingStale, processingStale] = await Promise.all([
       prisma.video.count({
         where: {
+          deletedAt: null,
           uploadStatus: 'UPLOADING',
           updatedAt: { lt: uploadCutoff },
         },
       }),
       prisma.video.count({
         where: {
+          deletedAt: null,
           status: 'PROCESSING',
           processingStatus: { in: ['PENDING_PROCESSING', 'ANALYZING_AUDIO'] },
           updatedAt: { lt: processCutoff },

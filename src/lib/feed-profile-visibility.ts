@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import { creatorDiscoverableToViewer } from '@/lib/discovery-visibility';
+import { GLOBAL_VIDEO_FILTER } from '@/lib/video-global-filter';
 
 /**
  * Drop videos whose creators block the viewer (same rules as {@link videoDiscoveryVisibilityWhere}).
@@ -11,7 +12,7 @@ export async function filterVideoIdsForFeedViewer(
 ): Promise<string[]> {
   if (videoIds.length === 0) return [];
   const rows = await prisma.video.findMany({
-    where: { id: { in: videoIds } },
+    where: { id: { in: videoIds }, ...GLOBAL_VIDEO_FILTER },
     select: {
       id: true,
       creatorId: true,

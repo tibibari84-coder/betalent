@@ -97,8 +97,8 @@ export async function recordView(
         viewerIpHash: options.viewerIpHash ?? null,
       },
     });
-    await tx.video.update({
-      where: { id: videoId },
+    await tx.video.updateMany({
+      where: { id: videoId, deletedAt: null },
       data: { viewsCount: { increment: 1 } },
     });
   });

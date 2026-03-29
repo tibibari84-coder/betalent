@@ -1,12 +1,14 @@
-import type { Prisma } from '@prisma/client';
-
 /**
- * Rows quarantined when storage was removed but `prisma.video.delete` threw (see DELETE /api/videos/[id]).
- * They must not appear in creator-facing lists.
+ * Back-compat re-exports. New code should import from `@/lib/video-global-filter`.
  */
-export const excludeStorageDeleteQuarantine: Prisma.VideoWhereInput = {
-  OR: [
-    { mediaIntegrity: { is: null } },
-    { mediaIntegrity: { flagReason: { not: 'STORAGE_DB_DELETE_COMPENSATION' } } },
-  ],
-};
+export {
+  EXCLUDE_DELETED,
+  EXCLUDE_QUARANTINE,
+  GLOBAL_VIDEO_FILTER,
+  QUARANTINE_FLAG_REASONS,
+} from './video-global-filter';
+
+import { GLOBAL_VIDEO_FILTER } from './video-global-filter';
+
+/** @deprecated Same as {@link GLOBAL_VIDEO_FILTER} (soft-delete + integrity quarantine). */
+export const excludeStorageDeleteQuarantine = GLOBAL_VIDEO_FILTER;

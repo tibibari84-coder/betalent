@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { IconDotsVertical } from '@/components/ui/Icons';
 import { useViewer } from '@/contexts/ViewerContext';
 import { logVideoAction } from '@/lib/video-actions-log';
+import { showBetalentToast } from '@/lib/betalent-toast';
 import DeleteVideoConfirmModal from '@/components/video/DeleteVideoConfirmModal';
 import ReportVideoModal from '@/components/video/ReportVideoModal';
 import VideoActionsSheet from '@/components/video/VideoActionsSheet';
@@ -282,7 +283,11 @@ export default function VideoActionsMenu({
           status: res.status,
           message: typeof data?.message === 'string' ? data.message : undefined,
         });
-        toastMessage(typeof data?.message === 'string' ? data.message : 'Could not delete');
+        showBetalentToast({
+          message: typeof data?.message === 'string' ? data.message : 'Could not delete video',
+          variant: 'error',
+          durationMs: 4000,
+        });
         void router.refresh();
         return;
       }
@@ -292,7 +297,7 @@ export default function VideoActionsMenu({
       router.refresh();
     } catch {
       logVideoAction('video_delete_failed', { videoId, error: 'network' });
-      toastMessage('Network error');
+      showBetalentToast({ message: 'Network error — try again', variant: 'error', durationMs: 4000 });
       void router.refresh();
     } finally {
       setDeleting(false);
@@ -435,7 +440,9 @@ export default function VideoActionsMenu({
           <button
             type="button"
             className={sheetBtnDanger}
+            disabled={deleting}
             onClick={() => {
+              if (deleting) return;
               closeMenu();
               setDeleteOpen(true);
             }}
@@ -553,8 +560,10 @@ export default function VideoActionsMenu({
                   <button
                     type="button"
                     role="menuitem"
-                    className="w-full px-4 py-3 text-left text-[14px] text-red-400 transition-colors hover:bg-red-500/10"
+                    disabled={deleting}
+                    className="w-full px-4 py-3 text-left text-[14px] text-red-400 transition-colors hover:bg-red-500/10 disabled:opacity-45"
                     onClick={() => {
+                      if (deleting) return;
                       closeMenu();
                       setDeleteOpen(true);
                     }}

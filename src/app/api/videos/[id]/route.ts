@@ -4,8 +4,8 @@ import { getCurrentUser, requireAuth } from '@/lib/auth';
 import { getVideoById } from '@/services/video.service';
 import { getVideoGiftSummary } from '@/services/video-gift-summary.service';
 import { prisma } from '@/lib/prisma';
-import { deleteVideoStorageObjects } from '@/services/storage-lifecycle.service';
 import { isDatabaseUnavailableError } from '@/lib/db-errors';
+import { logger } from '@/lib/logger';
 import { stampApiResponse } from '@/lib/api-route-observe';
 import { isVocalPerformanceStyleSlug } from '@/constants/vocal-style-catalog';
 
@@ -140,9 +140,12 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 
     const row = await prisma.video.findUnique({
       where: { id },
-      select: { id: true, creatorId: true, uploadStatus: true, contentType: true },
+      select: { id: true, creatorId: true, uploadStatus: true, contentType: true, deletedAt: true },
     });
     if (!row) {
+      return NextResponse.json({ ok: false, message: 'Video not found' }, { status: 404 });
+    }
+    if (row.deletedAt) {
       return NextResponse.json({ ok: false, message: 'Video not found' }, { status: 404 });
     }
     const isAdmin = user.role === 'ADMIN';
@@ -229,131 +232,61 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 }
 
 /**
- * DELETE — server-side only. Identity comes from the session cookie (getCurrentUser), never from
- * request body or client headers for authorization. Storage/network cleanup runs only after
- * authentication + ownership/admin checks succeed (two-phase read: authorize, then load payload).
+ * DELETE — soft delete only (deletedAt). R2 + hard DB row removal runs in {@link runVideoCleanupWorker}.
+ * Strict owner check: creatorId must match session user (no admin bypass).
  */
 export async function DELETE(
   _req: Request,
   { params }: { params: { id: string } }
 ) {
   try {
-    // Phase A — authenticated session (iron-session / cookie; not UI-dependent)
-    const sessionUser = await getCurrentUser();
-    if (!sessionUser) {
-      return NextResponse.json({ ok: false, message: 'Login required' }, { status: 401 });
-    }
-
+    const user = await requireAuth();
     const { id } = params;
     if (!id?.trim()) {
       return NextResponse.json({ ok: false, message: 'Invalid video id' }, { status: 400 });
     }
 
-    // Phase B — authorize using minimal row (no storage URLs/keys loaded yet)
-    const authRow = await prisma.video.findUnique({
-      where: { id },
-      select: { id: true, creatorId: true },
-    });
-    if (!authRow) {
-      return NextResponse.json({ ok: false, message: 'Video not found' }, { status: 404 });
-    }
-
-    const isAdmin = sessionUser.role === 'ADMIN';
-    const isOwner = authRow.creatorId === sessionUser.id;
-    if (!isAdmin && !isOwner) {
-      return NextResponse.json(
-        { ok: false, message: 'You do not have permission to delete this video' },
-        { status: 403 }
-      );
-    }
-
-    // Phase C — only after authorization: load deletion payload and touch storage / DB
     const video = await prisma.video.findUnique({
-      where: { id: authRow.id },
-      select: {
-        id: true,
-        creatorId: true,
-        storageKey: true,
-        videoUrl: true,
-        thumbnailUrl: true,
-        mimeType: true,
-      },
+      where: { id },
+      select: { id: true, creatorId: true, deletedAt: true },
     });
     if (!video) {
       return NextResponse.json({ ok: false, message: 'Video not found' }, { status: 404 });
     }
-
-    const storageDelete = await deleteVideoStorageObjects(video);
-    if (storageDelete.failed.length > 0) {
-      // Still remove the DB row so the video disappears from feeds / My Videos; ops can retry storage cleanup.
-      console.error('[video.delete] storage partial failure (continuing with DB delete)', {
-        videoId: id,
-        failed: storageDelete.failed,
-      });
+    if (video.creatorId !== user.id) {
+      return NextResponse.json({ ok: false, message: 'Forbidden' }, { status: 403 });
+    }
+    if (video.deletedAt) {
+      logger.info('VIDEO_SOFT_DELETE_IDEMPOTENT', { videoId: id, userId: user.id });
+      return NextResponse.json({ ok: true, alreadyDeleted: true });
     }
 
-    try {
-      await prisma.$transaction(async (tx) => {
-        await tx.video.delete({ where: { id } });
-        const owner = await tx.user.findUnique({
-          where: { id: video.creatorId },
-          select: { videosCount: true },
-        });
-        if (owner && owner.videosCount > 0) {
-          await tx.user.update({
-            where: { id: video.creatorId },
-            data: { videosCount: { decrement: 1 } },
-          });
-        }
-      });
-      return NextResponse.json({
-        ok: true,
-        deletedStorageKeys: storageDelete.deleted,
-        neutralizedStorageKeys: storageDelete.neutralized,
-        storageFailures: storageDelete.failed.length > 0 ? storageDelete.failed : undefined,
-      });
-    } catch (dbError) {
-      console.error('[video.delete] db delete failed after storage cleanup', {
-        videoId: id,
-        error: dbError instanceof Error ? dbError.message : String(dbError),
-      });
-      await prisma.video.updateMany({
+    await prisma.$transaction(async (tx) => {
+      await tx.video.update({
         where: { id },
-        data: {
-          status: 'HIDDEN',
-          moderationStatus: 'BLOCKED',
-          videoUrl: null,
-          thumbnailUrl: null,
-          storageKey: null,
-          isFlagged: true,
-        },
+        data: { deletedAt: new Date() },
       });
-      await prisma.mediaIntegrityAnalysis.upsert({
-        where: { videoId: id },
-        create: {
-          videoId: id,
-          moderationStatus: 'BLOCKED',
-          flagReason: 'STORAGE_DB_DELETE_COMPENSATION',
-          reviewedAt: new Date(),
-        },
-        update: {
-          moderationStatus: 'BLOCKED',
-          flagReason: 'STORAGE_DB_DELETE_COMPENSATION',
-          reviewedAt: new Date(),
-          updatedAt: new Date(),
-        },
+      const owner = await tx.user.findUnique({
+        where: { id: video.creatorId },
+        select: { videosCount: true },
       });
-      return NextResponse.json(
-        {
-          ok: false,
-          message: 'Storage removed but DB delete failed; row was quarantined',
-          deletedStorageKeys: storageDelete.deleted,
-          neutralizedStorageKeys: storageDelete.neutralized,
-        },
-        { status: 500 }
-      );
+      if (owner && owner.videosCount > 0) {
+        await tx.user.update({
+          where: { id: video.creatorId },
+          data: { videosCount: { decrement: 1 } },
+        });
+      }
+    });
+
+    logger.info('VIDEO_SOFT_DELETED', { videoId: id, userId: user.id });
+    return NextResponse.json({ ok: true, softDeleted: true });
+  } catch (e) {
+    if (e instanceof Error && e.message === 'Unauthorized') {
+      return NextResponse.json({ ok: false, message: 'Login required' }, { status: 401 });
     }
-  } catch {
+    logger.error('VIDEO_SOFT_DELETE_FAILED', {
+      error: e instanceof Error ? e.message : String(e),
+    });
     return NextResponse.json({ ok: false, message: 'Failed to delete video' }, { status: 500 });
   }
 }

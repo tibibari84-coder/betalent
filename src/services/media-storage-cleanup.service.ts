@@ -39,6 +39,7 @@ export async function runMediaStorageCleanup(limit = 200): Promise<{
 }> {
   const candidates = await prisma.video.findMany({
     where: {
+      deletedAt: null,
       OR: [
         { uploadStatus: 'UPLOADING', createdAt: { lt: staleUploadingThreshold() } },
         { uploadStatus: 'FAILED', updatedAt: { lt: staleFailedThreshold() } },

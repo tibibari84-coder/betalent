@@ -1,4 +1,5 @@
 import type { ModerationStatus, Prisma, VideoModerationStatus } from '@prisma/client';
+import { GLOBAL_VIDEO_FILTER } from '@/lib/video-global-filter';
 
 export const INTEGRITY_PUBLIC_ALLOWED_STATUSES: ModerationStatus[] = ['PENDING', 'APPROVED'];
 export const INTEGRITY_PUBLIC_BLOCKED_STATUSES: ModerationStatus[] = [
@@ -44,12 +45,17 @@ export function mapVideoToIntegrityModeration(status: VideoModerationStatus): Mo
  * Use for: sync logic, or background jobs that need the same quality bar without "delisted from feed" semantics.
  */
 export const PUBLIC_VIDEO_READY_WHERE: Prisma.VideoWhereInput = {
-  status: 'READY',
-  processingStatus: 'READY',
-  moderationStatus: 'APPROVED',
-  OR: [
-    { mediaIntegrity: { is: null } },
-    { mediaIntegrity: { is: { moderationStatus: { in: INTEGRITY_PUBLIC_ALLOWED_STATUSES } } } },
+  AND: [
+    GLOBAL_VIDEO_FILTER,
+    {
+      status: 'READY',
+      processingStatus: 'READY',
+      moderationStatus: 'APPROVED',
+      OR: [
+        { mediaIntegrity: { is: null } },
+        { mediaIntegrity: { is: { moderationStatus: { in: INTEGRITY_PUBLIC_ALLOWED_STATUSES } } } },
+      ],
+    },
   ],
 };
 

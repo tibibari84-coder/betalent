@@ -1,5 +1,6 @@
 import { runChallengeLifecycleJob } from '@/services/challenge-lifecycle.service';
 import { runLiveSessionAutoAdvanceJob } from '@/services/live-challenge-orchestration.service';
+import { runVideoCleanupWorker } from '@/server/workers/videoCleanupWorker';
 import { runShareVelocityJob } from '@/services/share-velocity-job.service';
 import { runTalentRankingJob } from '@/services/talent-ranking.service';
 
@@ -8,6 +9,7 @@ export const MAINTENANCE_JOB_NAMES = [
   'challenge_lifecycle',
   'share_velocity',
   'live_session_auto_advance',
+  'video_cleanup',
 ] as const;
 
 export type MaintenanceJobName = (typeof MAINTENANCE_JOB_NAMES)[number];
@@ -26,6 +28,8 @@ export async function runMaintenanceJob(name: MaintenanceJobName): Promise<unkno
       return runShareVelocityJob();
     case 'live_session_auto_advance':
       return runLiveSessionAutoAdvanceJob();
+    case 'video_cleanup':
+      return runVideoCleanupWorker();
     default: {
       const _x: never = name;
       return _x;

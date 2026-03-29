@@ -90,8 +90,8 @@ export async function getVideoById(id: string, viewerUserId?: string | null) {
 }
 
 export async function incrementViewCount(videoId: string) {
-  return prisma.video.update({
-    where: { id: videoId },
+  return prisma.video.updateMany({
+    where: { id: videoId, deletedAt: null },
     data: { viewsCount: { increment: 1 } },
   });
 }

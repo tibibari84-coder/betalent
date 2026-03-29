@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma';
+import { GLOBAL_VIDEO_FILTER } from '@/lib/video-global-filter';
 import { CANONICAL_PUBLIC_VIDEO_WHERE } from '@/lib/video-moderation';
 
 export const MAX_COMMENT_DEPTH = 2;
@@ -18,7 +19,7 @@ export async function checkCommentPermission(
   userId: string
 ): Promise<CommentPermissionResult> {
   const video = await prisma.video.findFirst({
-    where: { id: videoId },
+    where: { id: videoId, ...GLOBAL_VIDEO_FILTER },
     select: { creatorId: true, commentPermission: true },
   });
 
