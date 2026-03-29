@@ -97,14 +97,19 @@ export default function VideoCard({
 }: VideoCardProps) {
   const router = useRouter();
   const { openModal: openPerformanceModal } = usePerformanceModal();
-  const { viewer } = useViewer();
+  const { viewer, loading: viewerLoading } = useViewer();
   const showCreator = variant === 'default' && creator;
   const displayName = showCreator ? (creator.displayName?.trim() || `@${creator.username}`) : '';
   const shareCreatorName = creator ? (creator.displayName?.trim() || `@${creator.username}`) : 'Creator';
   const menuCreatorId = creatorUserId ?? creator?.id;
   const creatorIdForFollow = creator?.id;
   const isOwnVideo = Boolean(viewer?.id && creatorIdForFollow && viewer.id === creatorIdForFollow);
-  const showFollow = Boolean(showCreator && creatorIdForFollow && (!viewer?.id || !isOwnVideo));
+  const showFollow = Boolean(
+    showCreator &&
+      creatorIdForFollow &&
+      !viewerLoading &&
+      (!viewer?.id || !isOwnVideo)
+  );
   const isOwnerOrPublicShare = visibility === 'PUBLIC' || Boolean(viewer?.id && menuCreatorId && viewer.id === menuCreatorId);
 
   const isDiscovery = cardSize === 'discovery';
@@ -155,6 +160,7 @@ export default function VideoCard({
             videoId={id}
             title={title ?? 'Performance'}
             creatorId={menuCreatorId}
+            creatorProfileId={creator?.id}
             visibility={visibility}
             onRemoved={onVideoRemoved}
             className="absolute top-2 right-2 z-[30] pointer-events-auto"

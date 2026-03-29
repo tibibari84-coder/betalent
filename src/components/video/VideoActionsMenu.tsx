@@ -14,6 +14,8 @@ export type VideoActionsMenuProps = {
   videoId: string;
   title: string;
   creatorId: string;
+  /** Optional `video.creator.id` from feed/detail — if `creatorId` were ever wrong client-side, this still matches the profile row. */
+  creatorProfileId?: string;
   visibility?: 'PUBLIC' | 'PRIVATE';
   commentPermission?: 'EVERYONE' | 'FOLLOWERS' | 'FOLLOWING' | 'OFF';
   onRemoved?: (videoId: string) => void;
@@ -54,6 +56,7 @@ export default function VideoActionsMenu({
   videoId,
   title,
   creatorId,
+  creatorProfileId,
   visibility = 'PUBLIC',
   commentPermission,
   onRemoved,
@@ -61,7 +64,7 @@ export default function VideoActionsMenu({
   className = '',
 }: VideoActionsMenuProps) {
   const router = useRouter();
-  const { viewer, refresh } = useViewer();
+  const { viewer, loading: viewerLoading, refresh } = useViewer();
   const useSheet = useMobileSheetLayout();
   const [open, setOpen] = useState(false);
   const [menuPos, setMenuPos] = useState<{ top: number; left: number; width: number } | null>(null);
@@ -77,7 +80,14 @@ export default function VideoActionsMenu({
   >(commentPermission ?? null);
   const [visBusy, setVisBusy] = useState(false);
 
-  const isOwner = Boolean(viewer?.id && viewer.id === creatorId);
+  const viewerId = viewer?.id;
+  const creatorIdsMatch =
+    viewerId != null &&
+    (viewerId === creatorId ||
+      (creatorProfileId != null && viewerId === creatorProfileId));
+  /** While session is loading, do not treat the user as guest or stranger — avoids missing Delete / Follow-self on own videos. */
+  const authPending = viewerLoading;
+  const isOwner = !authPending && creatorIdsMatch;
   const shareUrl =
     typeof window !== 'undefined' ? `${window.location.origin}/video/${videoId}` : '';
 
@@ -289,7 +299,7 @@ export default function VideoActionsMenu({
     }
   };
 
-  const showReport = Boolean(viewer?.id && !isOwner);
+  const showReport = Boolean(!authPending && viewerId && !creatorIdsMatch);
   const showOwnerActions = isOwner;
 
   const ownerCommentBlock = (layout: 'sheet' | 'dropdown') => {
@@ -362,7 +372,10 @@ export default function VideoActionsMenu({
 
   const sheetBody = (
     <>
-      {!isOwner && (
+      {authPending && (
+        <p className="mb-1 px-1 py-6 text-center text-[14px] text-white/55">Loading account…</p>
+      )}
+      {!authPending && !isOwner && (
         <>
           {showReport && (
             <button
@@ -452,7 +465,12 @@ export default function VideoActionsMenu({
                 backdropFilter: 'blur(16px)',
               }}
             >
-              {!isOwner && (
+              {authPending && (
+                <div className="px-4 py-3 text-[14px] text-white/55" role="presentation">
+                  Loading account…
+                </div>
+              )}
+              {!authPending && !isOwner && (
                 <>
                   {showReport && (
                     <button

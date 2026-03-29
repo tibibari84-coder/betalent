@@ -41,7 +41,7 @@ export function ImmersiveFeedActionRail({
   showGiftButton = false,
   className,
 }: ImmersiveFeedActionRailProps) {
-  const { id, title, creatorId, visibility, stats } = item;
+  const { id, title, creatorId, creator, visibility, stats } = item;
   const votesCount = stats.votesCount ?? 0;
 
   return (
@@ -129,6 +129,7 @@ export function ImmersiveFeedActionRail({
             videoId={id}
             title={title}
             creatorId={creatorId}
+            creatorProfileId={creator.id}
             visibility={visibility}
             onRemoved={onVideoRemoved}
             compact

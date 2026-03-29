@@ -82,9 +82,10 @@ function VideoFeedCardCompact({
   setShareOpen: (v: boolean) => void;
   onVideoRemoved?: (videoId: string) => void;
 }) {
-  const { viewer } = useViewer();
+  const { viewer, loading: viewerLoading } = useViewer();
   const { id, title, thumbnailUrl, videoUrl, challengeName, creator, stats, creatorId, visibility } = item;
-  const showFollowCompact = !viewer?.id || viewer.id !== creatorId;
+  const showFollowCompact =
+    !viewerLoading && (!viewer?.id || viewer.id !== creatorId);
   const votesCount = stats.votesCount ?? 0;
   const talentScore = stats.talentScore ?? null;
   const showTalentScore = votesCount >= MIN_VOTES_FOR_SCORE && talentScore != null;
@@ -135,6 +136,7 @@ function VideoFeedCardCompact({
             videoId={id}
             title={title}
             creatorId={creatorId}
+            creatorProfileId={creator.id}
             visibility={visibility}
             onRemoved={onVideoRemoved}
             compact
@@ -239,7 +241,7 @@ function VideoFeedCardInner({
   onVideoRemoved,
 }: VideoFeedCardProps) {
   const { id, title, thumbnailUrl, videoUrl, challengeName, creator, stats, creatorId, visibility } = item;
-  const { viewer } = useViewer();
+  const { viewer, loading: viewerLoading } = useViewer();
   const { openModal } = usePerformanceModal();
   const feedRegister = useFeedRegister();
   const cardRef = useRef<HTMLElement>(null);
@@ -249,7 +251,7 @@ function VideoFeedCardInner({
   const [captionExpanded, setCaptionExpanded] = useState(false);
   const [likeBounce, setLikeBounce] = useState(false);
   const [showGiftButton, setShowGiftButton] = useState(false);
-  const showFollowRail = !viewer?.id || viewer.id !== creatorId;
+  const showFollowRail = !viewerLoading && (!viewer?.id || viewer.id !== creatorId);
 
   const GIFT_WATCH_THRESHOLD_MS = 5000;
   useEffect(() => {
