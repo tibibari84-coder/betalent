@@ -1,17 +1,19 @@
 'use client';
 
 import Link from 'next/link';
-import { IconGift, IconPaperAirplane, IconSettings } from '@/components/ui/Icons';
+import { useState, useEffect } from 'react';
+import { IconPaperAirplane, IconSettings } from '@/components/ui/Icons';
 import VerifiedBadge from '@/components/shared/VerifiedBadge';
 import FollowButton from '@/components/profile/FollowButton';
 import { getFlagEmoji } from '@/lib/countries';
 import { inboxThreadPath } from '@/lib/chat-navigation';
+import ShareModal from '@/components/shared/ShareModal';
+import type { ShareVideoPreview } from '@/components/shared/ShareModal';
 
 interface ProfileHeaderProps {
   displayName: string;
   username: string;
   countryCode?: string | null;
-  /** One line: talentType • country — only when at least one real value exists */
   subtitle?: string | null;
   bio: string;
   avatarUrl?: string | null;
@@ -19,16 +21,20 @@ interface ProfileHeaderProps {
   verificationLevel?: string | null;
   creatorId?: string | null;
   initialFollowing?: boolean;
-  /** Formatted from account createdAt — e.g. "March 2026" — never placeholder */
   memberSinceLabel?: string | null;
   isOwner?: boolean;
 }
+
+const btnPrimary =
+  'inline-flex h-[44px] flex-1 touch-manipulation items-center justify-center rounded-full bg-[#E31B23] text-[14px] font-semibold text-white shadow-[0_0_15px_rgba(227,27,35,0.4)] transition-all active:scale-[0.98] [@media(hover:hover)]:hover:brightness-110';
+const btnSecondary =
+  'inline-flex h-[44px] flex-1 touch-manipulation items-center justify-center rounded-full border border-white/10 bg-[#1A1A1A] text-[14px] font-semibold text-white transition-all active:scale-[0.98] [@media(hover:hover)]:hover:bg-white/[0.06]';
 
 export default function ProfileHeader({
   displayName,
   username,
   countryCode,
-  subtitle,
+  subtitle: _subtitle,
   bio,
   avatarUrl,
   isVerified,
@@ -41,158 +47,106 @@ export default function ProfileHeader({
   const flag = getFlagEmoji(countryCode);
   const handle = `@${username}`;
   const bioTrimmed = bio?.trim() ?? '';
+  const [shareOpen, setShareOpen] = useState(false);
+  const [shareUrl, setShareUrl] = useState('');
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') setShareUrl(window.location.href);
+  }, [shareOpen]);
+
+  const sharePreview: ShareVideoPreview = {
+    title: 'Profile',
+    creatorName: displayName ?? 'Creator',
+  };
 
   return (
-    <header
-      className="mobile-centered-card relative w-full overflow-hidden rounded-[24px] md:rounded-3xl px-4 md:px-5 laptop:px-6 lg:px-8 py-5 md:py-7"
-      style={{
-        background:
-          'radial-gradient(circle at 0% 0%, rgba(196,18,47,0.32), transparent 55%), radial-gradient(circle at 100% 0%, rgba(196,18,47,0.22), transparent 60%), linear-gradient(180deg, rgba(10,12,18,0.98) 0%, rgba(5,6,10,1) 100%)',
-        boxShadow: '0 24px 80px rgba(0,0,0,0.9), inset 0 0 120px rgba(255,255,255,0.02)',
-      }}
-    >
-      <div
-        className="absolute top-0 left-1/2 -translate-x-1/2 w-[280px] max-w-[90vw] h-[120px] opacity-10 pointer-events-none z-[-1]"
-        style={{
-          background: 'radial-gradient(ellipse at center, rgba(177,18,38,0.12) 0%, transparent 70%)',
-        }}
-        aria-hidden
-      />
-
-      <div className="relative z-10 flex flex-col md:flex-row items-center md:items-start w-full gap-5 md:gap-8">
-        <div className="flex-shrink-0">
-          <div
-            className="relative w-[118px] h-[118px] sm:w-[136px] sm:h-[136px] mx-auto md:mx-0 rounded-full overflow-hidden flex items-center justify-center text-4xl font-bold text-text-muted"
-            style={{
-              boxShadow: '0 0 0 2px rgba(255,255,255,0.06), 0 0 36px rgba(196,18,47,0.75)',
-              background:
-                'radial-gradient(circle at 30% 0%, rgba(255,255,255,0.08), transparent 70%), radial-gradient(circle at 70% 100%, rgba(196,18,47,0.4), transparent 70%)',
-            }}
-          >
-            <div className="absolute inset-[3px] rounded-full overflow-hidden bg-canvas-tertiary flex items-center justify-center">
-              {avatarUrl ? (
-                <img src={avatarUrl} alt="" className="avatar-image h-full w-full" />
-              ) : (
-                displayName.charAt(0)
-              )}
-            </div>
+    <header className="w-full min-w-0">
+      {/* Hero — red → black gradient + bottom curve */}
+      <div className="relative h-[260px] w-full overflow-hidden rounded-b-[36px]">
+        <div
+          className="absolute inset-0 bg-gradient-to-b from-[#E31B23] via-[#450a0c] to-black"
+          aria-hidden
+        />
+        <div
+          className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black to-transparent"
+          aria-hidden
+        />
+        <div className="relative z-10 flex h-full flex-col items-center px-4 pt-[max(24px,env(safe-area-inset-top))]">
+          <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-full border-2 border-white/20 bg-black/20 shadow-[0_8px_32px_rgba(0,0,0,0.45)]">
+            {avatarUrl ? (
+              <img src={avatarUrl} alt="" className="avatar-image h-full w-full object-cover" />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center text-2xl font-bold text-white/50">
+                {displayName.charAt(0)}
+              </div>
+            )}
           </div>
-        </div>
-
-        <div className="flex-1 min-w-0 text-center md:text-left max-w-[560px] overflow-hidden">
-          <div className="flex flex-col items-center md:items-start gap-1 mb-2.5 min-w-0">
-            <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 min-w-0">
-              <h1 className="font-display text-[25px] sm:text-[30px] laptop:text-[32px] font-semibold text-white flex items-center gap-2 min-w-0 max-w-full overflow-hidden">
-                <span className="truncate">{displayName}</span>
-                {flag && <span aria-hidden className="text-[26px] flex-shrink-0">{flag}</span>}
-              </h1>
-              <VerifiedBadge verified={!!isVerified} verificationLevel={verificationLevel ?? undefined} size="lg" />
-            </div>
-            <p className="text-[13px] text-text-muted flex items-center gap-2 justify-center md:justify-start w-full">
-              <span className="font-mono text-text-secondary/90">{handle}</span>
-            </p>
+          <div className="mt-4 flex max-w-full flex-wrap items-center justify-center gap-2">
+            <h1 className="text-center text-[20px] font-bold tracking-tight text-white">{displayName}</h1>
+            {flag ? <span className="text-[22px] leading-none">{flag}</span> : null}
+            <VerifiedBadge verified={!!isVerified} verificationLevel={verificationLevel ?? undefined} size="md" />
           </div>
-
-          {subtitle ? (
-            <p className="text-[14px] mb-3 text-center md:text-left truncate" style={{ color: '#9ba7b8' }}>
-              {subtitle}
-            </p>
-          ) : null}
-
-          {bioTrimmed ? (
-            <p className="text-[14px] text-center md:text-left leading-relaxed break-words overflow-hidden" style={{ color: '#B7BDC7' }}>
-              {bioTrimmed}
-            </p>
-          ) : (
-            <p className="text-[14px] text-center md:text-left italic" style={{ color: '#6b7280' }}>
-              {isOwner ? (
-                <Link href="/settings" className="text-accent/90 hover:text-accent underline-offset-2 hover:underline not-italic font-medium">
-                  Add a bio in Settings
-                </Link>
-              ) : (
-                'No bio yet'
-              )}
-            </p>
-          )}
-
-          {memberSinceLabel ? (
-            <div className="mt-4 flex flex-wrap gap-2 justify-center md:justify-start">
-              <span
-                className="inline-flex items-center rounded-full px-3 py-1 text-[11px] font-medium"
-                style={{
-                  background: 'rgba(255,255,255,0.05)',
-                  border: '1px solid rgba(255,255,255,0.06)',
-                  color: '#9ca3af',
-                }}
-              >
-                Member since {memberSinceLabel}
-              </span>
-            </div>
-          ) : null}
-        </div>
-
-        <div className="flex flex-shrink-0 flex-wrap items-center justify-center gap-2 md:gap-3 w-full md:w-auto">
-          {isOwner ? (
-            <>
-              <Link
-                href="/settings"
-                className="h-10 min-w-[136px] px-4 rounded-[999px] font-semibold text-[14px] text-white flex items-center justify-center gap-2 transition-all hover:opacity-95 hover:shadow-[0_10px_30px_rgba(177,18,38,0.45)]"
-                style={{
-                  background: 'linear-gradient(135deg,#c4122f,#e11d48)',
-                  boxShadow: '0 10px 30px rgba(196,18,47,0.55)',
-                }}
-              >
-                <IconSettings className="w-4 h-4" />
-                Edit profile
-              </Link>
-              <button
-                type="button"
-                className="h-10 min-w-[136px] px-4 rounded-[999px] font-medium text-[14px] text-white border border-[rgba(255,255,255,0.18)] opacity-70 cursor-not-allowed"
-                style={{ background: 'rgba(255,255,255,0.04)' }}
-              >
-                <span className="flex items-center gap-2">
-                  <IconPaperAirplane className="w-4 h-4" />
-                  Share profile
-                </span>
-              </button>
-            </>
-          ) : (
-            <>
-              {creatorId && (
-                <FollowButton
-                  targetId={creatorId}
-                  initialFollowing={initialFollowing}
-                  variant="primary"
-                  size="default"
-                  className="h-10 px-4 rounded-[999px] text-[14px]"
-                />
-              )}
-              {creatorId ? (
-                <Link
-                  href={inboxThreadPath(creatorId)}
-                  className="inline-flex h-10 min-w-[120px] items-center justify-center rounded-[999px] border border-[rgba(255,255,255,0.18)] px-4 text-[14px] font-medium text-white transition-colors hover:bg-white/10"
-                  style={{ background: 'rgba(255,255,255,0.06)' }}
-                >
-                  <span className="flex items-center gap-2">
-                    <IconPaperAirplane className="w-4 h-4" />
-                    Message
-                  </span>
-                </Link>
-              ) : null}
-              <button
-                type="button"
-                disabled
-                className="h-10 w-10 rounded-[12px] flex items-center justify-center border border-[rgba(255,255,255,0.18)] text-text-secondary opacity-70 cursor-not-allowed"
-                style={{ background: 'rgba(255,255,255,0.04)' }}
-                aria-label="Gift unavailable"
-                title="Profile-level gifting action is not available here."
-              >
-                <IconGift className="w-5 h-5" />
-              </button>
-            </>
-          )}
+          <p className="mt-1 text-[14px] font-medium text-gray-500">{handle}</p>
         </div>
       </div>
+
+      {/* Primary actions */}
+      <div className="mt-6 flex gap-3 px-4">
+        {isOwner ? (
+          <>
+            <Link href="/settings" className={btnPrimary}>
+              <IconSettings className="mr-2 h-4 w-4 shrink-0" aria-hidden />
+              Edit profile
+            </Link>
+            <button type="button" className={btnSecondary} onClick={() => setShareOpen(true)}>
+              Share profile
+            </button>
+          </>
+        ) : (
+          <>
+            {creatorId ? (
+              <FollowButton
+                targetId={creatorId}
+                initialFollowing={initialFollowing}
+                variant="primary"
+                size="default"
+                className="!flex !h-[44px] min-h-0 w-full flex-1 !rounded-full !border-0 !bg-[#E31B23] !px-4 !text-[14px] !font-semibold !shadow-[0_0_15px_rgba(227,27,35,0.4)]"
+              />
+            ) : null}
+            {creatorId ? (
+              <Link href={inboxThreadPath(creatorId)} className={btnSecondary}>
+                <IconPaperAirplane className="mr-2 h-4 w-4 shrink-0" aria-hidden />
+                Message
+              </Link>
+            ) : null}
+          </>
+        )}
+      </div>
+
+      <ShareModal
+        isOpen={shareOpen}
+        onClose={() => setShareOpen(false)}
+        shareUrl={shareUrl}
+        preview={sharePreview}
+        subtitle="Share this profile"
+        trackResource={{ resourceType: 'profile', resourceId: username }}
+      />
+
+      {bioTrimmed ? (
+        <p className="mt-5 px-4 text-center text-[14px] leading-relaxed text-gray-400">{bioTrimmed}</p>
+      ) : isOwner ? (
+        <p className="mt-5 px-4 text-center text-[14px] italic text-gray-600">
+          <Link href="/settings" className="font-medium text-[#E31B23]/90 underline-offset-2 hover:underline">
+            Add a bio in Settings
+          </Link>
+        </p>
+      ) : null}
+
+      {memberSinceLabel ? (
+        <p className="mt-3 px-4 text-center text-[11px] font-medium uppercase tracking-wider text-gray-600">
+          Member since {memberSinceLabel}
+        </p>
+      ) : null}
     </header>
   );
 }

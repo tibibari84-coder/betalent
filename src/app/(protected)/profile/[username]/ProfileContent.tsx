@@ -1,17 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import VideoCard from '@/components/video/VideoCard';
 import ProfileVideoThumbnail from './ProfileVideoThumbnail';
-import type { VideoCardBadgeVariant } from '@/components/video/VideoCard';
-
-function mapBadgeVariant(badge?: string | null): VideoCardBadgeVariant | undefined {
-  if (!badge) return undefined;
-  if (badge === 'Rising Talent') return 'rising';
-  if (badge === 'Trending') return 'trending';
-  if (badge.toLowerCase().includes('new')) return 'new';
-  return undefined;
-}
 
 const TABS = [
   { id: 'videos', label: 'Videos' },
@@ -31,7 +21,6 @@ interface VideoItem {
   votes: number;
   talentScore?: number | null;
   thumbnailUrl?: string | null;
-  /** Own profile only: e.g. "⏳ Processing", "🎵 Analyzing audio" */
   processingLabel?: string | null;
   creatorId?: string;
   visibility?: 'PUBLIC' | 'PRIVATE';
@@ -67,7 +56,6 @@ interface ProfileContentProps {
   challenges: ChallengeItem[];
   about: AboutData;
   isOwner?: boolean;
-  /** Profile user id — passed to owner menu on thumbnails */
   profileUserId?: string;
 }
 
@@ -82,59 +70,50 @@ export default function ProfileContent({
   const [activeTab, setActiveTab] = useState<TabId>('videos');
 
   return (
-    <div className="mt-5 md:mt-7 w-full min-w-0">
-      {/* Tab bar — compact rail, video-first hierarchy */}
-      <div
-        className="flex w-full items-center justify-start md:justify-center gap-4 md:gap-8 border-b border-[rgba(255,255,255,0.08)] mb-5 overflow-x-auto no-scrollbar px-0.5"
-        style={{ height: 48 }}
-      >
-        {TABS.map((tab) => (
-          <button
-            key={tab.id}
-            type="button"
-            onClick={() => setActiveTab(tab.id)}
-            className="relative h-full flex items-center text-[13px] md:text-[14px] font-medium transition-colors pb-0.5 shrink-0"
-            style={{
-              color: activeTab === tab.id ? '#ffffff' : '#9ba7b8',
-            }}
-          >
-            {tab.label}
-            {activeTab === tab.id && (
-              <span
-                className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full"
-                style={{ backgroundColor: '#ff2a4d' }}
-              />
-            )}
-          </button>
-        ))}
+    <div className="w-full min-w-0">
+      <div className="mt-8 border-b border-white/5">
+        <div className="flex h-12 gap-8 overflow-x-auto px-6 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {TABS.map((tab) => {
+            const active = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex h-12 shrink-0 touch-manipulation items-center border-b-2 text-[14px] transition-colors ${
+                  active
+                    ? 'border-[#E31B23] font-bold text-white'
+                    : 'border-transparent font-medium text-gray-500'
+                }`}
+              >
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
-      {/* Tab content */}
       {activeTab === 'videos' && (
         <>
           {videos.length === 0 ? (
-            <div className="w-full min-h-[min(52dvh,420px)] flex flex-col items-center justify-center text-center px-4 py-10 rounded-[16px] border border-white/[0.06] bg-gradient-to-b from-white/[0.04] to-transparent">
-              <p className="text-[15px] font-semibold text-white tracking-tight">No performances yet</p>
-              <p className="text-[13px] text-text-muted mt-2 max-w-sm leading-relaxed">
+            <div className="flex flex-col items-center justify-center px-10 py-20 text-center">
+              <p className="mb-2 text-[18px] font-bold text-white">No performances yet</p>
+              <p className="max-w-sm text-[14px] leading-relaxed text-gray-500">
                 {isOwner
                   ? 'Upload a take — your grid appears here with views and reactions.'
                   : 'Performances show here when this creator posts.'}
               </p>
-              {isOwner && (
+              {isOwner ? (
                 <a
                   href="/upload"
-                  className="mt-6 inline-flex min-h-[44px] items-center justify-center px-6 py-2.5 rounded-full text-[13px] font-semibold text-white transition-all hover:opacity-95 hover:shadow-[0_10px_30px_rgba(177,18,38,0.45)]"
-                  style={{
-                    background: 'linear-gradient(135deg,#c4122f,#e11d48)',
-                    boxShadow: '0 10px 30px rgba(196,18,47,0.55)',
-                  }}
+                  className="mt-6 inline-flex h-[48px] touch-manipulation items-center justify-center rounded-full bg-[#E31B23] px-8 text-[15px] font-bold text-white shadow-[0_0_20px_rgba(227,27,35,0.35)] transition-transform active:scale-[0.98]"
                 >
                   Upload performance
                 </a>
-              )}
+              ) : null}
             </div>
           ) : (
-            <div className="grid grid-cols-3 gap-2 sm:gap-2.5 md:grid-cols-[repeat(auto-fill,minmax(140px,1fr))] md:gap-4 w-full">
+            <div className="grid w-full grid-cols-3 gap-2 px-4 pb-8 pt-4 sm:gap-2.5">
               {videos.map((v) => (
                 <ProfileVideoThumbnail
                   key={v.id}
@@ -157,11 +136,14 @@ export default function ProfileContent({
       {activeTab === 'liked' && (
         <>
           {likedVideos.length === 0 ? (
-            <p className="text-[14px] text-text-muted py-6 text-center max-w-md mx-auto">
-              {isOwner ? 'Videos you like will appear here.' : 'No liked videos to show.'}
-            </p>
+            <div className="flex flex-col items-center justify-center px-10 py-16 text-center">
+              <p className="mb-2 text-[18px] font-bold text-white">No likes yet</p>
+              <p className="max-w-sm text-[14px] leading-relaxed text-gray-500">
+                {isOwner ? 'Videos you like will appear here.' : 'No liked videos to show.'}
+              </p>
+            </div>
           ) : (
-            <div className="grid grid-cols-3 gap-2 sm:gap-2.5 md:grid-cols-[repeat(auto-fill,minmax(140px,1fr))] md:gap-4 w-full">
+            <div className="grid w-full grid-cols-3 gap-2 px-4 pb-8 pt-4 sm:gap-2.5">
               {likedVideos.map((v) => (
                 <ProfileVideoThumbnail
                   key={v.id}
@@ -177,26 +159,23 @@ export default function ProfileContent({
       )}
 
       {activeTab === 'challenges' && (
-        <div className="w-full max-w-2xl mx-auto space-y-3">
+        <div className="space-y-3 px-4 pb-8 pt-4">
           {challenges.length === 0 ? (
-            <p className="text-[14px] text-text-muted py-6">No challenge entries yet.</p>
+            <div className="flex flex-col items-center justify-center px-6 py-16 text-center">
+              <p className="mb-2 text-[18px] font-bold text-white">No challenges yet</p>
+              <p className="max-w-sm text-[14px] leading-relaxed text-gray-500">Challenge entries show here when available.</p>
+            </div>
           ) : null}
           {challenges.map((c) => (
             <div
               key={c.id}
-              className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-4 rounded-[16px] border border-[rgba(255,255,255,0.08)]"
-              style={{
-                background: 'rgba(18,22,31,0.7)',
-                backdropFilter: 'blur(20px)',
-              }}
+              className="flex flex-col gap-2 rounded-[20px] border border-white/5 bg-[#0A0A0A] p-4 sm:flex-row sm:items-center sm:justify-between"
             >
-              <span className="font-medium text-white">{c.name}</span>
+              <span className="text-[15px] font-semibold text-white">{c.name}</span>
               <span
-                className="text-[13px] font-semibold px-3 py-1 rounded-[8px] w-fit"
-                style={{
-                  background: c.status === 'Winner' ? 'rgba(177,18,38,0.25)' : 'rgba(255,255,255,0.08)',
-                  color: c.status === 'Winner' ? '#ff2a4d' : '#9ba7b8',
-                }}
+                className={`w-fit rounded-lg px-3 py-1 text-[13px] font-semibold ${
+                  c.status === 'Winner' ? 'bg-[#E31B23]/20 text-[#E31B23]' : 'bg-white/5 text-gray-400'
+                }`}
               >
                 {c.status}
               </span>
@@ -206,50 +185,32 @@ export default function ProfileContent({
       )}
 
       {activeTab === 'about' && (
-        <div
-          className="rounded-[24px] p-6 md:p-8 max-w-[720px] w-full mx-auto border border-[rgba(255,255,255,0.08)]"
-          style={{
-            background: 'rgba(18,22,31,0.7)',
-            backdropFilter: 'blur(20px)',
-          }}
-        >
+        <div className="mx-4 mt-4 rounded-[20px] border border-white/5 bg-[#0A0A0A] p-4 pb-8">
           <div className="space-y-4 text-[14px]">
             {about.country ? (
               <div>
-                <span className="text-[12px] uppercase tracking-wider" style={{ color: '#9ba7b8' }}>
-                  Country
-                </span>
-                <p className="font-medium text-white mt-0.5">{about.country}</p>
+                <span className="text-[10px] font-medium uppercase tracking-widest text-gray-400">Country</span>
+                <p className="mt-1 text-[15px] font-semibold text-white">{about.country}</p>
               </div>
             ) : null}
             {about.talentCategory ? (
               <div>
-                <span className="text-[12px] uppercase tracking-wider" style={{ color: '#9ba7b8' }}>
-                  Talent category
-                </span>
-                <p className="font-medium text-white mt-0.5">{about.talentCategory}</p>
+                <span className="text-[10px] font-medium uppercase tracking-widest text-gray-400">Talent category</span>
+                <p className="mt-1 text-[15px] font-semibold text-white">{about.talentCategory}</p>
               </div>
             ) : null}
             {about.joinedDate ? (
               <div>
-                <span className="text-[12px] uppercase tracking-wider" style={{ color: '#9ba7b8' }}>
-                  Joined
-                </span>
-                <p className="font-medium text-white mt-0.5">{about.joinedDate}</p>
+                <span className="text-[10px] font-medium uppercase tracking-widest text-gray-400">Joined</span>
+                <p className="mt-1 text-[15px] font-semibold text-white">{about.joinedDate}</p>
               </div>
             ) : null}
             <div>
-              <span className="text-[12px] uppercase tracking-wider" style={{ color: '#9ba7b8' }}>
-                About
-              </span>
+              <span className="text-[10px] font-medium uppercase tracking-widest text-gray-400">About</span>
               {about.story.trim() ? (
-                <p className="text-[14px] leading-relaxed mt-0.5" style={{ color: '#B7BDC7' }}>
-                  {about.story}
-                </p>
+                <p className="mt-1 text-[13px] leading-relaxed text-gray-400">{about.story}</p>
               ) : (
-                <p className="text-[14px] leading-relaxed mt-0.5 italic" style={{ color: '#6b7280' }}>
-                  No bio yet
-                </p>
+                <p className="mt-1 text-[13px] italic text-gray-600">No bio yet</p>
               )}
             </div>
           </div>

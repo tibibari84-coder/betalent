@@ -70,16 +70,14 @@ export default function PublicMobileNav() {
       className="
         fixed bottom-0 left-0 right-0 z-50
         min-h-[var(--bottom-nav-height)]
-        pt-3 pb-[max(8px,env(safe-area-inset-bottom))]
+        pt-2 pb-[max(8px,env(safe-area-inset-bottom))]
         px-1
-        rounded-t-[20px]
-        border-t border-[rgba(255,255,255,0.06)]
+        border-t border-white/5
       "
       style={{
-        background: 'rgba(8,8,10,0.95)',
+        background: 'rgba(0,0,0,0.8)',
         backdropFilter: 'blur(24px)',
         WebkitBackdropFilter: 'blur(24px)',
-        boxShadow: '0 -8px 40px rgba(0,0,0,0.28), 0 -1px 0 rgba(255,255,255,0.03) inset',
       }}
     >
       <div className="flex items-center justify-around h-14 max-w-lg mx-auto">

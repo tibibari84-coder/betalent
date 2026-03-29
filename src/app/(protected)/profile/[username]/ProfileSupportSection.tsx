@@ -33,15 +33,13 @@ function formatCoins(n: number): string {
   return String(n);
 }
 
-function formatCount(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
-  return String(n);
-}
-
 interface ProfileSupportSectionProps {
   username: string;
 }
+
+const cardClass =
+  'mx-4 mt-4 rounded-[20px] border border-white/5 bg-[#0A0A0A] p-4';
+const iconClass = 'h-6 w-6 shrink-0 text-[#E31B23]';
 
 export default function ProfileSupportSection({ username }: ProfileSupportSectionProps) {
   const [monetization, setMonetization] = useState<CreatorMonetizationSummary | null>(null);
@@ -81,23 +79,11 @@ export default function ProfileSupportSection({ username }: ProfileSupportSectio
 
   if (loading) {
     return (
-      <div
-        className="rounded-[20px] border p-5 sm:p-6 md:p-7 animate-pulse"
-        style={{
-          background: 'rgba(18,22,31,0.5)',
-          borderColor: 'rgba(255,255,255,0.06)',
-        }}
-      >
-        <div className="h-5 w-40 rounded bg-white/5 mb-6" />
-        <div className="grid grid-cols-3 gap-4 sm:gap-6 py-5 px-4 rounded-xl mb-7" style={{ background: 'rgba(255,255,255,0.03)' }}>
+      <div className={`${cardClass} animate-pulse`}>
+        <div className="mb-4 h-4 w-36 rounded bg-white/5" />
+        <div className="grid grid-cols-3 gap-3">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-16 rounded bg-white/5" />
-          ))}
-        </div>
-        <div className="h-4 w-28 rounded bg-white/5 mb-3" />
-        <div className="flex flex-wrap gap-2.5">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-14 w-24 rounded-xl bg-white/5" />
+            <div key={i} className="h-14 rounded-lg bg-white/5" />
           ))}
         </div>
       </div>
@@ -138,97 +124,53 @@ export default function ProfileSupportSection({ username }: ProfileSupportSectio
   ];
 
   return (
-    <div
-      className="rounded-[20px] border overflow-hidden"
-      style={{
-        background: 'rgba(18,22,31,0.72)',
-        backdropFilter: 'blur(20px)',
-        WebkitBackdropFilter: 'blur(20px)',
-        borderColor: 'rgba(255,255,255,0.06)',
-        boxShadow: '0 4px 24px rgba(0,0,0,0.12)',
-      }}
-    >
-      <div className="p-5 sm:p-6 md:p-7">
-        {/* Header – section title */}
-        <div className="flex items-center gap-2 mb-6">
-          <span
-            className="flex items-center justify-center w-8 h-8 rounded-[10px]"
-            style={{ background: 'rgba(255,255,255,0.06)' }}
-          >
-            <IconCoins className="w-4 h-4 opacity-80" style={{ color: '#e8eaed' }} />
-          </span>
-          <h2
-            className="font-display text-[14px] font-semibold tracking-tight"
-            style={{ color: '#e8eaed' }}
-          >
-            Community support
-          </h2>
-        </div>
-
-        {/* Stats strip – primary hierarchy, consistent spacing */}
-        <div
-          className="grid grid-cols-3 gap-4 sm:gap-6 md:gap-8 py-5 px-4 rounded-xl mb-7"
-          style={{ background: 'rgba(255,255,255,0.03)' }}
-        >
-          {stats.map(({ label, value, sub, Icon }) => (
-            <div key={label} className="flex flex-col items-center text-center md:items-start md:text-left min-w-0">
-              <span
-                className="text-[10px] uppercase tracking-widest mb-1.5 font-medium flex items-center gap-1.5"
-                style={{ color: '#8b95a5', letterSpacing: '0.12em' }}
-              >
-                <Icon className="w-3.5 h-3.5 opacity-70 shrink-0" />
-                {label}
-              </span>
-              <span className="text-[21px] sm:text-[23px] md:text-[24px] font-semibold text-white leading-none tabular-nums tracking-tight">
-                {value}
-              </span>
-              <span className="text-[11px] mt-1.5" style={{ color: '#6b7280' }}>
-                {sub}
-              </span>
-            </div>
-          ))}
-        </div>
-
-        {/* Top supporters – readable counter and coin amounts */}
-        {hasSupporters && (
-          <div>
-            <p className="text-[10px] uppercase tracking-widest mb-3 font-medium flex items-center gap-2" style={{ color: '#8b95a5', letterSpacing: '0.12em' }}>
-              <IconUsers className="w-3.5 h-3.5 opacity-80" />
-              Recent support activity
-              <span className="font-normal opacity-80 tabular-nums">({supporters.length})</span>
-            </p>
-            <div className="flex flex-wrap items-stretch gap-2.5 sm:gap-3">
-              {supporters.slice(0, 6).map((s) => (
-                <Link
-                  key={s.userId}
-                  href={`/profile/${encodeURIComponent(s.username)}`}
-                  className="flex items-center gap-2.5 rounded-xl py-2.5 px-3 min-w-0 overflow-hidden transition-colors duration-200 hover:bg-white/[0.06] active:scale-[0.99] max-w-full"
-                  style={{ border: '1px solid rgba(255,255,255,0.06)' }}
-                >
-                  <div
-                    className="w-9 h-9 rounded-full flex-shrink-0 overflow-hidden flex items-center justify-center text-[13px] font-semibold"
-                    style={{ background: 'rgba(255,255,255,0.08)', color: '#B7BDC7' }}
-                  >
-                    {s.avatarUrl ? (
-                      <img src={s.avatarUrl} alt="" className="avatar-image h-full w-full" />
-                    ) : (
-                      (s.displayName || s.username).charAt(0)
-                    )}
-                  </div>
-                  <div className="min-w-0 overflow-hidden">
-                    <p className="text-[13px] font-medium text-white truncate">
-                      {s.displayName || s.username}
-                    </p>
-                    <p className="text-[12px] tabular-nums mt-0.5" style={{ color: '#9ba7b8' }}>
-                      {formatCoins(s.totalCoinsSent)} coins
-                    </p>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </div>
-        )}
+    <section className={cardClass}>
+      <div className="mb-4 flex items-center gap-3">
+        <IconCoins className={iconClass} aria-hidden />
+        <h2 className="text-[15px] font-semibold text-white">Community support</h2>
       </div>
-    </div>
+
+      <div className="grid grid-cols-3 gap-2 border-b border-white/5 pb-4">
+        {stats.map(({ label, value, sub, Icon }) => (
+          <div key={label} className="flex min-w-0 flex-col items-center text-center">
+            <Icon className="mb-1 h-5 w-5 text-[#E31B23] opacity-90" aria-hidden />
+            <span className="text-[9px] font-medium uppercase tracking-widest text-gray-400">{label}</span>
+            <span className="mt-1 text-[15px] font-semibold tabular-nums text-white">{value}</span>
+            <span className="mt-0.5 text-[11px] text-gray-400">{sub}</span>
+          </div>
+        ))}
+      </div>
+
+      {hasSupporters ? (
+        <div className="mt-4">
+          <p className="mb-3 flex items-center gap-2 text-[10px] font-medium uppercase tracking-widest text-gray-400">
+            <IconUsers className="h-4 w-4 text-[#E31B23]" aria-hidden />
+            Recent supporters
+            <span className="font-normal tabular-nums text-gray-500">({supporters.length})</span>
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {supporters.slice(0, 6).map((s) => (
+              <Link
+                key={s.userId}
+                href={`/profile/${encodeURIComponent(s.username)}`}
+                className="flex min-w-0 max-w-full items-center gap-2 rounded-xl border border-white/5 bg-black/40 py-2 pl-2 pr-3 transition-colors hover:bg-white/[0.06]"
+              >
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white/10 text-[13px] font-semibold text-gray-300">
+                  {s.avatarUrl ? (
+                    <img src={s.avatarUrl} alt="" className="avatar-image h-full w-full object-cover" />
+                  ) : (
+                    (s.displayName || s.username).charAt(0)
+                  )}
+                </div>
+                <div className="min-w-0">
+                  <p className="truncate text-[13px] font-semibold text-white">{s.displayName || s.username}</p>
+                  <p className="text-[12px] tabular-nums text-gray-400">{formatCoins(s.totalCoinsSent)} coins</p>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      ) : null}
+    </section>
   );
 }

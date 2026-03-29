@@ -120,20 +120,14 @@ export default async function ProfilePage({ params }: Props) {
 
 
   return (
-    <div
-      className="w-full min-h-screen pb-24 md:pb-8 min-w-0 overflow-x-hidden"
-      style={{
-        background:
-          'radial-gradient(circle at 0% -20%, rgba(196,18,47,0.32), transparent 60%), radial-gradient(circle at 100% 120%, rgba(196,18,47,0.22), transparent 60%), #05060a',
-      }}
-    >
+    <div className="w-full min-h-screen min-w-0 overflow-x-hidden bg-[#000000] pb-[calc(5.25rem+env(safe-area-inset-bottom))] md:pb-8">
       <ProfileTopBar
         username={profile.username}
         displayName={profile.displayName ?? profile.username}
         isOwner={isOwner}
         showBack={!isOwner}
       />
-      <div className="w-full min-w-0 max-w-[1040px] mx-auto px-3 sm:px-4 py-4 md:py-6">
+      <div className="mx-auto w-full min-w-0 max-w-md">
         <ProfileHeader
           displayName={profile.displayName ?? profile.username}
           username={profile.username}
@@ -149,24 +143,18 @@ export default async function ProfilePage({ params }: Props) {
           isOwner={isOwner}
         />
 
-        <div className="mt-4 md:mt-5 w-full">
-          <ProfileStatsBar
-            followers={truthfulStats.followersCount}
-            following={truthfulStats.followingCount}
-            totalLikes={truthfulStats.totalLikesOnVideos}
-            totalViews={truthfulStats.totalViewsOnVideos}
-            votes={truthfulStats.totalVotesOnVideos}
-            averageTalentScore={averageTalentScore}
-          />
-        </div>
+        <ProfileStatsBar
+          followers={truthfulStats.followersCount}
+          following={truthfulStats.followingCount}
+          totalLikes={truthfulStats.totalLikesOnVideos}
+          totalViews={truthfulStats.totalViewsOnVideos}
+          votes={truthfulStats.totalVotesOnVideos}
+          averageTalentScore={averageTalentScore}
+        />
 
-        <div className="mt-4 flex flex-wrap gap-3 justify-center md:justify-start">
-          <ProfileRankingBadge username={username} countryCode={profile.country} />
-        </div>
+        <ProfileRankingBadge username={username} countryCode={profile.country} />
 
-        <div className="mt-5 md:mt-6">
-          <ProfileSupportSection username={username} />
-        </div>
+        <ProfileSupportSection username={username} />
 
         <ProfileContent
           videos={videos}
@@ -182,10 +170,7 @@ export default async function ProfilePage({ params }: Props) {
   } catch (e) {
     if (isDatabaseUnavailableError(e)) {
       return (
-        <div
-          className="w-full min-h-[50vh] flex items-center justify-center px-6 py-16"
-          style={{ backgroundColor: '#05060a' }}
-        >
+        <div className="flex min-h-[50vh] w-full items-center justify-center bg-[#000000] px-6 py-16">
           <p className="text-center text-[15px] text-text-secondary max-w-md" role="alert">
             Service temporarily unavailable. Please try again shortly.
           </p>

@@ -37,23 +37,18 @@ export default function ProfileTopBar({
   return (
     <>
       <header
-        className="sticky top-0 z-40 flex items-center justify-between min-h-[56px] px-4 py-2 safe-area-top"
-        style={{
-          background: 'rgba(7,7,7,0.85)',
-          backdropFilter: 'blur(20px)',
-          WebkitBackdropFilter: 'blur(20px)',
-          borderBottom: '1px solid rgba(255,255,255,0.06)',
-        }}
+        className="safe-area-top sticky top-0 z-40 flex min-h-[56px] items-center justify-between border-b border-white/5 bg-black/80 px-4 py-2 backdrop-blur-xl"
+        style={{ WebkitBackdropFilter: 'blur(24px)' }}
       >
-        <div className="flex items-center gap-2 min-w-0">
+        <div className="flex min-w-0 items-center gap-2">
           {showBack ? (
             <button
               type="button"
               onClick={() => router.back()}
-              className="flex items-center justify-center w-10 h-10 min-w-[40px] min-h-[40px] rounded-[12px] text-text-primary hover:bg-white/5 active:bg-white/8 transition-colors"
+              className="flex h-10 min-h-[40px] w-10 min-w-[40px] touch-manipulation items-center justify-center rounded-xl text-white transition-colors hover:bg-white/5 active:bg-white/10"
               aria-label="Back"
             >
-              <IconArrowLeft className="w-5 h-5" />
+              <IconArrowLeft className="h-5 w-5" />
             </button>
           ) : (
             <div className="w-10" aria-hidden />
@@ -64,18 +59,18 @@ export default function ProfileTopBar({
           <button
             type="button"
             onClick={() => setShareOpen(true)}
-            className="flex items-center justify-center w-10 h-10 min-w-[40px] min-h-[40px] rounded-[12px] text-text-secondary hover:text-text-primary hover:bg-white/5 active:bg-white/8 transition-colors"
+            className="flex h-10 min-h-[40px] w-10 min-w-[40px] touch-manipulation items-center justify-center rounded-xl text-gray-400 transition-colors hover:bg-white/5 hover:text-white active:bg-white/10"
             aria-label="Share profile"
           >
-            <IconShare className="w-5 h-5" />
+            <IconShare className="h-5 w-5" />
           </button>
           <button
             type="button"
             onClick={() => setMoreOpen(true)}
-            className="flex items-center justify-center w-10 h-10 min-w-[40px] min-h-[40px] rounded-[12px] text-text-secondary hover:text-text-primary hover:bg-white/5 active:bg-white/8 transition-colors"
+            className="flex h-10 min-h-[40px] w-10 min-w-[40px] touch-manipulation items-center justify-center rounded-xl text-gray-400 transition-colors hover:bg-white/5 hover:text-white active:bg-white/10"
             aria-label="More options"
           >
-            <IconDotsVertical className="w-5 h-5" />
+            <IconDotsVertical className="h-5 w-5" />
           </button>
         </div>
       </header>
