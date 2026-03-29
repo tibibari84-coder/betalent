@@ -110,12 +110,6 @@ export default async function ProfilePage({ params }: Props) {
       };
     });
 
-    const scoredVideos = profileVideos.filter((v) => v.talentScore != null);
-    const averageTalentScore =
-      scoredVideos.length > 0
-        ? scoredVideos.reduce((sum, v) => sum + (v.talentScore ?? 0), 0) / scoredVideos.length
-        : null;
-
     return (
       <div className="w-full min-h-screen min-w-0 overflow-x-hidden bg-[#050505] pb-[calc(5.25rem+env(safe-area-inset-bottom))] md:pb-8">
         <ProfileTopBar
@@ -147,7 +141,6 @@ export default async function ProfilePage({ params }: Props) {
             totalViews={truthfulStats.totalViewsOnVideos}
             totalLikes={truthfulStats.totalLikesOnVideos}
             votes={truthfulStats.totalVotesOnVideos}
-            averageTalentScore={averageTalentScore}
           />
 
           <ProfileContent
@@ -164,9 +157,9 @@ export default async function ProfilePage({ params }: Props) {
   } catch (e) {
     if (isDatabaseUnavailableError(e)) {
       return (
-        <div className="flex min-h-[40vh] w-full flex-col items-center justify-center bg-[#050505] px-6 py-12">
-          <p className="max-w-xs text-center text-[13px] leading-relaxed text-white/55" role="alert">
-            Service temporarily unavailable. Please try again shortly.
+        <div className="flex w-full flex-col items-center bg-[#050505] px-5 py-10">
+          <p className="max-w-[260px] text-center text-[13px] leading-relaxed text-white/48" role="alert">
+            Service temporarily unavailable. Try again shortly.
           </p>
         </div>
       );
