@@ -13,7 +13,6 @@ import {
   RATE_LIMIT_REPORTS_PER_USER_PER_HOUR,
 } from '@/constants/api-rate-limits';
 import { z } from 'zod';
-import { blockDisallowedMutationOrigin } from '@/lib/mutation-origin';
 import { stripUnsafeTextControls } from '@/lib/security/sanitize';
 
 const reportSchema = z.object({
@@ -24,9 +23,6 @@ const reportSchema = z.object({
 
 export async function POST(req: Request) {
   try {
-    const originDeny = blockDisallowedMutationOrigin(req);
-    if (originDeny) return originDeny;
-
     const user = await requireAuth();
     const ip = getClientIp(req);
     if (

@@ -1,6 +1,5 @@
 /**
- * Optional Origin check for browser-initiated state-changing API requests.
- * Complements httpOnly + SameSite session cookies; blocks simple cross-site POST abuse when Origin is sent.
+ * Origin allowlist for state-changing API requests (middleware + optional route checks).
  * Non-browser clients often omit Origin — those requests are allowed.
  */
 
@@ -22,13 +21,18 @@ function allowedOrigins(): Set<string> {
   return out;
 }
 
+/** True if Origin is absent or matches the configured app origin(s). */
+export function isMutationOriginAllowed(req: Pick<Request, 'headers'>): boolean {
+  const origin = req.headers.get('origin');
+  if (!origin) return true;
+  return allowedOrigins().has(origin);
+}
+
 /**
  * Returns a 403 JSON response when `Origin` is present and not an allowed app origin.
  * Returns null when the request should proceed.
  */
 export function blockDisallowedMutationOrigin(req: Request): NextResponse | null {
-  const origin = req.headers.get('origin');
-  if (!origin) return null;
-  if (allowedOrigins().has(origin)) return null;
+  if (isMutationOriginAllowed(req)) return null;
   return NextResponse.json({ ok: false, message: 'Invalid origin', code: 'FORBIDDEN_ORIGIN' }, { status: 403 });
 }

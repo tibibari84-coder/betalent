@@ -24,7 +24,6 @@ import { checkRateLimit } from '@/lib/rate-limit';
 import { logger } from '@/lib/logger';
 import { logOpsEvent } from '@/lib/ops-events';
 import { isVocalPerformanceStyleSlug } from '@/constants/vocal-style-catalog';
-import { blockDisallowedMutationOrigin } from '@/lib/mutation-origin';
 import { isSafeUploadFilename, stripUnsafeTextControls } from '@/lib/security/sanitize';
 
 const CONTENT_TYPES = ['ORIGINAL', 'COVER', 'REMIX'] as const;
@@ -54,9 +53,6 @@ const initSchema = z.object({
 
 export async function POST(req: Request) {
   try {
-    const originDeny = blockDisallowedMutationOrigin(req);
-    if (originDeny) return originDeny;
-
     const user = await requireVerifiedUser();
     if (!(await checkRateLimit('upload-init-user', user.id, RATE_LIMIT_UPLOAD_INIT_PER_HOUR, 60 * 60 * 1000))) {
       logOpsEvent('upload_failed', { userId: user.id, errorCode: 'RATE_LIMIT_UPLOAD_INIT' });

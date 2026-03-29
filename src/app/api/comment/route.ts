@@ -14,7 +14,6 @@ import { isSchemaDriftError } from '@/lib/runtime-config';
 import { logger } from '@/lib/logger';
 import { logOpsEvent } from '@/lib/ops-events';
 import { checkRateLimit } from '@/lib/rate-limit';
-import { blockDisallowedMutationOrigin } from '@/lib/mutation-origin';
 import { stripUnsafeTextControls } from '@/lib/security/sanitize';
 import { RATE_LIMIT_COMMENT_POST_PER_USER_PER_HOUR } from '@/constants/api-rate-limits';
 
@@ -27,9 +26,6 @@ const bodySchema = z.object({
 export async function POST(req: Request) {
   const startedAt = performance.now();
   try {
-    const originDeny = blockDisallowedMutationOrigin(req);
-    if (originDeny) return originDeny;
-
     const user = await requireAuth();
     if (
       !(await checkRateLimit(

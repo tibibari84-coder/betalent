@@ -22,6 +22,10 @@ function redirectWithError(request: Request, code: string) {
   return NextResponse.redirect(u);
 }
 
+/**
+ * OAuth redirect (GET) — not subject to API CSRF middleware. State parameter is sealed server-side (short TTL).
+ * Session: `session.save()` replaces the session seal after Google auth (session fixation mitigated for browser flow).
+ */
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const code = url.searchParams.get('code');

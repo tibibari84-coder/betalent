@@ -15,7 +15,6 @@ import { followCreatorOrNoOp, unfollowCreatorOrNoOp } from '@/services/follow.se
 import { isDatabaseUnavailableError } from '@/lib/db-errors';
 import { stampApiResponse } from '@/lib/api-route-observe';
 import { checkRateLimit } from '@/lib/rate-limit';
-import { blockDisallowedMutationOrigin } from '@/lib/mutation-origin';
 import { RATE_LIMIT_FOLLOW_PER_USER_PER_HOUR } from '@/constants/api-rate-limits';
 import { z } from 'zod';
 
@@ -24,9 +23,6 @@ const followBodySchema = z.object({ creatorId: z.string().cuid() });
 export async function POST(req: Request) {
   const startedAt = performance.now();
   try {
-    const originDeny = blockDisallowedMutationOrigin(req);
-    if (originDeny) return stampApiResponse(originDeny, req, { routeKey: 'POST /api/follow', cachePolicy: 'none', startedAt });
-
     const user = await requireAuth();
     if (!(await checkRateLimit('follow-toggle-user', user.id, RATE_LIMIT_FOLLOW_PER_USER_PER_HOUR, 60 * 60 * 1000))) {
       return stampApiResponse(
@@ -89,9 +85,6 @@ export async function POST(req: Request) {
 export async function DELETE(req: Request) {
   const startedAt = performance.now();
   try {
-    const originDeny = blockDisallowedMutationOrigin(req);
-    if (originDeny) return stampApiResponse(originDeny, req, { routeKey: 'DELETE /api/follow', cachePolicy: 'none', startedAt });
-
     const user = await requireAuth();
     if (!(await checkRateLimit('follow-toggle-user', user.id, RATE_LIMIT_FOLLOW_PER_USER_PER_HOUR, 60 * 60 * 1000))) {
       return stampApiResponse(

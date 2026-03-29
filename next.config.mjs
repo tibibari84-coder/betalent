@@ -29,6 +29,24 @@ if (isVercelProduction) {
   });
 }
 
+/** Monitor violations in DevTools / reporting API; tighten to enforcing CSP only after tuning. */
+securityHeaders.push({
+  key: 'Content-Security-Policy-Report-Only',
+  value: [
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.google.com https://*.gstatic.com https://*.googletagmanager.com",
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: https: blob:",
+    "font-src 'self' data:",
+    "connect-src 'self' https: wss:",
+    "media-src 'self' https: blob:",
+    "frame-src 'self' https://accounts.google.com https://js.stripe.com https://hooks.stripe.com https://*.google.com",
+    "worker-src 'self' blob:",
+    "base-uri 'self'",
+    "form-action 'self' https://accounts.google.com",
+  ].join('; '),
+});
+
 const nextConfig = {
   reactStrictMode: true,
   experimental: {

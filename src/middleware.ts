@@ -7,6 +7,12 @@ import {
   getSessionPassword,
   getSessionTtlSeconds,
 } from '@/lib/session-options';
+import {
+  CSRF_HEADER_NAME,
+  getCsrfTokenFromCookieHeader,
+  timingSafeEqualString,
+} from '@/lib/csrf';
+import { isMutationOriginAllowed } from '@/lib/mutation-origin';
 
 const PROTECTED_PREFIXES = [
   '/dashboard',
@@ -66,6 +72,14 @@ function setRefCookie(res: NextResponse, ref: string) {
   });
 }
 
+/** Machine / webhook routes: CSRF + browser Origin checks are skipped (use secrets or provider signatures). */
+function isApiMutationSecurityExcluded(pathname: string): boolean {
+  if (pathname.startsWith('/api/webhooks/')) return true;
+  if (pathname.startsWith('/api/internal/')) return true;
+  if (pathname.startsWith('/api/cron/')) return true;
+  return false;
+}
+
 async function readSession(request: NextRequest): Promise<SessionData | null> {
   const raw = request.cookies.get(SESSION_COOKIE_NAME)?.value;
   if (!raw) return null;
@@ -84,8 +98,31 @@ export async function middleware(request: NextRequest) {
   const validRef = ref && /^[a-z0-9]{20,30}$/i.test(ref);
   const pathname = request.nextUrl.pathname;
 
-  /** Correlation id for all API routes (load tests, tracing). */
+  /** Correlation id + CSRF + Origin for API mutations (defense in depth with SameSite cookies). */
   if (pathname.startsWith('/api/')) {
+    const method = request.method.toUpperCase();
+    if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method) && !isApiMutationSecurityExcluded(pathname)) {
+      const cookieHeader = request.headers.get('cookie');
+      const csrfCookie = getCsrfTokenFromCookieHeader(cookieHeader);
+      const csrfHeader = request.headers.get(CSRF_HEADER_NAME);
+      if (
+        !csrfCookie ||
+        !csrfHeader ||
+        !timingSafeEqualString(csrfCookie, csrfHeader)
+      ) {
+        return NextResponse.json(
+          { ok: false, message: 'CSRF validation failed', code: 'CSRF_INVALID' },
+          { status: 403 }
+        );
+      }
+      if (!isMutationOriginAllowed(request)) {
+        return NextResponse.json(
+          { ok: false, message: 'Invalid origin', code: 'FORBIDDEN_ORIGIN' },
+          { status: 403 }
+        );
+      }
+    }
+
     const incoming = request.headers.get('x-request-id')?.trim();
     const rid =
       incoming && incoming.length >= 8 ? incoming : crypto.randomUUID();

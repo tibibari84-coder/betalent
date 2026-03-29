@@ -16,6 +16,7 @@ const inter = Inter({
   variable: '--font-inter',
 });
 import { AuthAwareShell } from '@/components/layout/AuthAwareShell';
+import { CsrfProvider } from '@/components/security/CsrfProvider';
 import { I18nLayoutWrapper } from '@/components/layout/I18nLayoutWrapper';
 import { getSession } from '@/lib/session';
 import { resolveLocale, LOCALE_COOKIE_NAME } from '@/lib/locale';
@@ -74,9 +75,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         className={`${playfair.variable} ${inter.variable} min-h-screen flex flex-col bg-[#070707] text-[#f5f5f5] antialiased font-sans`}
       >
         <I18nLayoutWrapper initialLocale={locale} allMessages={allMessages}>
-          <AuthAwareShell isAppMember={isAppMember} authUser={authUser}>
-            {children}
-          </AuthAwareShell>
+          <CsrfProvider>
+            <AuthAwareShell isAppMember={isAppMember} authUser={authUser}>
+              {children}
+            </AuthAwareShell>
+          </CsrfProvider>
         </I18nLayoutWrapper>
       </body>
     </html>

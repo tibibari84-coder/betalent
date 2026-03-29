@@ -12,7 +12,6 @@ import { prisma } from '@/lib/prisma';
 import { CANONICAL_PUBLIC_VIDEO_WHERE } from '@/lib/video-moderation';
 import { logOpsAbuse, logOpsEvent } from '@/lib/ops-events';
 import { checkRateLimit } from '@/lib/rate-limit';
-import { blockDisallowedMutationOrigin } from '@/lib/mutation-origin';
 import { RATE_LIMIT_VIDEO_LIKE_PER_USER_PER_HOUR } from '@/constants/api-rate-limits';
 import { z } from 'zod';
 
@@ -29,9 +28,6 @@ async function getVideoLikesCount(videoId: string): Promise<number> {
 /** POST /api/like – add like. Body: { videoId }. */
 export async function POST(req: Request) {
   try {
-    const originDeny = blockDisallowedMutationOrigin(req);
-    if (originDeny) return originDeny;
-
     const user = await requireAuth();
     if (!(await checkRateLimit('video-like-user', user.id, RATE_LIMIT_VIDEO_LIKE_PER_USER_PER_HOUR, 60 * 60 * 1000))) {
       return NextResponse.json(
@@ -92,9 +88,6 @@ export async function POST(req: Request) {
 /** DELETE /api/like – remove like. Body: { videoId }. */
 export async function DELETE(req: Request) {
   try {
-    const originDeny = blockDisallowedMutationOrigin(req);
-    if (originDeny) return originDeny;
-
     const user = await requireAuth();
     if (!(await checkRateLimit('video-like-user', user.id, RATE_LIMIT_VIDEO_LIKE_PER_USER_PER_HOUR, 60 * 60 * 1000))) {
       return NextResponse.json(

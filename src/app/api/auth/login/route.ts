@@ -8,6 +8,11 @@ import { RATE_LIMIT_LOGIN_ATTEMPTS_PER_ACCOUNT_PER_HOUR } from '@/constants/anti
 import { logAuthEvent } from '@/services/auth-audit.service';
 import { sendNewLoginAlertEmail } from '@/services/new-login-alert.service';
 
+/**
+ * Brute-force: per-IP (30/h) + per-email ({@link RATE_LIMIT_LOGIN_ATTEMPTS_PER_ACCOUNT_PER_HOUR}/h) — see route + `constants/anti-cheat.ts`.
+ * Session: `session.save()` issues a new iron-session sealed cookie for the logged-in payload (prior anonymous/partial state is overwritten), which addresses session fixation for the common case.
+ * CSRF: enforced in middleware for API mutations; login POST is included (browser sends cookie + `x-csrf-token` via `CsrfProvider`).
+ */
 export async function POST(request: Request) {
   try {
     const body = await request.json();

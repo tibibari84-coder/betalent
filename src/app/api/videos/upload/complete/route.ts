@@ -13,7 +13,6 @@ import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { buildPublicPlaybackUrl, getPlaybackUrl, getStorageConfig, isValidVideoStorageKeyForUser } from '@/lib/storage';
-import { blockDisallowedMutationOrigin } from '@/lib/mutation-origin';
 import { checkFfmpegAvailable } from '@/lib/ffmpeg';
 import { rewardUpload } from '@/services/coin.service';
 import { enqueueAnalysis } from '@/services/vocal-scoring.service';
@@ -69,9 +68,6 @@ async function logVideoDbRow(videoId: string, label: string): Promise<void> {
 
 export async function POST(req: Request) {
   try {
-    const originDeny = blockDisallowedMutationOrigin(req);
-    if (originDeny) return originDeny;
-
     const user = await requireVerifiedUser();
     if (
       !(await checkRateLimit(
