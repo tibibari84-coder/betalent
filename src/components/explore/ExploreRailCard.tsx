@@ -26,12 +26,26 @@ export function ExploreRailCard({ card, previewUrl }: ExploreRailCardProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const { openModal } = usePerformanceModal();
 
+  const handleOpenPerformance = useCallback(() => {
+    openModal(card.id);
+  }, [card.id, openModal]);
+
   const handleClick = useCallback(
     (e: React.MouseEvent) => {
       e.preventDefault();
-      openModal(card.id);
+      handleOpenPerformance();
     },
-    [card.id, openModal]
+    [handleOpenPerformance]
+  );
+
+  const handleCardKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        handleOpenPerformance();
+      }
+    },
+    [handleOpenPerformance]
   );
 
   const handleGiftClick = useCallback(
@@ -59,10 +73,12 @@ export function ExploreRailCard({ card, previewUrl }: ExploreRailCardProps) {
   }, [previewUrl]);
 
   return (
-    <button
-      type="button"
+    <div
+      role="button"
+      tabIndex={0}
       onClick={handleClick}
-      className="group flex-shrink-0 w-[180px] min-w-[180px] tablet:min-w-[200px] laptop:min-w-[220px] desktop:min-w-[240px] rounded-[16px] overflow-hidden transition-all duration-200 ease-out focus:outline-none focus:ring-2 focus:ring-accent/30 focus:ring-offset-2 focus:ring-offset-[#0D0D0E] laptop:hover:-translate-y-0.5 laptop:hover:scale-[1.02] laptop:hover:border-[rgba(255,70,90,0.18)] laptop:hover:shadow-[0_12px_36px_rgba(0,0,0,0.65),inset_0_1px_0_rgba(255,255,255,0.04)] text-left"
+      onKeyDown={handleCardKeyDown}
+      className="group flex-shrink-0 w-[180px] min-w-[180px] cursor-pointer tablet:min-w-[200px] laptop:min-w-[220px] desktop:min-w-[240px] rounded-[16px] overflow-hidden text-left transition-all duration-200 ease-out focus:outline-none focus:ring-2 focus:ring-accent/30 focus:ring-offset-2 focus:ring-offset-[#0D0D0E] laptop:hover:-translate-y-0.5 laptop:hover:scale-[1.02] laptop:hover:border-[rgba(255,70,90,0.18)] laptop:hover:shadow-[0_12px_36px_rgba(0,0,0,0.65),inset_0_1px_0_rgba(255,255,255,0.04)]"
       style={CARD_BASE_STYLE}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
@@ -139,6 +155,6 @@ export function ExploreRailCard({ card, previewUrl }: ExploreRailCardProps) {
           {card.votes ? `${card.votes} votes · ` : ''}{card.views} views
         </p>
       </div>
-    </button>
+    </div>
   );
 }

@@ -1,7 +1,9 @@
 'use client';
 
 import { useState } from 'react';
+import { Clapperboard } from 'lucide-react';
 import ProfileVideoThumbnail from './ProfileVideoThumbnail';
+import { cn } from '@/lib/utils';
 
 const TABS = [
   { id: 'videos', label: 'Videos' },
@@ -80,11 +82,12 @@ export default function ProfileContent({
                 key={tab.id}
                 type="button"
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex h-12 shrink-0 touch-manipulation items-center border-b-2 text-[14px] transition-colors ${
+                className={cn(
+                  'flex h-12 shrink-0 touch-manipulation items-center border-b-2 text-[14px] transition-all duration-150 ease-out',
                   active
                     ? 'border-[#E31B23] font-bold text-white'
-                    : 'border-transparent font-medium text-gray-500'
-                }`}
+                    : 'border-transparent font-medium text-gray-500 hover:text-white/80'
+                )}
               >
                 {tab.label}
               </button>
@@ -97,18 +100,19 @@ export default function ProfileContent({
         <>
           {videos.length === 0 ? (
             <div className="flex flex-col items-center justify-center px-10 py-20 text-center">
-              <p className="mb-2 text-[18px] font-bold text-white">No performances yet</p>
-              <p className="max-w-sm text-[14px] leading-relaxed text-gray-500">
+              <Clapperboard className="mb-4 h-12 w-12 text-gray-700" strokeWidth={1.5} aria-hidden />
+              <p className="font-display text-[18px] font-bold text-white">No performances yet</p>
+              <p className="mt-2 max-w-sm font-sans text-[14px] leading-relaxed text-gray-500">
                 {isOwner
                   ? 'Upload a take — your grid appears here with views and reactions.'
                   : 'Performances show here when this creator posts.'}
               </p>
               {isOwner ? (
                 <a
-                  href="/upload"
-                  className="mt-6 inline-flex h-[48px] touch-manipulation items-center justify-center rounded-full bg-[#E31B23] px-8 text-[15px] font-bold text-white shadow-[0_0_20px_rgba(227,27,35,0.35)] transition-transform active:scale-[0.98]"
+                  href="/challenges"
+                  className="mt-6 inline-flex h-[48px] touch-manipulation items-center justify-center rounded-full bg-[#E31B23] px-8 font-display text-[15px] font-bold text-white shadow-[0_8px_22px_rgba(0,0,0,0.28)] transition-all duration-150 ease-out hover:brightness-110 active:scale-[0.98]"
                 >
-                  Upload performance
+                  Start your first challenge
                 </a>
               ) : null}
             </div>
@@ -169,7 +173,7 @@ export default function ProfileContent({
           {challenges.map((c) => (
             <div
               key={c.id}
-              className="flex flex-col gap-2 rounded-[20px] border border-white/5 bg-[#0A0A0A] p-4 sm:flex-row sm:items-center sm:justify-between"
+              className="flex flex-col gap-2 rounded-[20px] border border-white/5 bg-[#0A0A0A] p-4 shadow-[0_8px_22px_rgba(0,0,0,0.28)] transition-all duration-150 ease-out sm:flex-row sm:items-center sm:justify-between"
             >
               <span className="text-[15px] font-semibold text-white">{c.name}</span>
               <span
@@ -185,7 +189,7 @@ export default function ProfileContent({
       )}
 
       {activeTab === 'about' && (
-        <div className="mx-4 mt-4 rounded-[20px] border border-white/5 bg-[#0A0A0A] p-4 pb-8">
+        <div className="mx-4 mt-4 rounded-[20px] border border-white/5 bg-[#0A0A0A] p-4 pb-8 shadow-[0_8px_22px_rgba(0,0,0,0.28)]">
           <div className="space-y-4 text-[14px]">
             {about.country ? (
               <div>

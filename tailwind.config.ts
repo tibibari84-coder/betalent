@@ -40,8 +40,9 @@ const config: Config = {
         },
       },
       fontFamily: {
-        display: ['var(--font-playfair)', 'serif'],
-        body: ['var(--font-inter)', 'sans-serif'],
+        sans: ['var(--font-inter)', 'system-ui', '-apple-system', 'sans-serif'],
+        display: ['var(--font-playfair-display)', 'var(--font-playfair)', 'serif'],
+        body: ['var(--font-inter)', 'system-ui', 'sans-serif'],
       },
       fontSize: {
         'hero-title': ['2rem', { lineHeight: '1.2', fontWeight: '700' }],

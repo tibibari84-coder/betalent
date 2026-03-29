@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import { headers, cookies } from 'next/headers';
-import { Playfair_Display } from 'next/font/google';
+import { Inter, Playfair_Display } from 'next/font/google';
 import './globals.css';
 
 const playfair = Playfair_Display({
@@ -8,6 +8,12 @@ const playfair = Playfair_Display({
   subsets: ['latin'],
   display: 'swap',
   variable: '--font-playfair',
+});
+
+const inter = Inter({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-inter',
 });
 import { AuthAwareShell } from '@/components/layout/AuthAwareShell';
 import { I18nLayoutWrapper } from '@/components/layout/I18nLayoutWrapper';
@@ -64,7 +70,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 
   return (
     <html lang={locale}>
-      <body className={`${playfair.variable} min-h-screen flex flex-col bg-[#070707] text-[#f5f5f5] antialiased font-sans`}>
+      <body
+        className={`${playfair.variable} ${inter.variable} min-h-screen flex flex-col bg-[#070707] text-[#f5f5f5] antialiased font-sans`}
+      >
         <I18nLayoutWrapper initialLocale={locale} allMessages={allMessages}>
           <AuthAwareShell isAppMember={isAppMember} authUser={authUser}>
             {children}

@@ -91,6 +91,8 @@
     background-image: none;
     color: #f5f5f5;
     font-family: var(--font-inter), system-ui, sans-serif;
+    /* Align display heading token with next/font Playfair on body */
+    --font-playfair-display: var(--font-playfair);
   }
   /* SVGs never blow out of layout; .app-shell svg below further caps icon size */
   svg {

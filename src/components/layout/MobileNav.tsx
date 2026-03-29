@@ -3,41 +3,25 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import type { LucideIcon } from 'lucide-react';
+import { Home, MessageSquare, PlusSquare, Search, User } from 'lucide-react';
 import { useI18n } from '@/contexts/I18nContext';
 import { isMobileOrTabletDevice } from '@/lib/device';
+import { cn } from '@/lib/utils';
 
-const IconHome = ({ className = 'w-6 h-6' }: { className?: string }) => (
-  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
-  </svg>
-);
-const IconSearch = ({ className = 'w-6 h-6' }: { className?: string }) => (
-  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
-  </svg>
-);
-const IconUpload = ({ className = 'w-6 h-6' }: { className?: string }) => (
-  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
-  </svg>
-);
-const IconInbox = ({ className = 'w-6 h-6' }: { className?: string }) => (
-  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 13.5h3.86a2.25 2.25 0 012.012 1.424l.256 1.912a2.25 2.25 0 002.013 1.424h3.218a2.25 2.25 0 002.013-1.424l.256-1.912a2.25 2.25 0 012.013-1.424h3.86m-19.5 0V2.25m0 13.5V19.5m0-13.5h-3.86a2.25 2.25 0 00-2.013 1.424l-.256 1.912a2.25 2.25 0 01-2.013 1.424H2.25" />
-  </svg>
-);
-const IconProfile = ({ className = 'w-6 h-6' }: { className?: string }) => (
-  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
-  </svg>
-);
+const ICON_STROKE = 1.5;
 
-const ITEMS: { href: string; labelKey: string; icon: React.ComponentType<{ className?: string }>; isUpload?: boolean }[] = [
-  { href: '/feed', labelKey: 'nav.home', icon: IconHome },
-  { href: '/explore', labelKey: 'nav.search', icon: IconSearch },
-  { href: '/upload', labelKey: 'nav.upload', icon: IconUpload, isUpload: true },
-  { href: '/inbox', labelKey: 'nav.inbox', icon: IconInbox },
-  { href: '/profile/me', labelKey: 'nav.profile', icon: IconProfile },
+const ITEMS: {
+  href: string;
+  labelKey: string;
+  icon: LucideIcon;
+  isUpload?: boolean;
+}[] = [
+  { href: '/feed', labelKey: 'nav.home', icon: Home },
+  { href: '/explore', labelKey: 'nav.search', icon: Search },
+  { href: '/upload', labelKey: 'nav.upload', icon: PlusSquare, isUpload: true },
+  { href: '/inbox', labelKey: 'nav.inbox', icon: MessageSquare },
+  { href: '/profile/me', labelKey: 'nav.profile', icon: User },
 ];
 
 function isActive(pathname: string | null, href: string): boolean {
@@ -62,18 +46,8 @@ export default function MobileNav() {
     <nav
       role="navigation"
       aria-label="Mobile navigation"
-      className="
-        fixed bottom-0 left-0 right-0 z-50
-        min-h-[var(--bottom-nav-height)]
-        pt-2 pb-[max(8px,env(safe-area-inset-bottom))]
-        px-1
-        border-t border-white/5
-      "
-      style={{
-        background: 'rgba(0,0,0,0.8)',
-        backdropFilter: 'blur(24px)',
-        WebkitBackdropFilter: 'blur(24px)',
-      }}
+      className="fixed bottom-0 left-0 right-0 z-50 min-h-[var(--bottom-nav-height)] border-t border-white/5 bg-black/80 px-1 pb-[max(8px,env(safe-area-inset-bottom))] pt-2 shadow-[0_8px_22px_rgba(0,0,0,0.28)] backdrop-blur-xl"
+      style={{ WebkitBackdropFilter: 'blur(24px)' }}
     >
       <div className="mx-auto flex h-14 max-w-lg items-center justify-around">
         {ITEMS.map(({ href, labelKey, icon: Icon, isUpload }) => {
@@ -83,33 +57,33 @@ export default function MobileNav() {
               key={href}
               href={href}
               aria-current={active ? 'page' : undefined}
-              className={`
-                flex flex-col items-center justify-center gap-1 flex-1 min-w-0 min-h-[52px] touch-manipulation
-                transition-colors duration-200
-                ${active ? 'text-accent' : 'text-text-muted hover:text-text-secondary active:text-accent'}
-                ${isUpload && active ? 'relative' : ''}
-              `}
+              className={cn(
+                'flex min-h-[52px] min-w-0 flex-1 flex-col items-center justify-center gap-1 touch-manipulation transition-all duration-150 ease-out',
+                active ? 'text-[#E31B23]' : 'text-gray-500 hover:text-gray-300'
+              )}
               style={{ minWidth: 52 }}
             >
               {isUpload ? (
                 <span
-                  className={`
-                    flex items-center justify-center w-11 h-11 rounded-2xl transition-all duration-200
-                    ${active ? 'bg-accent/20 text-accent shadow-[0_0_20px_rgba(196,18,47,0.25)]' : 'bg-white/[0.06] text-text-muted'}
-                  `}
+                  className={cn(
+                    'flex h-11 w-11 items-center justify-center rounded-2xl transition-all duration-150 ease-out',
+                    active
+                      ? 'bg-[#E31B23]/20 text-[#E31B23] shadow-[0_0_12px_rgba(227,27,35,0.35)]'
+                      : 'bg-white/[0.06] text-current'
+                  )}
                 >
-                  <Icon className="w-6 h-6" />
+                  <Icon className="h-6 w-6" strokeWidth={ICON_STROKE} />
                 </span>
               ) : (
-                <span className={active ? 'drop-shadow-[0_0_8px_rgba(227,27,35,0.6)]' : ''}>
-                  <Icon className="w-6 h-6" />
+                <span className={cn(active && 'drop-shadow-[0_0_8px_rgba(227,27,35,0.6)]')}>
+                  <Icon className="h-6 w-6" strokeWidth={ICON_STROKE} />
                 </span>
               )}
               <span
-                className={`
-                  text-[11px] font-medium truncate max-w-full px-0.5
-                  ${active ? 'text-accent' : 'text-inherit'}
-                `}
+                className={cn(
+                  'max-w-full truncate px-0.5 text-[11px] transition-all duration-150 ease-out',
+                  active ? 'font-semibold' : 'font-medium'
+                )}
               >
                 {t(labelKey)}
               </span>

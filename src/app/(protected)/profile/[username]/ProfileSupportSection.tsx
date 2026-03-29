@@ -38,7 +38,7 @@ interface ProfileSupportSectionProps {
 }
 
 const cardClass =
-  'mx-4 mt-4 rounded-[20px] border border-white/5 bg-[#0A0A0A] p-4';
+  'mx-4 mt-4 rounded-[20px] border border-white/5 bg-[#0A0A0A] p-4 shadow-[0_8px_22px_rgba(0,0,0,0.28)] transition-all duration-150 ease-out';
 const iconClass = 'h-6 w-6 shrink-0 text-[#E31B23]';
 
 export default function ProfileSupportSection({ username }: ProfileSupportSectionProps) {

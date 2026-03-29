@@ -120,7 +120,7 @@ export default async function ProfilePage({ params }: Props) {
 
 
   return (
-    <div className="w-full min-h-screen min-w-0 overflow-x-hidden bg-[#000000] pb-[calc(5.25rem+env(safe-area-inset-bottom))] md:pb-8">
+    <div className="w-full min-h-screen min-w-0 overflow-x-hidden bg-[#070707] pb-[calc(5.25rem+env(safe-area-inset-bottom))] md:pb-8">
       <ProfileTopBar
         username={profile.username}
         displayName={profile.displayName ?? profile.username}
@@ -144,9 +144,9 @@ export default async function ProfilePage({ params }: Props) {
         />
 
         <ProfileStatsBar
+          videosCount={videos.length}
           followers={truthfulStats.followersCount}
           following={truthfulStats.followingCount}
-          totalLikes={truthfulStats.totalLikesOnVideos}
           totalViews={truthfulStats.totalViewsOnVideos}
           votes={truthfulStats.totalVotesOnVideos}
           averageTalentScore={averageTalentScore}
@@ -170,7 +170,7 @@ export default async function ProfilePage({ params }: Props) {
   } catch (e) {
     if (isDatabaseUnavailableError(e)) {
       return (
-        <div className="flex min-h-[50vh] w-full items-center justify-center bg-[#000000] px-6 py-16">
+        <div className="flex min-h-[50vh] w-full items-center justify-center bg-[#070707] px-6 py-16">
           <p className="text-center text-[15px] text-text-secondary max-w-md" role="alert">
             Service temporarily unavailable. Please try again shortly.
           </p>

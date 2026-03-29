@@ -56,7 +56,7 @@ export default function ProfileRankingBadge({ username, className = '' }: Profil
   return (
     <Link
       href="/leaderboard"
-      className={`mx-4 mt-4 flex w-[calc(100%-2rem)] touch-manipulation items-center gap-3 rounded-[20px] border border-white/5 bg-[#0A0A0A] p-4 transition-colors hover:bg-white/[0.04] ${className}`}
+      className={`mx-4 mt-4 flex w-[calc(100%-2rem)] touch-manipulation items-center gap-3 rounded-[20px] border border-white/5 bg-[#0A0A0A] p-4 shadow-[0_8px_22px_rgba(0,0,0,0.28)] transition-all duration-150 ease-out hover:bg-white/[0.04] ${className}`}
     >
       <IconTrophy className="h-6 w-6 shrink-0 text-[#E31B23]" aria-hidden />
       <div className="min-w-0 flex-1">
