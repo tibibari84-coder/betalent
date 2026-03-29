@@ -202,16 +202,26 @@ export async function POST(req: Request) {
       },
     });
 
-    await prisma.$transaction(async (tx) => {
-      await tx.video.update({
-        where: { id: videoId },
-        data: dbPayload,
+    try {
+      await prisma.$transaction(async (tx) => {
+        await tx.video.update({
+          where: { id: videoId },
+          data: dbPayload,
+        });
+        await tx.user.update({
+          where: { id: user.id },
+          data: { videosCount: { increment: 1 } },
+        });
       });
-      await tx.user.update({
-        where: { id: user.id },
-        data: { videosCount: { increment: 1 } },
-      });
-    });
+    } catch (txErr) {
+      const msg = txErr instanceof Error ? txErr.message : String(txErr);
+      logComplete('error', 'post-upload DB transaction failed', { videoId, userId: user.id, message: msg });
+      logOpsEvent('publish_failed', { videoId, userId: user.id, errorCode: 'COMPLETE_DB_TX_FAILED' });
+      return NextResponse.json(
+        { ok: false, message: 'Could not save video after upload', step: 'save', code: 'COMPLETE_DB_TX_FAILED' },
+        { status: 500 }
+      );
+    }
 
     await rewardUpload(user.id, videoId);
 

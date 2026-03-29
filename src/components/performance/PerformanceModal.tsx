@@ -17,13 +17,13 @@ import LikeButton from '@/components/video/LikeButton';
 import VoteButton from '@/components/video/VoteButton';
 import CommentsPanel, { type CommentItem } from '@/components/comments/CommentsPanel';
 import { SUPER_VOTE_PACKAGES } from '@/constants/coins';
-import { CONTENT_TYPE_LABELS } from '@/constants/platform-rules';
+import { CONTENT_TYPE_LABELS, type ContentTypeKey } from '@/constants/platform-rules';
 
 type VideoPayload = {
   id: string;
   title: string;
   description: string | null;
-  contentType?: 'ORIGINAL' | 'COVER' | 'REMIX';
+  contentType?: ContentTypeKey;
   videoUrl: string;
   thumbnailUrl: string | null;
   durationSec: number;
@@ -319,7 +319,9 @@ export default function PerformanceModal({ videoId, isOpen, onClose }: Performan
             {video?.contentType && video.contentType !== 'ORIGINAL' && (
               <>
                 <span className="text-white/50 mx-1.5">·</span>
-                <span className="text-white/55">{CONTENT_TYPE_LABELS[video.contentType]}</span>
+                <span className="text-white/55">
+                  {CONTENT_TYPE_LABELS[video.contentType as keyof typeof CONTENT_TYPE_LABELS] ?? video.contentType}
+                </span>
               </>
             )}
           </p>

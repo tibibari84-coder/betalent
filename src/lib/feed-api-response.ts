@@ -11,6 +11,8 @@ export type FeedVideoApiItem = {
   creatorId: string;
   visibility: 'PUBLIC' | 'PRIVATE';
   title: string;
+  /** Vocal / category label for feed metadata (from Category.name). */
+  styleLabel?: string;
   thumbnailUrl?: string;
   videoUrl?: string | null;
   durationSec: number;
@@ -57,6 +59,7 @@ type VideoRowForFeed = {
   votesCount: number;
   talentScore: number | null;
   creator: CreatorWithBadge;
+  category?: { name: string; slug: string } | null;
 };
 
 export function mapVideoRowToFeedItem(
@@ -72,6 +75,7 @@ export function mapVideoRowToFeedItem(
     videoUrl: v.videoUrl ?? undefined,
     durationSec: v.durationSec,
     challengeName,
+    styleLabel: v.category?.name,
     creator: {
       id: v.creator.id,
       displayName: v.creator.displayName,
@@ -117,6 +121,7 @@ export async function loadFeedVideosInOrder(orderedIds: string[]): Promise<FeedV
     },
     include: {
       creator: { select: feedCreatorSelect },
+      category: { select: { name: true, slug: true } },
     },
   });
 

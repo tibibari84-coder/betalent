@@ -7,7 +7,7 @@ import type { VideoFeedItem } from '@/components/feed/VideoFeedCard';
 import { cn } from '@/lib/utils';
 
 export interface ImmersiveFeedMetadataBlockProps {
-  item: Pick<VideoFeedItem, 'title' | 'challengeName' | 'creator'>;
+  item: Pick<VideoFeedItem, 'title' | 'challengeName' | 'styleLabel' | 'creator'>;
   captionShort: string;
   captionExpanded: boolean;
   showExpand: boolean;
@@ -26,7 +26,7 @@ export function ImmersiveFeedMetadataBlock({
   reserveForOverlayRail = true,
   className,
 }: ImmersiveFeedMetadataBlockProps) {
-  const { creator, challengeName, title } = item;
+  const { creator, challengeName, styleLabel, title } = item;
   const caption = title;
   const flag = getDisplayCountryFlag(creator.country);
 
@@ -63,7 +63,11 @@ export function ImmersiveFeedMetadataBlock({
             {flag && <span className="text-base" aria-hidden>{flag}</span>}
             <VerifiedBadge verified={!!creator.verified} verificationLevel={creator.verificationLevel ?? undefined} size="sm" />
           </p>
-          {challengeName ? <p className="text-white/70 text-[12px] md:text-[13px] truncate">{challengeName}</p> : null}
+          {challengeName ? (
+            <p className="text-white/70 text-[12px] md:text-[13px] truncate">{challengeName}</p>
+          ) : styleLabel ? (
+            <p className="text-white/55 text-[12px] md:text-[13px] truncate">{styleLabel}</p>
+          ) : null}
         </div>
       </Link>
       <div className="text-left pointer-events-auto min-w-0">

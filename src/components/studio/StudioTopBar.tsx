@@ -1,15 +1,15 @@
 'use client';
 
-import { IconMic2, IconX } from '@/components/ui/Icons';
+import { IconX } from '@/components/ui/Icons';
 import { cn } from '@/lib/utils';
 
 export type StudioTopBarProps = {
   onClose: () => void;
-  onAddSound?: () => void;
   className?: string;
 };
 
-export default function StudioTopBar({ onClose, onAddSound, className }: StudioTopBarProps) {
+/** Minimal studio chrome: close only (no placeholder actions). */
+export default function StudioTopBar({ onClose, className }: StudioTopBarProps) {
   return (
     <header
       className={cn(
@@ -25,17 +25,6 @@ export default function StudioTopBar({ onClose, onAddSound, className }: StudioT
       >
         <IconX className="h-6 w-6" />
       </button>
-      {onAddSound ? (
-        <button
-          type="button"
-          onClick={onAddSound}
-          className="inline-flex max-w-[min(100%,14rem)] touch-manipulation items-center justify-center gap-2 rounded-full border border-white/12 bg-black/40 px-5 py-2.5 text-[14px] font-semibold text-white backdrop-blur-md"
-          aria-label="Add sound"
-        >
-          <IconMic2 className="h-4 w-4 shrink-0 opacity-90" aria-hidden />
-          <span className="truncate">Add sound</span>
-        </button>
-      ) : null}
     </header>
   );
 }

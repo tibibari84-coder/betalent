@@ -6,11 +6,17 @@
  * Do not change this pipeline for Phase 2; only pass a File from the new source.
  */
 
-import { getMimeTypeForUpload } from '@/constants/upload';
+import { getMimeTypeForUpload, MAX_VIDEO_FILE_SIZE } from '@/constants/upload';
 import type { AllowedVideoMimeType } from '@/constants/upload';
 import { interpretApiResponse } from '@/lib/api-json-client';
 
-export type ContentTypeUpload = 'ORIGINAL' | 'COVER' | 'REMIX';
+export type ContentTypeUpload =
+  | 'ORIGINAL'
+  | 'COVER'
+  | 'REMIX'
+  | 'FREESTYLE'
+  | 'DUET'
+  | 'OTHER';
 export type CommentPermissionUpload = 'EVERYONE' | 'FOLLOWERS' | 'FOLLOWING' | 'OFF';
 
 export type DirectUploadMetadata = {
@@ -25,9 +31,19 @@ export type DirectUploadMetadata = {
 };
 
 /** Chain: Upload → Save → Process → Thumbnail → READY → Feed → Open Performance. */
+export type DirectUploadFailureStep =
+  | 'init'
+  | 'put'
+  | 'complete'
+  /** Legacy / generic */
+  | 'save'
+  | 'storage'
+  | 'upload'
+  | 'process';
+
 export type DirectUploadResult =
   | { ok: true; videoId: string; ready: boolean }
-  | { ok: false; message: string; step?: string; code?: string };
+  | { ok: false; message: string; step?: DirectUploadFailureStep; code?: string };
 
 export type UploadProgressStep = 'preparing' | 'uploading' | 'processing';
 
@@ -101,9 +117,23 @@ function messageForPresignedPutFailure(error: unknown): string {
   return raw.trim() ? raw : 'Upload failed while sending the file to storage.';
 }
 
+function isRetryableNetworkError(e: unknown): boolean {
+  const raw = e instanceof Error ? e.message : String(e);
+  const lower = raw.toLowerCase();
+  return (
+    lower.includes('failed to fetch') ||
+    lower.includes('networkerror') ||
+    lower.includes('load failed') ||
+    lower.includes('network request failed') ||
+    lower.includes('aborted') ||
+    lower.includes('timeout')
+  );
+}
+
 /**
  * PUT file bytes to the presigned storage URL.
  * Uses a single `fetch` with `File` as body (no ReadableStream / duplex) — streaming PUT hangs or fails on several mobile browsers.
+ * One automatic retry on transient mobile / flaky network errors.
  */
 async function putFileToPresignedUrl(
   uploadUrl: string,
@@ -111,19 +141,36 @@ async function putFileToPresignedUrl(
   contentType: string,
   onProgress?: (percent: number) => void
 ): Promise<void> {
-  onProgress?.(5);
-  const res = await fetch(uploadUrl, {
-    method: 'PUT',
-    body: file,
-    headers: { 'Content-Type': contentType },
-    credentials: 'omit',
-    mode: 'cors',
-  });
-  if (!res.ok) {
-    const errText = await res.text().catch(() => '');
-    throw new Error(`Storage PUT failed (${res.status}): ${errText.slice(0, 240)}`);
+  const run = async () => {
+    onProgress?.(5);
+    const res = await fetch(uploadUrl, {
+      method: 'PUT',
+      body: file,
+      headers: { 'Content-Type': contentType },
+      credentials: 'omit',
+      mode: 'cors',
+    });
+    if (!res.ok) {
+      const errText = await res.text().catch(() => '');
+      const err = new Error(`Storage PUT failed (${res.status}): ${errText.slice(0, 240)}`);
+      if (res.status >= 500 || res.status === 408) {
+        (err as Error & { retryable?: boolean }).retryable = true;
+      }
+      throw err;
+    }
+    onProgress?.(100);
+  };
+
+  try {
+    await run();
+  } catch (first) {
+    const canRetry =
+      isRetryableNetworkError(first) ||
+      (first instanceof Error && (first as Error & { retryable?: boolean }).retryable === true);
+    if (!canRetry) throw first;
+    await new Promise((r) => setTimeout(r, 650));
+    await run();
   }
-  onProgress?.(100);
 }
 
 /**
@@ -135,9 +182,24 @@ export async function performDirectUpload(
   metadata: DirectUploadMetadata,
   options?: DirectUploadOptions
 ): Promise<DirectUploadResult> {
+  if (!file || file.size < 32) {
+    return { ok: false, message: 'Recording file is empty or too small. Please record again.', step: 'init' };
+  }
+  if (file.size > MAX_VIDEO_FILE_SIZE) {
+    return {
+      ok: false,
+      message: `File too large (max ${Math.round(MAX_VIDEO_FILE_SIZE / 1024 / 1024)} MB).`,
+      step: 'init',
+    };
+  }
+
   const mimeType = getMimeTypeForUpload(file);
   if (!mimeType) {
-    return { ok: false, message: 'Unsupported file type. Use MP4, MOV, M4V, WebM, or a supported audio file.' };
+    return {
+      ok: false,
+      message: 'Unsupported file type. Use MP4, MOV, M4V, WebM, or a supported audio file.',
+      step: 'init',
+    };
   }
 
   options?.onStatus?.('preparing');
@@ -176,13 +238,13 @@ export async function performDirectUpload(
       });
     }
     if (initParsed.status === 401) {
-      return { ok: false, message: 'Login required', step: 'upload' };
+      return { ok: false, message: 'Login required', step: 'init' };
     }
     if (initParsed.status === 403) {
       return {
         ok: false,
         message: initParsed.message || 'Verify your email before uploading performances.',
-        step: 'upload',
+        step: 'init',
       };
     }
     if (initParsed.status === 503) {
@@ -195,7 +257,7 @@ export async function performDirectUpload(
     return {
       ok: false,
       message: normalizeUploadMessage(initParsed.message, 'save'),
-      step: 'save',
+      step: 'init',
       code: initParsed.code,
     };
   }
@@ -207,7 +269,7 @@ export async function performDirectUpload(
   const putContentType = (initData.contentType || mimeType).trim();
 
   if (!uploadUrl || !videoId) {
-    return { ok: false, message: 'Upload could not start. Please try again.' };
+    return { ok: false, message: 'Upload could not start. Please try again.', step: 'init' };
   }
 
   options?.onStatus?.('uploading');
@@ -219,7 +281,7 @@ export async function performDirectUpload(
     if (typeof console !== 'undefined' && console.warn) {
       console.warn('[performDirectUpload] PUT failed', { error: e, message: msg });
     }
-    return { ok: false, message: msg, step: 'upload' };
+    return { ok: false, message: msg, step: 'put' };
   }
 
   options?.onStatus?.('processing');
@@ -243,7 +305,7 @@ export async function performDirectUpload(
     return {
       ok: false,
       message: normalizeUploadMessage(completeParsed.message, completeParsed.step),
-      step: completeParsed.step,
+      step: 'complete',
       code: completeParsed.code,
     };
   }

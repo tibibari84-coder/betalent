@@ -30,6 +30,8 @@ export interface VideoFeedItem {
   /** From feed API — used for qualified view threshold */
   durationSec?: number;
   challengeName?: string;
+  /** From feed API Category.name */
+  styleLabel?: string;
   creator: {
     id: string;
     displayName: string;

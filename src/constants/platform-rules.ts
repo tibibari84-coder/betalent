@@ -21,16 +21,28 @@ export const PLATFORM_RULES = {
 export const PLATFORM_RULES_ACKNOWLEDGMENT =
   'I confirm this is my real performance (no playback or lip-sync). I understand that submissions may be reviewed, and violations may result in content removal or account restrictions.';
 
-export type ContentTypeKey = 'ORIGINAL' | 'COVER' | 'REMIX';
+export type ContentTypeKey =
+  | 'ORIGINAL'
+  | 'COVER'
+  | 'REMIX'
+  | 'FREESTYLE'
+  | 'DUET'
+  | 'OTHER';
 
 export const CONTENT_TYPE_LABELS: Record<ContentTypeKey, string> = {
   ORIGINAL: 'Original',
   COVER: 'Cover',
   REMIX: 'Remix',
+  FREESTYLE: 'Freestyle',
+  DUET: 'Duet',
+  OTHER: 'Other',
 };
 
 export const CONTENT_TYPE_DESCRIPTIONS: Record<ContentTypeKey, string> = {
   ORIGINAL: 'Your own composition or original performance',
   COVER: 'Cover of an existing song or work',
   REMIX: 'Remix or adaptation of existing material',
+  FREESTYLE: 'Improvised or unscripted performance',
+  DUET: 'Collaborative performance with another artist',
+  OTHER: 'Use when none of the above apply',
 };

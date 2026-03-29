@@ -24,15 +24,13 @@ import { checkRateLimit } from '@/lib/rate-limit';
 import { logger } from '@/lib/logger';
 import { logOpsEvent } from '@/lib/ops-events';
 
-const PERFORMANCE_STYLES = ['pop', 'rnb', 'soul', 'gospel', 'jazz', 'acoustic', 'rock', 'latin', 'afrobeat', 'classical', 'worship'] as const;
-const CONTENT_TYPES = ['ORIGINAL', 'COVER', 'REMIX'] as const;
+const CONTENT_TYPES = ['ORIGINAL', 'COVER', 'REMIX', 'FREESTYLE', 'DUET', 'OTHER'] as const;
 const COMMENT_PERMISSIONS = ['EVERYONE', 'FOLLOWERS', 'FOLLOWING', 'OFF'] as const;
 
 const initSchema = z.object({
   title: z.string().min(1).max(150),
   description: z.string().max(500).optional(),
   categorySlug: z.string().min(1),
-  performanceStyle: z.enum(PERFORMANCE_STYLES).optional(),
   contentType: z.enum(CONTENT_TYPES).optional().default('ORIGINAL'),
   commentPermission: z.enum(COMMENT_PERMISSIONS).optional(),
   filename: z.string().min(1).max(255),
@@ -108,7 +106,8 @@ export async function POST(req: Request) {
     }
 
     const contentType = parsed.contentType ?? 'ORIGINAL';
-    const contentLicensingEligible = contentType === 'ORIGINAL';
+    const contentLicensingEligible =
+      contentType === 'ORIGINAL' || contentType === 'FREESTYLE' || contentType === 'OTHER';
 
     const userPrefs = await prisma.user.findUnique({
       where: { id: user.id },
@@ -128,7 +127,7 @@ export async function POST(req: Request) {
         durationSec: parsed.durationSec,
         fileSize: parsed.fileSize,
         mimeType: mimeTypeNorm,
-        performanceStyle: parsed.performanceStyle ?? null,
+        performanceStyle: category.slug,
         contentType,
         commentPermission,
         contentLicensingEligible,

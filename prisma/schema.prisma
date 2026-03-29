@@ -102,6 +102,9 @@ enum ContentType {
   ORIGINAL // Creator's own composition/performance
   COVER // Cover of existing work; future licensing integration
   REMIX // Remix/adaptation; future licensing integration
+  FREESTYLE // Improvised / unscripted original take
+  DUET // Collaborative performance
+  OTHER // User-selected when none of the above fit
 }
 
 enum CoinTransactionType {

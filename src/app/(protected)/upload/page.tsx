@@ -9,6 +9,7 @@ import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import type { UploadProgressStep } from '@/lib/upload-client';
 import { getMimeTypeForUpload, MAX_VIDEO_FILE_SIZE } from '@/constants/upload';
+import type { ContentTypeKey } from '@/constants/platform-rules';
 import type { RecordingMode } from '@/constants/recording-modes';
 import {
   getLiveChallengeRecordingCapSec,
@@ -30,11 +31,30 @@ type ChallengeContext = {
   maxDurationSec: number;
 };
 
-function toUiUploadError(message: string | undefined): string {
-  const raw = (message ?? '').toLowerCase();
+function toUiUploadError(message: string | undefined, step?: string): string {
+  const trimmed = (message ?? '').trim();
+  const raw = trimmed.toLowerCase();
+  if (step === 'put') {
+    if (raw.includes('upload blocked') || raw.includes('cors')) return trimmed;
+    if (raw.includes('storage put failed') || raw.includes('failed to fetch') || raw.includes('network'))
+      return 'Could not finish sending your video. Check your connection and tap Publish again.';
+    return trimmed || 'Could not send video to storage. Try again.';
+  }
+  if (step === 'init') {
+    if (!raw) return 'Could not start upload. Check your connection and try again.';
+    if (raw.includes('invalid style') || raw.includes('invalid category')) return 'Choose a vocal style and try again.';
+    if (raw.includes('max duration')) return 'This performance is too long for the current limit.';
+    if (raw.includes('file too large')) return 'This file is too large. Please choose a smaller one.';
+    if (raw.includes('verify your email')) return trimmed;
+    return trimmed;
+  }
+  if (step === 'complete') {
+    if (raw.includes('playback')) return trimmed;
+    return trimmed || 'Your video uploaded, but processing could not finish. Check My videos or try again.';
+  }
   if (!raw) return 'Upload failed. Please try again.';
   if (raw.includes('upload blocked:') && raw.includes('cors')) {
-    return (message ?? '').trim();
+    return trimmed;
   }
   if (raw.includes('storage') || raw.includes('direct upload')) return 'Upload service is temporarily unavailable. Please try again.';
   if (raw.includes('permission') || raw.includes('login required')) return 'Please sign in and try again.';
@@ -54,7 +74,7 @@ export default function UploadPage() {
   const [description, setDescription] = useState('');
   const [styleSlug, setStyleSlug] = useState('');
   const [challengeId, setChallengeId] = useState('');
-  const [contentType, setContentType] = useState<'ORIGINAL' | 'COVER' | 'REMIX'>('ORIGINAL');
+  const [contentType, setContentType] = useState<ContentTypeKey>('ORIGINAL');
   const [commentPermission, setCommentPermission] = useState<'EVERYONE' | 'FOLLOWERS' | 'FOLLOWING' | 'OFF'>('EVERYONE');
   const [rulesAcknowledged, setRulesAcknowledged] = useState(false);
   const [file, setFile] = useState<File | null>(null);
@@ -223,7 +243,7 @@ export default function UploadPage() {
           router.push(`/login?from=${encodeURIComponent(backTo)}`);
           return;
         }
-        const msg = toUiUploadError(result.message);
+        const msg = toUiUploadError(result.message, result.step);
         logUploadFlowEvent('upload_failed', {
           reason: result.step ?? 'upload',
           message: result.message,
