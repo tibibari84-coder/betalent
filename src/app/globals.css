@@ -824,3 +824,29 @@ body.studio-mode-active nav[aria-label="Mobile navigation"] {
 .challenges-hero-blob-b {
   animation: challenges-hero-blob-b 18s ease-in-out infinite;
 }
+
+/* Upload publish — performance type (Cover / Original) error feedback */
+@keyframes upload-performance-type-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  15% {
+    transform: translateX(-6px);
+  }
+  30% {
+    transform: translateX(6px);
+  }
+  45% {
+    transform: translateX(-4px);
+  }
+  60% {
+    transform: translateX(4px);
+  }
+  75% {
+    transform: translateX(-2px);
+  }
+}
+.upload-performance-type-error-shake {
+  animation: upload-performance-type-shake 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}

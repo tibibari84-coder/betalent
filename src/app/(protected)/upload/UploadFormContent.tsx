@@ -11,6 +11,7 @@ import { getMimeTypeForUpload, MAX_VIDEO_FILE_SIZE } from '@/constants/upload';
 import {
   PERFORMANCE_TYPE_PILLS,
   PLATFORM_RULES_ACKNOWLEDGMENT_SHORT,
+  PUBLISH_GATE_PERFORMANCE_TYPE,
   type PublishPerformanceType,
 } from '@/constants/platform-rules';
 import type { UploadProgressStep } from '@/lib/upload-client';
@@ -140,6 +141,8 @@ export default function UploadFormContent(props: Props) {
 
   const [moreOpen, setMoreOpen] = useState(false);
 
+  const performanceTypeGateError = publishGateHints.includes(PUBLISH_GATE_PERFORMANCE_TYPE);
+
   const publishVideoError =
     file && durationSec > maxStudioDurationSec
       ? `This take is ${durationSec}s — maximum allowed is ${maxStudioDurationSec}s. Record again with a shorter take.`
@@ -238,66 +241,100 @@ export default function UploadFormContent(props: Props) {
                 </p>
               </div>
 
-              <div>
-                <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-white/40">
-                  Performance type
+              <div
+                className={cn(
+                  'rounded-[20px] border p-3 transition-all duration-200',
+                  'backdrop-blur-[12px]',
+                  performanceTypeGateError
+                    ? 'border-red-500/50 bg-red-950/20 shadow-[0_0_0_1px_rgba(248,113,113,0.35),0_8px_32px_rgba(0,0,0,0.35)] upload-performance-type-error-shake'
+                    : 'border-white/[0.1] bg-gradient-to-b from-white/[0.07] to-white/[0.02] shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]'
+                )}
+              >
+                <p className="mb-3 text-[15px] font-semibold leading-snug tracking-tight text-white">
+                  What are you performing?
                 </p>
-                <div className="flex flex-wrap gap-2">
-                  {PERFORMANCE_TYPE_PILLS.map(({ type, label }) => (
-                    <button
-                      key={type}
-                      type="button"
-                      disabled={loading}
-                      onClick={() => setPerformanceType(type)}
+                <div className="flex w-full flex-col gap-2.5 sm:flex-row sm:gap-3">
+                  {PERFORMANCE_TYPE_PILLS.map(({ type, label }) => {
+                    const selected = performanceType === type;
+                    return (
+                      <button
+                        key={type}
+                        type="button"
+                        disabled={loading}
+                        onClick={() => setPerformanceType(type)}
+                        className={cn(
+                          'flex w-full min-h-[56px] flex-1 touch-manipulation items-center justify-center rounded-2xl border px-4 py-3 text-[15px] font-semibold tracking-tight transition-all duration-200 ease-out',
+                          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/45 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0D0D0E]',
+                          'active:scale-[0.97] active:transition-transform',
+                          selected
+                            ? 'border-accent/55 bg-gradient-to-br from-accent/30 via-accent/15 to-white/[0.06] text-white shadow-[0_0_32px_rgba(196,18,47,0.28),inset_0_1px_0_rgba(255,255,255,0.12)]'
+                            : 'border-white/[0.12] bg-white/[0.05] text-white/45 shadow-none [@media(hover:hover)]:hover:border-white/20 [@media(hover:hover)]:hover:bg-white/[0.09] [@media(hover:hover)]:hover:text-white/80'
+                        )}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+                {performanceTypeGateError ? (
+                  <p className="mt-3 text-[13px] font-medium leading-snug text-red-300/95" role="alert">
+                    {PUBLISH_GATE_PERFORMANCE_TYPE}
+                  </p>
+                ) : null}
+                <div
+                  className={cn(
+                    'grid transition-[grid-template-rows] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]',
+                    performanceType === 'COVER' ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
+                  )}
+                >
+                  <div className="min-h-0 overflow-hidden">
+                    <div
                       className={cn(
-                        'min-h-[48px] min-w-[calc(50%-4px)] flex-1 rounded-full border px-4 py-2.5 text-[14px] font-semibold transition-colors sm:min-w-[140px] sm:flex-none',
-                        performanceType === type
-                          ? 'border-accent/55 bg-accent/20 text-white shadow-[0_0_24px_rgba(196,18,47,0.25)]'
-                          : 'border-white/[0.12] bg-white/[0.04] text-white/65 [@media(hover:hover)]:hover:border-white/25'
+                        'space-y-3 pt-4 transition-all duration-300 ease-out',
+                        performanceType === 'COVER'
+                          ? 'translate-y-0 opacity-100'
+                          : 'pointer-events-none -translate-y-1 opacity-0'
                       )}
                     >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-                {performanceType === 'COVER' ? (
-                  <div className="mt-4 space-y-3 rounded-xl border border-white/[0.08] bg-white/[0.03] p-3">
-                    <div>
-                      <label htmlFor="cover-artist" className="mb-1.5 block text-[12px] text-white/50">
-                        Original artist <span className="text-white/30">(optional)</span>
-                      </label>
-                      <input
-                        id="cover-artist"
-                        type="text"
-                        value={coverOriginalArtistName}
-                        onChange={(e) => setCoverOriginalArtistName(e.target.value)}
-                        placeholder="e.g. Artist name"
-                        className={inputClass}
-                        disabled={loading}
-                        autoComplete="off"
-                        maxLength={200}
-                      />
-                    </div>
-                    <div>
-                      <label htmlFor="cover-song" className="mb-1.5 block text-[12px] text-white/50">
-                        Song title <span className="text-white/30">(optional)</span>
-                      </label>
-                      <input
-                        id="cover-song"
-                        type="text"
-                        value={coverSongTitle}
-                        onChange={(e) => setCoverSongTitle(e.target.value)}
-                        placeholder="e.g. Song title"
-                        className={inputClass}
-                        disabled={loading}
-                        autoComplete="off"
-                        maxLength={200}
-                      />
+                      <div className="rounded-xl border border-white/[0.1] bg-black/25 p-3 shadow-inner backdrop-blur-sm">
+                        <div>
+                          <label htmlFor="cover-artist" className="mb-1.5 block text-[12px] font-medium text-white/65">
+                            Original artist <span className="font-normal text-white/40">(optional)</span>
+                          </label>
+                          <input
+                            id="cover-artist"
+                            type="text"
+                            value={coverOriginalArtistName}
+                            onChange={(e) => setCoverOriginalArtistName(e.target.value)}
+                            placeholder="Artist name"
+                            className={inputClass}
+                            disabled={loading}
+                            autoComplete="off"
+                            maxLength={200}
+                          />
+                        </div>
+                        <div className="mt-3">
+                          <label htmlFor="cover-song" className="mb-1.5 block text-[12px] font-medium text-white/65">
+                            Song title <span className="font-normal text-white/40">(optional)</span>
+                          </label>
+                          <input
+                            id="cover-song"
+                            type="text"
+                            value={coverSongTitle}
+                            onChange={(e) => setCoverSongTitle(e.target.value)}
+                            placeholder="Song title"
+                            className={inputClass}
+                            disabled={loading}
+                            autoComplete="off"
+                            maxLength={200}
+                          />
+                        </div>
+                      </div>
                     </div>
                   </div>
-                ) : null}
-                <p className="mt-2 text-[11px] leading-relaxed text-white/30">
-                  Cover = performing someone else&apos;s song. Original = your own work.
+                </div>
+                <p className="mt-3 text-[11px] leading-relaxed text-white/40">
+                  Cover = someone else&apos;s song · Original = your own work
                 </p>
               </div>
 
