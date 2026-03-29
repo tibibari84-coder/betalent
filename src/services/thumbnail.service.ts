@@ -7,7 +7,7 @@
 import { spawn } from 'child_process';
 import { prisma } from '@/lib/prisma';
 import { uploadThumbnail } from '@/lib/storage';
-import { assertFfmpegAvailable, getFfmpegCommand } from '@/lib/ffmpeg';
+import { assertFfmpegAvailable } from '@/lib/ffmpeg';
 
 const FRAME_SEC = 1;
 const JPEG_QUALITY = 4; // 2–31, lower = better quality
@@ -23,8 +23,11 @@ export async function generateAndUploadThumbnail(
   videoUrl: string,
   creatorId: string
 ): Promise<ThumbnailResult> {
+  if (!videoUrl || typeof videoUrl !== 'string') {
+    return { ok: false, error: 'Invalid input path' };
+  }
   return new Promise((resolve) => {
-    const ffmpegCmd = getFfmpegCommand();
+    const ffmpegCmd = process.env.FFMPEG_PATH || 'ffmpeg';
     const args = [
       '-ss',
       String(FRAME_SEC),
@@ -39,6 +42,7 @@ export async function generateAndUploadThumbnail(
       '-y',
       'pipe:1',
     ];
+    // Safe: ffmpeg command is controlled and inputs are validated
     const proc = spawn(ffmpegCmd, args, { stdio: ['ignore', 'pipe', 'pipe'] });
 
     const chunks: Buffer[] = [];

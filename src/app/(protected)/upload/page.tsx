@@ -1,13 +1,14 @@
 'use client';
 
 /**
- * Creator publish: Recording Studio → File from blob → performDirectUpload (camera-first only).
+ * Creator publish: Recording Studio → File from blob → performDirectUpload.
+ * Pipeline: INIT (POST /api/upload/init) → PUT presigned URL → FINALIZE (POST /api/videos/upload/complete).
  * Uses mounted state to defer searchParams read and avoid hydration mismatch.
  */
 
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import type { UploadProgressStep } from '@/lib/upload-client';
+import type { ContentTypeUpload, UploadPipelineStep } from '@/lib/upload-client';
 import { getMimeTypeForUpload, MAX_VIDEO_FILE_SIZE } from '@/constants/upload';
 import type { RecordingMode } from '@/constants/recording-modes';
 import {
@@ -21,10 +22,8 @@ import { logUploadFlowEvent, writePostPublishHandoff } from '@/lib/upload-flow-l
 import { useI18n } from '@/contexts/I18nContext';
 import UploadFormContent from './UploadFormContent';
 import type { UploadEntryMode } from './UploadFormContent';
-import type { PublishPerformanceType } from '@/constants/platform-rules';
-import { PUBLISH_GATE_PERFORMANCE_TYPE } from '@/constants/platform-rules';
+import type { UploadPagePhase } from './upload-phase';
 
-type UploadPhase = 'idle' | 'uploading' | 'success' | 'failed';
 type ChallengeContext = {
   slug: string;
   title: string;
@@ -63,33 +62,29 @@ function toUiUploadError(message: string | undefined, step?: string): string {
   return 'Upload failed. Please try again.';
 }
 
+function deriveContentType(coverArtist: string, coverSong: string): ContentTypeUpload {
+  return coverArtist || coverSong ? 'COVER' : 'ORIGINAL';
+}
+
 export default function UploadPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { t } = useI18n();
   const [mounted, setMounted] = useState(false);
-  const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [styleSlug, setStyleSlug] = useState('');
-  const [challengeId, setChallengeId] = useState('');
-  const [performanceType, setPerformanceType] = useState<PublishPerformanceType | null>(null);
   const [coverOriginalArtistName, setCoverOriginalArtistName] = useState('');
   const [coverSongTitle, setCoverSongTitle] = useState('');
-  const [commentPermission, setCommentPermission] = useState<'EVERYONE' | 'FOLLOWERS' | 'FOLLOWING' | 'OFF'>('EVERYONE');
-  const [rulesAcknowledged, setRulesAcknowledged] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [durationSec, setDurationSec] = useState(0);
   const [error, setError] = useState('');
-  const [phase, setPhase] = useState<UploadPhase>('idle');
+  const [phase, setPhase] = useState<UploadPagePhase>('idle');
   const [uploadProgress, setUploadProgress] = useState(0);
-  const [uploadStep, setUploadStep] = useState<UploadProgressStep>('preparing');
-  const [successVideoId, setSuccessVideoId] = useState<string | null>(null);
-  const [successReady, setSuccessReady] = useState(false);
+  const [uploadStep, setUploadStep] = useState<UploadPipelineStep>('initializing');
   const [challengeContext, setChallengeContext] = useState<ChallengeContext | null>(null);
   const [uploadEntryMode, setUploadEntryMode] = useState<UploadEntryMode>('studio');
 
-  // Defer searchParams until mounted to avoid hydration mismatch (server has no URL)
   useEffect(() => setMounted(true), []);
   const challengeSlug = mounted ? (searchParams?.get('challenge')?.trim() ?? '') : '';
 
@@ -101,10 +96,6 @@ export default function UploadPage() {
   );
   const studioRecordingMode: RecordingMode = isLiveChallengeStudio ? 'live' : 'standard';
 
-  /**
-   * Client max must match server (init + createEntry): standard 90; with ?challenge= use challenge row when
-   * loaded (OPEN), else platform live cap while details load (server still validates OPEN + slug).
-   */
   const maxStudioDurationSec = !hasChallengeSlug
     ? getRecordingMaxDurationSec('standard')
     : !challengeContext
@@ -167,29 +158,8 @@ export default function UploadPage() {
       setError(t('upload.errorChooseFile'));
       return;
     }
-    const effectiveTitle =
-      title.trim() ||
-      description
-        .split('\n')
-        .map((line) => line.trim())
-        .find(Boolean)
-        ?.slice(0, 150)
-        .trim() ||
-      '';
-    if (!effectiveTitle) {
-      setError(t('upload.errorTitleRequired'));
-      return;
-    }
     if (!styleSlug) {
       setError(t('upload.errorChooseStyle'));
-      return;
-    }
-    if (!rulesAcknowledged) {
-      setError('Please confirm the platform rules (real performance, no playback, no lip-sync).');
-      return;
-    }
-    if (!performanceType) {
-      setError(PUBLISH_GATE_PERFORMANCE_TYPE);
       return;
     }
     if (challengeSlug && challengeContext && challengeContext.status !== 'ENTRY_OPEN') {
@@ -217,8 +187,21 @@ export default function UploadPage() {
       return;
     }
 
+    const captionFirst =
+      description
+        .split('\n')
+        .map((line) => line.trim())
+        .find(Boolean)
+        ?.slice(0, 150)
+        .trim() ?? '';
+    const effectiveTitle = captionFirst || 'New performance';
+    const coverArtist = coverOriginalArtistName.trim();
+    const coverSong = coverSongTitle.trim();
+    const contentType = deriveContentType(coverArtist, coverSong);
+
     logUploadFlowEvent('publish_clicked', { challengeSlug: challengeSlug || undefined });
-    setPhase('uploading');
+    setPhase('initializing');
+    setUploadStep('initializing');
     setUploadProgress(0);
 
     try {
@@ -230,19 +213,22 @@ export default function UploadPage() {
           description: description.trim() || undefined,
           categorySlug: styleSlug,
           durationSec: sec,
-          contentType: performanceType,
-          commentPermission,
+          contentType,
+          commentPermission: 'EVERYONE',
           ...(hasChallengeSlug ? { challengeSlug } : {}),
-          ...(performanceType === 'COVER'
+          ...(contentType === 'COVER'
             ? {
-                coverOriginalArtistName: coverOriginalArtistName.trim() || undefined,
-                coverSongTitle: coverSongTitle.trim() || undefined,
+                coverOriginalArtistName: coverArtist || undefined,
+                coverSongTitle: coverSong || undefined,
               }
             : {}),
         },
         {
           onProgress: setUploadProgress,
-          onStatus: setUploadStep,
+          onStatus: (step) => {
+            setUploadStep(step);
+            setPhase(step);
+          },
         }
       );
 
@@ -259,7 +245,7 @@ export default function UploadPage() {
           message: result.message,
           code: 'code' in result ? result.code : undefined,
         });
-        setPhase('failed');
+        setPhase('error');
         setError(msg);
         showBetalentToast({
           message: 'Upload failed — tap to retry',
@@ -283,7 +269,7 @@ export default function UploadPage() {
         const enterData = await enterRes.json();
         if (!enterRes.ok || !enterData?.ok) {
           logUploadFlowEvent('upload_failed', { reason: 'challenge_enter', videoId: result.videoId });
-          setPhase('failed');
+          setPhase('error');
           setError('Your upload finished, but challenge submission could not be completed. Please try again.');
           showBetalentToast({
             message: 'Upload failed — tap to retry',
@@ -299,7 +285,6 @@ export default function UploadPage() {
         }
       }
 
-      setTitle(effectiveTitle);
       logUploadFlowEvent('upload_completed', { videoId: result.videoId, ready: result.ready });
       logUploadFlowEvent('upload_background', {
         videoId: result.videoId,
@@ -310,6 +295,7 @@ export default function UploadPage() {
         ready: result.ready,
         at: Date.now(),
       });
+      setPhase('done');
       showBetalentToast({
         message: 'Uploading…',
         durationMs: 4500,
@@ -321,7 +307,7 @@ export default function UploadPage() {
     } catch (err) {
       console.error('[upload] publish failed', err);
       logUploadFlowEvent('upload_failed', { reason: 'exception' });
-      setPhase('failed');
+      setPhase('error');
       setError('Upload failed. Please try again.');
       showBetalentToast({
         message: 'Upload failed — tap to retry',
@@ -335,20 +321,6 @@ export default function UploadPage() {
       });
     }
   };
-
-  const handleUploadAnother = useCallback(() => {
-    setFile(null);
-    setDurationSec(0);
-    setError('');
-    setPhase('idle');
-    setUploadProgress(0);
-    setSuccessVideoId(null);
-    setSuccessReady(false);
-    setPerformanceType(null);
-    setCoverOriginalArtistName('');
-    setCoverSongTitle('');
-    setUploadEntryMode('studio');
-  }, []);
 
   const onBackToStudio = useCallback(() => {
     setUploadEntryMode('studio');
@@ -374,36 +346,22 @@ export default function UploadPage() {
     setPhase('idle');
   }, []);
 
-  const loading = phase === 'uploading';
-  const derivedTitleForGate =
-    title.trim() ||
-    description
-      .split('\n')
-      .map((line) => line.trim())
-      .find(Boolean)
-      ?.slice(0, 150)
-      .trim() ||
-    '';
+  const pipelineBusy =
+    phase === 'initializing' || phase === 'uploading' || phase === 'finalizing';
+
   const canSubmit =
     uploadEntryMode === 'publish' &&
-    !loading &&
+    !pipelineBusy &&
     file &&
-    Boolean(derivedTitleForGate) &&
-    styleSlug &&
-    performanceType !== null &&
+    Boolean(styleSlug) &&
     durationSec >= 1 &&
     durationSec <= maxStudioDurationSec &&
-    rulesAcknowledged &&
     (!challengeSlug || !challengeContext || challengeContext.status === 'ENTRY_OPEN');
 
-  /** Why Publish stays disabled (most often: no vocal style selected — button uses pointer-events-none). */
   const publishGateHints = useMemo(() => {
-    if (uploadEntryMode !== 'publish' || !file || loading || canSubmit) return [];
+    if (uploadEntryMode !== 'publish' || !file || pipelineBusy || canSubmit) return [];
     const hints: string[] = [];
-    if (!derivedTitleForGate) hints.push(t('upload.errorTitleRequired'));
     if (!styleSlug) hints.push(t('upload.errorChooseStyle'));
-    if (!performanceType) hints.push(PUBLISH_GATE_PERFORMANCE_TYPE);
-    if (!rulesAcknowledged) hints.push(t('upload.hintAcknowledgeRules'));
     if (durationSec < 1 || durationSec > maxStudioDurationSec) hints.push(t('upload.hintDurationOutOfRange'));
     if (challengeSlug && challengeContext && challengeContext.status !== 'ENTRY_OPEN') {
       hints.push(t('upload.hintChallengeNotOpen'));
@@ -412,12 +370,9 @@ export default function UploadPage() {
   }, [
     uploadEntryMode,
     file,
-    loading,
+    pipelineBusy,
     canSubmit,
-    derivedTitleForGate,
     styleSlug,
-    performanceType,
-    rulesAcknowledged,
     durationSec,
     maxStudioDurationSec,
     challengeSlug,
@@ -425,11 +380,9 @@ export default function UploadPage() {
     t,
   ]);
 
-  const showSuccess = phase === 'success' && successVideoId;
-
   let progressLabel = '';
-  if (phase === 'uploading') {
-    if (uploadStep === 'preparing') progressLabel = t('upload.preparing');
+  if (pipelineBusy) {
+    if (uploadStep === 'initializing') progressLabel = t('upload.preparing');
     else if (uploadStep === 'uploading') progressLabel = t('upload.uploading') + ' ' + uploadProgress + '%';
     else progressLabel = t('upload.processing');
   }
@@ -444,41 +397,26 @@ export default function UploadPage() {
     'form',
     formProps,
     React.createElement(UploadFormContent, {
-      showSuccess: Boolean(showSuccess),
-      successReady,
-      successVideoId,
       t,
-      handleUploadAnother,
-      loading,
+      loading: pipelineBusy,
       canSubmit: Boolean(canSubmit),
       publishGateHints,
       progressLabel,
       error,
       phase,
       handleTryAgain,
-      title,
-      setTitle,
       description,
       setDescription,
       styleSlug,
       setStyleSlug,
-      challengeId,
-      setChallengeId,
       challengeContext,
-      performanceType,
-      setPerformanceType,
       coverOriginalArtistName,
       setCoverOriginalArtistName,
       coverSongTitle,
       setCoverSongTitle,
-    commentPermission,
-    setCommentPermission,
-      rulesAcknowledged,
-      setRulesAcknowledged,
       file,
       previewUrlStable,
       durationSec,
-      setDurationSec,
       uploadStep,
       uploadProgress,
       uploadEntryMode,

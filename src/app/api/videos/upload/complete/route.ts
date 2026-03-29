@@ -25,6 +25,8 @@ import { logOpsEvent } from '@/lib/ops-events';
 const completeSchema = z.object({
   /** Prisma @default(cuid()) — allow full id string (avoid z.cuid() mismatch with cuid2). */
   videoId: z.string().min(1).max(128),
+  /** Optional; when sent, must match the Video row (client received it from POST /api/upload/init). */
+  storageKey: z.string().min(1).max(512).optional(),
 });
 
 function logComplete(level: 'info' | 'warn' | 'error', msg: string, data?: Record<string, unknown>) {
@@ -87,7 +89,7 @@ export async function POST(req: Request) {
       );
     }
     const body = await req.json();
-    const { videoId } = completeSchema.parse(body);
+    const { videoId, storageKey: storageKeyFromClient } = completeSchema.parse(body);
     const storageConfig = getStorageConfig();
     logComplete('info', 'complete called', {
       videoId,
@@ -108,6 +110,12 @@ export async function POST(req: Request) {
     }
     if (video.creatorId !== user.id) {
       return NextResponse.json({ ok: false, message: 'Forbidden', step: 'save' }, { status: 403 });
+    }
+    if (storageKeyFromClient && video.storageKey && storageKeyFromClient !== video.storageKey) {
+      return NextResponse.json(
+        { ok: false, message: 'Storage key mismatch', step: 'save', code: 'STORAGE_KEY_MISMATCH' },
+        { status: 400 }
+      );
     }
     if (video.uploadStatus !== 'UPLOADING') {
       if (video.uploadStatus === 'UPLOADED') {

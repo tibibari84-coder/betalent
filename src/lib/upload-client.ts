@@ -33,11 +33,12 @@ export type DirectUploadResult =
   | { ok: true; videoId: string; ready: boolean }
   | { ok: false; message: string; step?: string; code?: string };
 
-export type UploadProgressStep = 'preparing' | 'uploading' | 'processing';
+/** YouTube-style pipeline phases after Publish (init → PUT → complete). */
+export type UploadPipelineStep = 'initializing' | 'uploading' | 'finalizing';
 
 export type DirectUploadOptions = {
   onProgress?: (percent: number) => void;
-  onStatus?: (step: UploadProgressStep) => void;
+  onStatus?: (step: UploadPipelineStep) => void;
 };
 
 function normalizeUploadMessage(message: string | undefined, step?: string): string {
@@ -175,11 +176,14 @@ async function putFileToPresignedUrlWithRetry(
   throw lastErr;
 }
 
-async function postUploadComplete(videoId: string): Promise<Response> {
+async function postUploadComplete(videoId: string, storageKey?: string): Promise<Response> {
   return fetch('/api/videos/upload/complete', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ videoId }),
+    body: JSON.stringify({
+      videoId,
+      ...(storageKey ? { storageKey } : {}),
+    }),
   });
 }
 
@@ -200,7 +204,7 @@ export async function performDirectUpload(
     return { ok: false, message: 'Unsupported file type. Use MP4, MOV, M4V, WebM, or a supported audio file.', step: 'init' };
   }
 
-  options?.onStatus?.('preparing');
+  options?.onStatus?.('initializing');
   const durationSecInt = Math.max(1, Math.round(Number(metadata.durationSec) || 1));
 
   const initRes = await fetch('/api/upload/init', {
@@ -269,6 +273,7 @@ export async function performDirectUpload(
   const initData = initParsed.data;
   const uploadUrl = initData.uploadUrl;
   const videoId = initData.videoId;
+  const storageKeyFromInit = initData.storageKey?.trim();
   /** Must match what was signed in PutObject (server returns normalized MIME). */
   const putContentType = (initData.contentType || mimeType).trim();
 
@@ -288,8 +293,10 @@ export async function performDirectUpload(
     return { ok: false, message: msg, step: 'put' };
   }
 
-  options?.onStatus?.('processing');
-  let completeParsed = await interpretApiResponse<{ ready?: boolean; step?: string }>(await postUploadComplete(videoId));
+  options?.onStatus?.('finalizing');
+  let completeParsed = await interpretApiResponse<{ ready?: boolean; step?: string }>(
+    await postUploadComplete(videoId, storageKeyFromInit)
+  );
 
   if (!completeParsed.ok) {
     if (completeParsed.status >= 500) {
@@ -300,11 +307,15 @@ export async function performDirectUpload(
         });
       }
       await sleep(700);
-      completeParsed = await interpretApiResponse<{ ready?: boolean; step?: string }>(await postUploadComplete(videoId));
+      completeParsed = await interpretApiResponse<{ ready?: boolean; step?: string }>(
+        await postUploadComplete(videoId, storageKeyFromInit)
+      );
     }
     if (!completeParsed.ok && completeParsed.status >= 500) {
       await sleep(1200);
-      completeParsed = await interpretApiResponse<{ ready?: boolean; step?: string }>(await postUploadComplete(videoId));
+      completeParsed = await interpretApiResponse<{ ready?: boolean; step?: string }>(
+        await postUploadComplete(videoId, storageKeyFromInit)
+      );
     }
   }
 

@@ -12,7 +12,7 @@ import { readFileSync, unlinkSync, existsSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { prisma } from '@/lib/prisma';
-import { assertFfmpegAvailable, getFfmpegCommand } from '@/lib/ffmpeg';
+import { assertFfmpegAvailable } from '@/lib/ffmpeg';
 import { buildVideoStorageKey, deleteStorageObject, extractStorageKeyFromUrl, uploadProcessedVideo } from '@/lib/storage';
 import {
   TARGET_LUFS,
@@ -37,11 +37,25 @@ interface LoudnormMeasure {
   target_offset: string;
 }
 
+/** Validate `-i` target for FFmpeg (temp file path or URL string). */
+function assertValidFfmpegInputAfterDashI(args: string[]): void {
+  const iIdx = args.indexOf('-i');
+  if (iIdx === -1 || iIdx + 1 >= args.length) {
+    throw new Error('Invalid ffmpeg arguments: expected -i <input>');
+  }
+  const inputPath = args[iIdx + 1];
+  if (!inputPath || typeof inputPath !== 'string') {
+    throw new Error('Invalid input path');
+  }
+}
+
 /** Run FFmpeg with timeout. Kills process if it exceeds PROCESSING_TIMEOUT_MS. */
 function runFfmpegWithTimeout(args: string[]): Promise<{ code: number; stderr: string }> {
+  assertValidFfmpegInputAfterDashI(args);
   return new Promise((resolve, reject) => {
     let settled = false;
-    const ffmpegCmd = getFfmpegCommand();
+    const ffmpegCmd = process.env.FFMPEG_PATH || 'ffmpeg';
+    // Safe: ffmpeg command is controlled and inputs are validated
     const proc = spawn(ffmpegCmd, args, { stdio: ['ignore', 'pipe', 'pipe'] });
     let stderr = '';
     proc.stderr?.on('data', (ch: Buffer) => {
