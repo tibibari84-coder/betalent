@@ -2,13 +2,13 @@
 
 /**
  * Creator publish: Recording Studio → File from blob → performDirectUpload.
- * Pipeline: INIT (POST /api/upload/init) → PUT presigned URL → FINALIZE (POST /api/videos/upload/complete).
+ * Pipeline: INIT (POST /api/upload/init) → PUT presigned URL → FINALIZE (POST /api/upload/complete).
  * Uses mounted state to defer searchParams read and avoid hydration mismatch.
  */
 
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import type { ContentTypeUpload, UploadPipelineStep } from '@/lib/upload-client';
+import type { UploadPipelineStep } from '@/lib/upload-client';
 import { getMimeTypeForUpload, MAX_VIDEO_FILE_SIZE } from '@/constants/upload';
 import type { RecordingMode } from '@/constants/recording-modes';
 import {
@@ -60,10 +60,6 @@ function toUiUploadError(message: string | undefined, step?: string): string {
   if (raw.includes('max duration') || raw.includes('too long')) return 'This performance is too long. Please upload a shorter take.';
   if (raw.includes('file too large')) return 'This file is too large. Please choose a smaller one.';
   return 'Upload failed. Please try again.';
-}
-
-function deriveContentType(coverArtist: string, coverSong: string): ContentTypeUpload {
-  return coverArtist || coverSong ? 'COVER' : 'ORIGINAL';
 }
 
 export default function UploadPage() {
@@ -197,7 +193,7 @@ export default function UploadPage() {
     const effectiveTitle = captionFirst || 'New performance';
     const coverArtist = coverOriginalArtistName.trim();
     const coverSong = coverSongTitle.trim();
-    const contentType = deriveContentType(coverArtist, coverSong);
+    const contentType = 'COVER' as const;
 
     logUploadFlowEvent('publish_clicked', { challengeSlug: challengeSlug || undefined });
     setPhase('initializing');
@@ -216,12 +212,8 @@ export default function UploadPage() {
           contentType,
           commentPermission: 'EVERYONE',
           ...(hasChallengeSlug ? { challengeSlug } : {}),
-          ...(contentType === 'COVER'
-            ? {
-                coverOriginalArtistName: coverArtist || undefined,
-                coverSongTitle: coverSong || undefined,
-              }
-            : {}),
+          coverOriginalArtistName: coverArtist || undefined,
+          coverSongTitle: coverSong || undefined,
         },
         {
           onProgress: setUploadProgress,

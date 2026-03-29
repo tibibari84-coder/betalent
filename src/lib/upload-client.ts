@@ -177,7 +177,7 @@ async function putFileToPresignedUrlWithRetry(
 }
 
 async function postUploadComplete(videoId: string, storageKey?: string): Promise<Response> {
-  return fetch('/api/videos/upload/complete', {
+  return fetch('/api/upload/complete', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -211,6 +211,9 @@ export async function performDirectUpload(
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
+      caption: metadata.description?.trim() || metadata.title.trim(),
+      hashtags: undefined,
+      vocalStyle: metadata.categorySlug,
       title: metadata.title.trim(),
       description: metadata.description?.trim() || undefined,
       categorySlug: metadata.categorySlug,

@@ -29,9 +29,14 @@ const CONTENT_TYPES = ['ORIGINAL', 'COVER', 'REMIX'] as const;
 const COMMENT_PERMISSIONS = ['EVERYONE', 'FOLLOWERS', 'FOLLOWING', 'OFF'] as const;
 
 const initSchema = z.object({
-  title: z.string().min(1).max(150),
+  /** New mobile contract */
+  caption: z.string().max(500).optional(),
+  hashtags: z.union([z.string(), z.array(z.string())]).optional(),
+  vocalStyle: z.string().min(1).optional(),
+  /** Backward-compatible legacy contract */
+  title: z.string().min(1).max(150).optional(),
   description: z.string().max(500).optional(),
-  categorySlug: z.string().min(1),
+  categorySlug: z.string().min(1).optional(),
   /** Required at init — client must send explicit ORIGINAL | COVER | REMIX (upload UI forces user choice for O/C). */
   contentType: z.enum(CONTENT_TYPES),
   commentPermission: z.enum(COMMENT_PERMISSIONS).optional(),
@@ -64,6 +69,13 @@ export async function POST(req: Request) {
 
     const body = await req.json();
     const parsed = initSchema.parse(body);
+    const caption = parsed.caption?.trim() ?? '';
+    const title = (parsed.title?.trim() || caption.split('\n').map((line) => line.trim()).find(Boolean) || 'New performance').slice(0, 150);
+    const description = parsed.description?.trim() || caption || undefined;
+    const categorySlug = parsed.vocalStyle?.trim() || parsed.categorySlug?.trim() || '';
+    if (!categorySlug) {
+      return NextResponse.json({ ok: false, message: 'Invalid style' }, { status: 400 });
+    }
     const mimeTypeNorm = normalizeVideoMimeType(parsed.mimeType);
 
     if (!isAllowedMimeType(mimeTypeNorm)) {
@@ -80,7 +92,7 @@ export async function POST(req: Request) {
     }
 
     const category = await prisma.category.findUnique({
-      where: { slug: parsed.categorySlug },
+      where: { slug: categorySlug },
     });
     if (!category) {
       return NextResponse.json({ ok: false, message: 'Invalid style' }, { status: 400 });
@@ -129,8 +141,8 @@ export async function POST(req: Request) {
       data: {
         creatorId: user.id,
         categoryId: category.id,
-        title: parsed.title,
-        description: parsed.description ?? null,
+        title,
+        description: description ?? null,
         publicId,
         durationSec: parsed.durationSec,
         fileSize: parsed.fileSize,
