@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import TalentScoreBadge from '@/components/talent/TalentScoreBadge';
 import { cn } from '@/lib/utils';
 
@@ -10,77 +9,80 @@ function formatNum(n: number): string {
   return String(n);
 }
 
-type StatKey = 'videos' | 'followers' | 'following';
-
 interface ProfileStatsBarProps {
-  videosCount: number;
+  performancesCount: number;
   followers: number;
   following: number;
   totalViews: number;
+  totalLikes: number;
   votes: number;
   averageTalentScore?: number | null;
 }
 
+/**
+ * Read-only creator stats — no fake toggles. Mobile-first single scan row.
+ */
 export default function ProfileStatsBar({
-  videosCount,
+  performancesCount,
   followers,
   following,
   totalViews,
+  totalLikes,
   votes,
   averageTalentScore,
 }: ProfileStatsBarProps) {
-  const [active, setActive] = useState<StatKey>('videos');
-
-  const segments: { key: StatKey; label: string; value: number }[] = [
-    { key: 'videos', label: 'Videos', value: videosCount },
-    { key: 'followers', label: 'Followers', value: followers },
-    { key: 'following', label: 'Following', value: following },
+  const cells = [
+    { label: 'Performances', value: performancesCount },
+    { label: 'Followers', value: followers },
+    { label: 'Following', value: following },
   ];
 
   return (
-    <div className="w-full min-w-0">
+    <div className="w-full min-w-0 px-4 pt-5">
       <div
         className={cn(
-          'mx-4 mt-8 flex h-[72px] items-stretch justify-around overflow-hidden rounded-2xl',
-          'border border-white/10 bg-white/5 backdrop-blur-md',
-          'shadow-[0_8px_22px_rgba(0,0,0,0.28)]'
+          'grid grid-cols-3 overflow-hidden rounded-2xl',
+          'border border-white/[0.08] bg-white/[0.03]'
         )}
         role="region"
         aria-label="Profile statistics"
       >
-        {segments.map(({ key, label, value }) => {
-          const isActive = active === key;
-          return (
-            <button
-              key={key}
-              type="button"
-              onClick={() => setActive(key)}
-              className={cn(
-                'flex min-w-0 flex-1 flex-col items-center justify-center px-1 text-center',
-                'transition-all duration-150 ease-out',
-                'hover:bg-white/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E31B23]/40',
-                isActive && 'rounded-xl shadow-[inset_0_0_12px_rgba(227,27,35,0.1)]'
-              )}
-              aria-pressed={isActive}
-              aria-label={`${label}: ${formatNum(value)}`}
-            >
-              <span className="font-sans text-[16px] font-bold tabular-nums text-white">{formatNum(value)}</span>
-              <span className="mt-0.5 font-sans text-[10px] font-medium uppercase tracking-widest text-gray-400">
-                {label}
-              </span>
-            </button>
-          );
-        })}
+        {cells.map(({ label, value }) => (
+          <div
+            key={label}
+            className="flex flex-col items-center justify-center border-r border-white/[0.06] px-1 py-3.5 last:border-r-0"
+          >
+            <span className="font-display text-[17px] font-bold tabular-nums tracking-tight text-white">
+              {formatNum(value)}
+            </span>
+            <span className="mt-0.5 text-center font-sans text-[9px] font-semibold uppercase tracking-[0.14em] text-white/45">
+              {label}
+            </span>
+          </div>
+        ))}
       </div>
-      <p className="mx-4 mt-3 text-center font-sans text-[11px] text-gray-500">
-        <span className="tabular-nums">{formatNum(totalViews)} views</span>
+
+      <p className="mt-3 text-center font-sans text-[11px] leading-relaxed text-white/40">
+        <span className="tabular-nums text-white/55">{formatNum(totalLikes)}</span>
+        <span className="text-white/25"> likes</span>
         <span className="mx-2 text-white/15" aria-hidden>
           ·
         </span>
-        <span className="tabular-nums">{formatNum(votes)} votes</span>
+        <span className="tabular-nums text-white/55">{formatNum(totalViews)}</span>
+        <span className="text-white/25"> views</span>
+        {votes > 0 ? (
+          <>
+            <span className="mx-2 text-white/15" aria-hidden>
+              ·
+            </span>
+            <span className="tabular-nums text-white/55">{formatNum(votes)}</span>
+            <span className="text-white/25"> votes</span>
+          </>
+        ) : null}
       </p>
-      <div className="mx-4 mt-3 flex justify-center">
-        <TalentScoreBadge score={averageTalentScore ?? null} votesCount={votes} variant="profile" />
+
+      <div className="mt-2 flex justify-center">
+        <TalentScoreBadge score={averageTalentScore ?? null} votesCount={votes} variant="compact" />
       </div>
     </div>
   );

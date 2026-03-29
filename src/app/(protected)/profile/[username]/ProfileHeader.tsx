@@ -26,24 +26,24 @@ interface ProfileHeaderProps {
   isOwner?: boolean;
 }
 
-const cardShadow = 'shadow-[0_8px_22px_rgba(0,0,0,0.28)]';
-
-const btnPrimary =
-  cn(
-    'inline-flex h-[44px] flex-1 touch-manipulation items-center justify-center gap-2 rounded-full',
-    'bg-[#E31B23] text-[14px] font-semibold text-white',
-    'shadow-[0_8px_22px_rgba(0,0,0,0.28)]',
-    'transition-all duration-150 ease-out',
-    'hover:brightness-110 active:scale-[0.98]'
-  );
-const btnSecondary =
-  cn(
-    'inline-flex h-[44px] flex-1 touch-manipulation items-center justify-center gap-2 rounded-full',
-    'border border-white/10 bg-white/5 text-[14px] font-semibold text-white backdrop-blur-[14px]',
-    'shadow-[0_8px_22px_rgba(0,0,0,0.28)]',
-    'transition-all duration-150 ease-out',
-    'hover:bg-white/[0.08] active:scale-[0.98]'
-  );
+const btnPrimary = cn(
+  'inline-flex h-11 min-h-[44px] flex-1 touch-manipulation items-center justify-center gap-2 rounded-full',
+  'bg-[#B01028] text-[14px] font-semibold text-white',
+  'shadow-[0_4px_24px_rgba(176,16,40,0.35)]',
+  'transition-all duration-200 ease-out',
+  'hover:bg-[#c41230] active:scale-[0.98]'
+);
+const btnSecondary = cn(
+  'inline-flex h-11 min-h-[44px] flex-1 touch-manipulation items-center justify-center gap-2 rounded-full',
+  'border border-white/[0.12] bg-white/[0.04] text-[14px] font-semibold text-white',
+  'backdrop-blur-md transition-all duration-200 ease-out',
+  'hover:bg-white/[0.08] active:scale-[0.98]'
+);
+const btnIcon = cn(
+  'inline-flex h-11 w-11 shrink-0 touch-manipulation items-center justify-center rounded-full',
+  'border border-white/[0.12] bg-white/[0.04] text-white backdrop-blur-md',
+  'transition-all duration-200 hover:bg-white/[0.08] active:scale-[0.98]'
+);
 
 export default function ProfileHeader({
   displayName,
@@ -75,39 +75,41 @@ export default function ProfileHeader({
   };
 
   return (
-    <header className="w-full min-w-0">
-      <div className="flex flex-col items-center px-4 pb-2 pt-6">
+    <header className="w-full min-w-0 border-b border-white/[0.05] pb-1">
+      <div className="flex flex-col items-center px-4 pb-1 pt-2">
         <div
           className={cn(
-            'relative flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-full',
-            'border border-white/10 bg-white/5 backdrop-blur-[14px]',
-            cardShadow
+            'relative flex h-[104px] w-[104px] shrink-0 items-center justify-center overflow-hidden rounded-full',
+            'ring-2 ring-white/[0.08] ring-offset-2 ring-offset-[#050505]',
+            'bg-gradient-to-b from-white/[0.08] to-white/[0.02]'
           )}
         >
           {avatarUrl ? (
             <img src={avatarUrl} alt="" className="avatar-image h-full w-full object-cover" />
           ) : (
-            <UserRound className="text-white/85" size={64} strokeWidth={1.5} aria-hidden />
+            <UserRound className="text-white/50" size={52} strokeWidth={1.25} aria-hidden />
           )}
         </div>
 
         <div className="mt-4 flex max-w-full flex-wrap items-center justify-center gap-2">
-          <h1 className="text-center font-display text-2xl font-bold tracking-tight text-white">{displayName}</h1>
-          {flag ? <span className="text-[22px] leading-none">{flag}</span> : null}
+          <h1 className="text-center font-display text-[1.65rem] font-bold leading-tight tracking-tight text-white">
+            {displayName}
+          </h1>
+          {flag ? <span className="text-[20px] leading-none" aria-hidden>{flag}</span> : null}
           <VerifiedBadge verified={!!isVerified} verificationLevel={verificationLevel ?? undefined} size="md" />
         </div>
-        <p className="mt-1 font-sans text-gray-500">{handle}</p>
+        <p className="mt-1 font-sans text-[14px] text-white/45">{handle}</p>
       </div>
 
-      <div className="mt-6 flex gap-3 px-4">
+      <div className="mt-5 flex flex-wrap gap-2 px-4">
         {isOwner ? (
           <>
             <Link href="/settings" className={btnPrimary}>
-              <Pencil className="h-4 w-4 shrink-0" strokeWidth={1.5} aria-hidden />
+              <Pencil className="h-4 w-4 shrink-0 opacity-90" strokeWidth={1.75} aria-hidden />
               Edit profile
             </Link>
             <button type="button" className={btnSecondary} onClick={() => setShareOpen(true)}>
-              <Share2 className="h-4 w-4 shrink-0" strokeWidth={1.5} aria-hidden />
+              <Share2 className="h-4 w-4 shrink-0" strokeWidth={1.75} aria-hidden />
               Share
             </button>
           </>
@@ -119,18 +121,32 @@ export default function ProfileHeader({
                 initialFollowing={initialFollowing}
                 variant="primary"
                 size="default"
-                className="!flex !h-[44px] min-h-0 w-full flex-1 !rounded-full !border-0 !bg-[#E31B23] !px-4 !text-[14px] !font-semibold !shadow-[0_8px_22px_rgba(0,0,0,0.28)] !transition-all !duration-150 !ease-out"
+                className="!flex !h-11 min-h-[44px] min-w-0 flex-[1.2] !rounded-full !border-0 !bg-[#B01028] !px-4 !text-[14px] !font-semibold !shadow-[0_4px_24px_rgba(176,16,40,0.35)] !transition-all !duration-200"
               />
             ) : null}
             {creatorId ? (
               <Link href={inboxThreadPath(creatorId)} className={btnSecondary}>
-                <MessageCircle className="h-4 w-4 shrink-0" strokeWidth={1.5} aria-hidden />
+                <MessageCircle className="h-4 w-4 shrink-0" strokeWidth={1.75} aria-hidden />
                 Message
               </Link>
             ) : null}
+            <button type="button" className={btnIcon} onClick={() => setShareOpen(true)} aria-label="Share profile">
+              <Share2 className="h-[18px] w-[18px]" strokeWidth={1.75} aria-hidden />
+            </button>
           </>
         )}
       </div>
+
+      {isOwner ? (
+        <div className="mt-3 px-4 text-center">
+          <Link
+            href="/wallet"
+            className="text-[12px] font-medium text-white/35 transition-colors hover:text-white/55"
+          >
+            Wallet
+          </Link>
+        </div>
+      ) : null}
 
       <ShareModal
         isOpen={shareOpen}
@@ -142,12 +158,12 @@ export default function ProfileHeader({
       />
 
       {bioTrimmed ? (
-        <p className="mt-5 px-4 text-center font-sans text-[14px] leading-relaxed text-gray-400">{bioTrimmed}</p>
+        <p className="mt-4 px-5 text-center font-sans text-[14px] leading-relaxed text-white/55">{bioTrimmed}</p>
       ) : isOwner ? (
-        <p className="mt-5 px-4 text-center font-sans text-[14px] italic text-gray-600">
+        <p className="mt-4 px-5 text-center font-sans text-[13px] text-white/35">
           <Link
             href="/settings"
-            className="font-medium text-[#E31B23]/90 underline-offset-2 transition-all duration-150 ease-out hover:underline"
+            className="font-medium text-[#c41230]/95 underline-offset-2 transition-colors hover:underline"
           >
             Add a bio in Settings
           </Link>
@@ -155,7 +171,7 @@ export default function ProfileHeader({
       ) : null}
 
       {memberSinceLabel ? (
-        <p className="mt-3 px-4 text-center font-sans text-[11px] font-medium uppercase tracking-wider text-gray-600">
+        <p className="mt-3 px-4 pb-2 text-center font-sans text-[10px] font-semibold uppercase tracking-[0.2em] text-white/25">
           Member since {memberSinceLabel}
         </p>
       ) : null}

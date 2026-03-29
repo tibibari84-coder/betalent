@@ -15,6 +15,7 @@ import {
   IconShieldCheck,
   IconQuestionMarkCircle,
   IconArrowPath,
+  IconTrophy,
 } from '@/components/ui/Icons';
 
 interface ProfileMoreMenuProps {
@@ -171,6 +172,7 @@ export default function ProfileMoreMenu({ isOpen, onClose, isOwner, onShareProfi
                   onShareProfile?.();
                 }}
               />
+              <MenuRow href="/leaderboard" icon={IconTrophy} label="Leaderboard" onClick={onClose} />
               {isOwner && (
                 <MenuRow
                   href="/wallet"
